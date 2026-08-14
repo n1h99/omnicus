@@ -789,7 +789,7 @@ function TemplateLibrary({ loading, onCreateCampaign, onEdit, templates }: { loa
           <Button icon={<EditOutlined />} key="edit" onClick={() => onEdit(template)} type="text">Edit</Button>,
           <Button disabled={!template.activeVersion} icon={<ArrowRightOutlined />} key="use" onClick={() => template.activeVersion && onCreateCampaign(template.activeVersion)} type="text">Use</Button>,
           <Button icon={<CopyOutlined />} key="copy" loading={mutations.duplicateTemplate.isPending} onClick={() => void mutations.duplicateTemplate.mutateAsync(template.id)} type="text">Duplicate</Button>,
-          <Button className="email-template-delete-action" danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text">Delete</Button>,
+          <Button className="email-template-delete-action" icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text">Delete</Button>,
         ]} className="email-template-card" key={template.id}>
           <div className="email-template-card-top"><span className="email-template-icon"><MailOutlined /></span><Tag color={template.activeVersion ? 'success' : 'default'}>{template.activeVersion ? `Published v${template.activeVersion.version}` : 'Draft'}</Tag></div>
           <Typography.Title ellipsis level={4}>{template.name}</Typography.Title>

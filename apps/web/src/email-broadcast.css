@@ -1038,13 +1038,14 @@
 .email-preview-frame-shell {
   height: auto;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 18px;
 }
 
 .email-preview-frame {
   border: 1px solid var(--email-line);
   border-radius: 12px;
+  display: block;
   min-height: 540px;
 }
 
@@ -1491,12 +1492,27 @@
   border-start-end-radius: 16px;
 }
 
+.email-command-card .ant-table-tbody > tr > td:first-child {
+  border-left: 1px solid var(--email-line);
+}
+
+.email-command-card .ant-table-tbody > tr > td:last-child {
+  border-right: 1px solid var(--email-line);
+}
+
 .email-template-delete-action.ant-btn.ant-btn-text,
 .email-template-delete-action.ant-btn.ant-btn-text:hover,
 .email-template-delete-action.ant-btn.ant-btn-text:focus,
 .email-template-delete-action.ant-btn.ant-btn-text:active {
-  border-color: transparent;
+  color: #b91c1c !important;
+  border-color: transparent !important;
   box-shadow: none;
+}
+
+.email-template-delete-action.ant-btn.ant-btn-text:hover,
+.email-template-delete-action.ant-btn.ant-btn-text:focus,
+.email-template-delete-action.ant-btn.ant-btn-text:active {
+  color: #991b1b !important;
 }
 
 .email-delivery-picker-dropdown .ant-picker-time-panel-column {
