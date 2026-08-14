@@ -120,6 +120,7 @@ enum CrmOperationType {
   FORWARD_AUTOMATION_STATE
   FORWARD_MESSAGE_STATUS
   FORWARD_TRACKED_LINK_CLICK
+  FORWARD_EMAIL_EVENT
 }
 
 enum CrmProvider {
@@ -176,6 +177,73 @@ enum MarketingConsentStatus {
   UNKNOWN
   GRANTED
   REVOKED
+}
+
+enum EmailTemplateStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EmailTemplateVersionStatus {
+  DRAFT
+  PUBLISHED
+  SUPERSEDED
+}
+
+enum EmailCampaignStatus {
+  DRAFT
+  SCHEDULED
+  PREPARING
+  RUNNING
+  PAUSED
+  COMPLETED
+  CANCELLED
+  FAILED
+  ARCHIVED
+}
+
+enum EmailDeliverySource {
+  CAMPAIGN
+  AUTOMATION
+  TEST
+}
+
+enum EmailDeliveryStatus {
+  PENDING
+  PROCESSING
+  RETRY
+  SENT
+  DELIVERED
+  DELIVERY_DELAYED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+  SUPPRESSED
+  FAILED
+  CANCELLED
+}
+
+enum EmailEventType {
+  SENT
+  DELIVERED
+  DELIVERY_DELAYED
+  OPENED
+  CLICKED
+  BOUNCED
+  COMPLAINED
+  SUPPRESSED
+  FAILED
+  UNSUBSCRIBED
+}
+
+enum EmailSuppressionReason {
+  UNSUBSCRIBED
+  BOUNCED
+  COMPLAINT
+  PROVIDER_SUPPRESSION
+  MANUAL
 }
 
 enum WhatsAppReachabilityStatus {
@@ -665,6 +733,10 @@ model Project {
   telegramBotInterfaces    TelegramBotInterface[]
   messageStatusEvents      MessageStatusEvent[]
   whatsAppMessageTemplates WhatsAppMessageTemplate[]
+  emailTemplates           EmailTemplate[]
+  emailCampaigns           EmailCampaign[]
+  emailDeliveries          EmailDelivery[]
+  emailSuppressions        EmailSuppression[]
 
   @@index([status, createdAt])
   @@map("projects")
@@ -685,6 +757,10 @@ model Contact {
   whatsAppConsentSource String?
   whatsAppConsentAt     DateTime?               @db.Timestamptz(3)
   whatsAppOptOutAt      DateTime?               @db.Timestamptz(3)
+  emailConsentStatus    MarketingConsentStatus  @default(UNKNOWN)
+  emailConsentSource    String?
+  emailConsentAt        DateTime?                @db.Timestamptz(3)
+  emailOptOutAt         DateTime?                @db.Timestamptz(3)
   status              ContactStatus             @default(ACTIVE)
   automationMode      AutomationMode            @default(ENABLED)
   crmLeadId           String?
@@ -708,6 +784,7 @@ model Contact {
   broadcastRecipients BroadcastRecipient[]
   scheduledMessages   ScheduledMessage[]
   telegramMediaGroups TelegramMediaGroup[]
+  emailDeliveries      EmailDelivery[]
   mergedInto          Contact?                  @relation("ContactMerge", fields: [projectId, mergedIntoContactId], references: [projectId, id], onDelete: Restrict)
   mergedContacts      Contact[]                 @relation("ContactMerge")
 
@@ -720,6 +797,7 @@ model Contact {
   @@index([projectId, normalizedPhone])
   @@index([projectId, normalizedEmail])
   @@index([projectId, whatsAppConsentStatus])
+  @@index([projectId, emailConsentStatus])
   @@map("contacts")
 }
 
@@ -1362,12 +1440,182 @@ model MediaAsset {
   messages                Message[]
   templateVersions        MessageTemplateVersion[]
   telegramMediaGroupItems TelegramMediaGroupItem[]
+  emailReferences         EmailAssetReference[]
 
   @@unique([projectId, id])
   @@unique([projectId, connectionId, providerMediaId])
   @@index([projectId, status, retentionUntil])
   @@index([projectId, connectionId, providerMediaId])
   @@map("media_assets")
+}
+
+model EmailTemplate {
+  id              String              @id @default(uuid())
+  projectId       String
+  name            String
+  description     String?
+  status          EmailTemplateStatus @default(DRAFT)
+  activeVersionId String?
+  draftVersionId  String?
+  createdById     String?
+  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime            @updatedAt @db.Timestamptz(3)
+  project         Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  versions        EmailTemplateVersion[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, name])
+  @@index([projectId, status, updatedAt])
+  @@map("email_templates")
+}
+
+model EmailTemplateVersion {
+  id          String                     @id @default(uuid())
+  projectId   String
+  templateId  String
+  version     Int
+  status      EmailTemplateVersionStatus @default(DRAFT)
+  subject     String
+  preheader   String?
+  design      Json
+  contentHash String
+  createdById String?
+  createdAt   DateTime                   @default(now()) @db.Timestamptz(3)
+  publishedAt DateTime?                  @db.Timestamptz(3)
+  template    EmailTemplate              @relation(fields: [projectId, templateId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, id])
+  @@unique([projectId, templateId, version])
+  @@index([projectId, templateId, status])
+  @@map("email_template_versions")
+}
+
+model EmailCampaign {
+  id                      String              @id @default(uuid())
+  projectId               String
+  name                    String
+  status                  EmailCampaignStatus @default(DRAFT)
+  subject                 String
+  preheader               String?
+  design                  Json
+  audience                Json
+  sourceTemplateVersionId String?
+  scheduledAt             DateTime?           @db.Timestamptz(3)
+  startedAt               DateTime?           @db.Timestamptz(3)
+  completedAt             DateTime?           @db.Timestamptz(3)
+  cancelledAt             DateTime?           @db.Timestamptz(3)
+  failedAt                DateTime?           @db.Timestamptz(3)
+  errorCode               String?
+  preparationLockedAt     DateTime?           @db.Timestamptz(3)
+  preparationLockedBy     String?
+  createdById             String?
+  createdAt               DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
+  project                 Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  deliveries              EmailDelivery[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, name])
+  @@index([projectId, status, scheduledAt])
+  @@map("email_campaigns")
+}
+
+model EmailDelivery {
+  id                    String              @id @default(uuid())
+  projectId             String
+  campaignId            String?
+  contactId             String?
+  templateVersionId     String?
+  scenarioExecutionId   String?
+  nodeId                String?
+  source                EmailDeliverySource
+  toEmail               String
+  normalizedEmail       String
+  subject               String
+  preheader             String?
+  designSnapshot        Json
+  attachmentAssetIds    Json                @default("[]")
+  unsubscribeToken      String              @default(uuid()) @unique
+  status                EmailDeliveryStatus @default(PENDING)
+  providerEmailId       String?             @unique
+  providerLastEventAt   DateTime?           @db.Timestamptz(3)
+  attempts              Int                 @default(0)
+  maxAttempts           Int                 @default(8)
+  nextAttemptAt         DateTime?           @default(now()) @db.Timestamptz(3)
+  lockedAt              DateTime?           @db.Timestamptz(3)
+  lockedBy              String?
+  lastError             String?
+  queuedAt              DateTime?           @default(now()) @db.Timestamptz(3)
+  sentAt                DateTime?           @db.Timestamptz(3)
+  deliveredAt           DateTime?           @db.Timestamptz(3)
+  openedAt              DateTime?           @db.Timestamptz(3)
+  clickedAt             DateTime?           @db.Timestamptz(3)
+  bouncedAt             DateTime?           @db.Timestamptz(3)
+  complainedAt          DateTime?           @db.Timestamptz(3)
+  failedAt              DateTime?           @db.Timestamptz(3)
+  completedAt           DateTime?           @db.Timestamptz(3)
+  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
+  project               Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  campaign              EmailCampaign?      @relation(fields: [projectId, campaignId], references: [projectId, id], onDelete: Restrict)
+  contact               Contact?            @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  events                EmailEvent[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, campaignId, contactId])
+  @@unique([projectId, scenarioExecutionId, nodeId])
+  @@index([status, nextAttemptAt])
+  @@index([projectId, campaignId, status])
+  @@index([projectId, contactId, createdAt])
+  @@map("email_deliveries")
+}
+
+model EmailEvent {
+  id                String         @id @default(uuid())
+  projectId         String
+  deliveryId        String
+  providerEventId   String         @unique
+  type              EmailEventType
+  occurredAt        DateTime       @db.Timestamptz(3)
+  targetUrl         String?
+  providerPayload   Json
+  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
+  delivery          EmailDelivery  @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Cascade)
+
+  @@unique([projectId, id])
+  @@index([projectId, deliveryId, occurredAt])
+  @@map("email_events")
+}
+
+model EmailSuppression {
+  id              String                 @id @default(uuid())
+  projectId       String
+  normalizedEmail String
+  reason          EmailSuppressionReason
+  source          String
+  detail          String?
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+  project         Project                @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, normalizedEmail])
+  @@index([projectId, reason, createdAt])
+  @@map("email_suppressions")
+}
+
+model EmailAssetReference {
+  id           String     @id @default(uuid())
+  projectId    String
+  mediaAssetId String
+  ownerType    String
+  ownerId      String
+  usage        String
+  createdAt    DateTime   @default(now()) @db.Timestamptz(3)
+  asset        MediaAsset @relation(fields: [projectId, mediaAssetId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, mediaAssetId, ownerType, ownerId])
+  @@index([projectId, ownerType, ownerId])
+  @@map("email_asset_references")
 }
 
 model MessageTemplate {

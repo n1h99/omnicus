@@ -58,6 +58,7 @@ export class MediaRetentionService implements OnApplicationBootstrap, OnApplicat
           bucketKey: { not: null },
           retentionUntil: { lte: now },
           status: 'AVAILABLE',
+          emailReferences: { none: {} },
           templateVersions: { none: { status: { in: ['PUBLISHED', 'SUPERSEDED'] } } },
         },
       });

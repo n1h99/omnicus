@@ -234,6 +234,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
       !identityRow &&
       operation.type !== 'MERGE_CONTACTS' &&
       operation.type !== 'CREATE_OR_UPDATE_LEAD' &&
+      operation.type !== 'FORWARD_EMAIL_EVENT' &&
       operation.type !== 'FORWARD_TRACKED_LINK_CLICK'
     ) {
       await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_channel_identity_missing');
@@ -326,6 +327,53 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           ...(primaryCrmLeadId ? { primaryCrmLeadId } : {}),
           secondaryContactId,
           ...(secondaryCrmLeadId ? { secondaryCrmLeadId } : {}),
+        });
+      } else if (operation.type === 'FORWARD_EMAIL_EVENT') {
+        const forwardEmailEvent = this.client.forwardEmailEvent;
+        if (!forwardEmailEvent) {
+          await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_email_event_unsupported');
+          return;
+        }
+        const deliveryId = this.stringProperty(operation.inputSafe, 'deliveryId');
+        const eventId = this.stringProperty(operation.inputSafe, 'eventId');
+        const eventType = this.stringProperty(operation.inputSafe, 'eventType');
+        const occurredAt = this.stringProperty(operation.inputSafe, 'occurredAt');
+        const source = this.stringProperty(operation.inputSafe, 'source');
+        const subject = this.stringProperty(operation.inputSafe, 'subject');
+        const toEmail = this.stringProperty(operation.inputSafe, 'toEmail');
+        if (!deliveryId || !eventId || !eventType || !occurredAt || !source || !subject || !toEmail) {
+          await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_email_event_invalid');
+          return;
+        }
+        result = await forwardEmailEvent.call(this.client, context, {
+          ...(this.stringProperty(operation.inputSafe, 'campaignId')
+            ? { campaignId: this.stringProperty(operation.inputSafe, 'campaignId')! }
+            : {}),
+          contactId: operation.contact.id,
+          deliveryId,
+          eventId,
+          eventType: eventType as never,
+          ...(this.stringProperty(operation.inputSafe, 'nodeId')
+            ? { nodeId: this.stringProperty(operation.inputSafe, 'nodeId')! }
+            : {}),
+          occurredAt,
+          ...(this.stringProperty(operation.inputSafe, 'providerEmailId')
+            ? { providerEmailId: this.stringProperty(operation.inputSafe, 'providerEmailId')! }
+            : {}),
+          ...(this.stringProperty(operation.inputSafe, 'scenarioExecutionId')
+            ? {
+                scenarioExecutionId: this.stringProperty(
+                  operation.inputSafe,
+                  'scenarioExecutionId',
+                )!,
+              }
+            : {}),
+          source,
+          subject,
+          ...(this.stringProperty(operation.inputSafe, 'targetUrl')
+            ? { targetUrl: this.stringProperty(operation.inputSafe, 'targetUrl')! }
+            : {}),
+          toEmail,
         });
       } else if (operation.type === 'FORWARD_TRACKED_LINK_CLICK') {
         const trackedLinkId = this.stringProperty(operation.inputSafe, 'trackedLinkId');
@@ -619,6 +667,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
         | 'FORWARD_MESSAGE_EDIT'
         | 'FORWARD_CONTACT_SHARE'
         | 'FORWARD_AUTOMATION_STATE'
+        | 'FORWARD_EMAIL_EVENT'
         | 'FORWARD_TRACKED_LINK_CLICK'
         | 'FORWARD_MESSAGE_STATUS';
     },

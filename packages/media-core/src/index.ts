@@ -634,6 +634,21 @@ export async function prepareMediaForTelegram(input: MediaValidationInput): Prom
   throw new MediaValidationError('media_photo_size_exceeded');
 }
 
+/**
+ * Email keeps the strict signature and document-structure checks while avoiding
+ * messenger-specific image dimensions and transcoding.
+ */
+export async function prepareMediaForEmail(input: MediaValidationInput): Promise<PreparedMedia> {
+  if (input.kind !== 'DOCUMENT' && input.kind !== 'PHOTO')
+    throw new MediaValidationError('email_media_kind_unsupported');
+  const validationInput =
+    input.kind === 'PHOTO' ? { ...input, kind: 'DOCUMENT' as const } : input;
+  const validated = validateMedia(validationInput);
+  if (input.kind === 'PHOTO' && !validated.mimeType.startsWith('image/'))
+    throw new MediaValidationError('email_image_type_rejected');
+  return { ...validated, bytes: input.bytes, transformed: false };
+}
+
 const WHATSAPP_MEDIA_RULES = {
   AUDIO: {
     maximumBytes: 16 * 1024 * 1024,

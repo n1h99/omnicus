@@ -158,6 +158,20 @@ export class LeadCaptureService {
         ...(input.firstName?.trim() ? { firstName: input.firstName.trim() } : {}),
         ...(input.lastName?.trim() ? { lastName: input.lastName.trim() } : {}),
         ...(phone ? { normalizedPhone, phone } : {}),
+        ...(input.consents?.email === true
+          ? {
+              emailConsentAt: registeredAt,
+              emailConsentSource: consentSource,
+              emailConsentStatus: 'GRANTED' as const,
+              emailOptOutAt: null,
+            }
+          : input.consents?.email === false
+            ? {
+                emailConsentSource: consentSource,
+                emailConsentStatus: 'REVOKED' as const,
+                emailOptOutAt: registeredAt,
+              }
+            : {}),
         ...(input.consents?.whatsApp === true
           ? {
               whatsAppConsentAt: registeredAt,

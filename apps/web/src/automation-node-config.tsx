@@ -44,6 +44,7 @@ import {
   type DurationUnit,
 } from './automation-studio';
 import type { MessageTemplate } from './templates-api';
+import type { EmailTemplate } from './email-api';
 import {
   assetKindForWhatsAppSlot,
   whatsAppParameterSlots,
@@ -68,6 +69,7 @@ interface Props {
   secrets: AutomationSecret[];
   tags: AutomationTag[];
   templates: MessageTemplate[];
+  emailTemplates: EmailTemplate[];
   testHttpRequest(
     config: Record<string, unknown>,
     variables?: Record<string, unknown>,
@@ -179,6 +181,7 @@ export function AutomationNodeConfig({
   secrets,
   tags,
   templates,
+  emailTemplates,
   testHttpRequest,
 }: Props) {
   const updateConfig = (next: Record<string, unknown>) => onChange({ ...config, ...next });
@@ -852,6 +855,59 @@ export function AutomationNodeConfig({
             </Typography.Text>
           ) : null}
         </div>
+      </Space>
+    );
+  }
+
+  if (nodeType === 'SEND_EMAIL') {
+    const selected = emailTemplates.find((template) => template.id === config.templateId);
+    const active = selected?.activeVersion;
+    return (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Alert
+          className="automation-channel-note"
+          description="The published version is pinned when the scenario is saved. Delivery requires a contact email, explicit email consent and no suppression entry."
+          message="Consent-aware email delivery"
+          type="info"
+        />
+        <Form.Item
+          extra="Create and publish reusable designs in Email & SMS Broadcast."
+          label="Published email template"
+        >
+          <Select
+            onChange={(templateId) => {
+              const template = emailTemplates.find((item) => item.id === templateId);
+              onChange({
+                templateId,
+                templateVersionId: template?.activeVersionId ?? '',
+              });
+            }}
+            optionFilterProp="label"
+            options={emailTemplates
+              .filter((template) => template.status === 'PUBLISHED' && template.activeVersion)
+              .map((template) => ({
+                label: `${template.name} · v${template.activeVersion!.version}`,
+                value: template.id,
+              }))}
+            placeholder="Choose a published email template"
+            showSearch
+            value={typeof config.templateId === 'string' ? config.templateId : undefined}
+          />
+        </Form.Item>
+        {active ? (
+          <div className="automation-message-preview">
+            <Typography.Text strong>{active.subject}</Typography.Text>
+            <Typography.Paragraph type="secondary">
+              {active.preheader || 'No inbox preview text'}
+            </Typography.Paragraph>
+          </div>
+        ) : emailTemplates.length ? null : (
+          <Alert
+            description="Publish an email template before adding this automation step."
+            message="No published email templates"
+            type="warning"
+          />
+        )}
       </Space>
     );
   }

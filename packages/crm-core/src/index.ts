@@ -151,6 +151,32 @@ export interface ForwardTrackedLinkClickInput {
   userAgent?: string;
 }
 
+export interface ForwardEmailEventInput {
+  campaignId?: string;
+  contactId: string;
+  deliveryId: string;
+  eventId: string;
+  eventType:
+    | 'SENT'
+    | 'DELIVERED'
+    | 'DELIVERY_DELAYED'
+    | 'OPENED'
+    | 'CLICKED'
+    | 'BOUNCED'
+    | 'COMPLAINED'
+    | 'FAILED'
+    | 'SUPPRESSED'
+    | 'UNSUBSCRIBED';
+  nodeId?: string;
+  occurredAt: string;
+  providerEmailId?: string;
+  scenarioExecutionId?: string;
+  source: string;
+  subject: string;
+  targetUrl?: string;
+  toEmail: string;
+}
+
 export interface MergeContactsInput {
   primaryContactId: string;
   primaryCrmLeadId?: string;
@@ -305,6 +331,10 @@ export interface CrmClient {
   forwardMessageStatus?(
     context: CrmCallContext,
     input: ForwardMessageStatusInput,
+  ): Promise<CrmResult>;
+  forwardEmailEvent?(
+    context: CrmCallContext,
+    input: ForwardEmailEventInput,
   ): Promise<CrmResult>;
   forwardTrackedLinkClick(
     context: CrmCallContext,
@@ -656,6 +686,41 @@ export class HttpCrmClient implements CrmClient {
     };
   }
 
+  async forwardEmailEvent(
+    context: CrmCallContext,
+    input: ForwardEmailEventInput,
+  ): Promise<CrmResult> {
+    const result = await this.postAndReconcile(
+      '/integrations/v1/omnicus/email/events',
+      context,
+      {
+        ...(input.campaignId ? { campaignId: input.campaignId } : {}),
+        crmProjectId: context.crmProjectId,
+        deliveryId: input.deliveryId,
+        eventId: input.eventId,
+        eventType: input.eventType,
+        ...(input.nodeId ? { nodeId: input.nodeId } : {}),
+        occurredAt: input.occurredAt,
+        omnicusContactId: input.contactId,
+        omnicusProjectId: context.projectId,
+        ...(input.providerEmailId ? { providerEmailId: input.providerEmailId } : {}),
+        ...(input.scenarioExecutionId
+          ? { scenarioExecutionId: input.scenarioExecutionId }
+          : {}),
+        source: input.source,
+        subject: input.subject,
+        ...(input.targetUrl ? { targetUrl: input.targetUrl } : {}),
+        toEmail: input.toEmail,
+      },
+      leadResultSchema,
+    );
+    return {
+      mode: result.mode,
+      operationId: result.operationId,
+      providerReference: result.crmLeadId,
+    };
+  }
+
   async forwardTrackedLinkClick(
     context: CrmCallContext,
     input: ForwardTrackedLinkClickInput,
@@ -869,6 +934,13 @@ export class MockCrmClient implements CrmClient {
     _input: ForwardMessageStatusInput,
   ): Promise<CrmResult> {
     return this.perform(context, 'message');
+  }
+
+  async forwardEmailEvent(
+    context: CrmCallContext,
+    _input: ForwardEmailEventInput,
+  ): Promise<CrmResult> {
+    return this.perform(context, 'lead');
   }
 
   async forwardTrackedLinkClick(

@@ -11,14 +11,14 @@ export interface MediaAsset {
   originalFilename: string | null;
   detectedMimeType: string | null;
   sizeBytes: string | null;
-  validationChannel?: 'telegram' | 'whatsapp';
+  validationChannel?: 'email' | 'telegram' | 'whatsapp';
   createdAt: string;
 }
 
 export type MediaKind =
   'ANIMATION' | 'AUDIO' | 'DOCUMENT' | 'PHOTO' | 'STICKER' | 'VIDEO' | 'VIDEO_NOTE' | 'VOICE';
 
-export type MediaValidationChannel = 'TELEGRAM' | 'WHATSAPP';
+export type MediaValidationChannel = 'EMAIL' | 'TELEGRAM' | 'WHATSAPP';
 
 export function useMediaAssets(projectId?: string, enabled = true) {
   const { accessToken } = useAuth();

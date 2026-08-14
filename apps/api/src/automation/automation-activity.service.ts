@@ -33,6 +33,7 @@ const nodeLabels: Record<string, string> = {
   RESUME_AUTOMATION: 'Resume automation',
   SEND_MESSAGE: 'Send a message',
   SEND_TEMPLATE: 'Send a template',
+  SEND_EMAIL: 'Send an email',
   SET_CUSTOM_FIELD: 'Update a custom field',
   START_SUBFLOW: 'Start another automation',
   STOP: 'Finish',

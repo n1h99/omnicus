@@ -77,7 +77,7 @@ export class MediaController {
         code: 'MEDIA_KIND_INVALID',
         message: 'Media kind is invalid',
       });
-    if (channel !== undefined && !['telegram', 'whatsapp'].includes(channel))
+    if (channel !== undefined && !['email', 'telegram', 'whatsapp'].includes(channel))
       throw new BadRequestException({
         code: 'MEDIA_CHANNEL_INVALID',
         message: 'Media channel is invalid',
@@ -89,7 +89,7 @@ export class MediaController {
         file,
         request.auth!,
         this.context(request),
-        (channel ?? 'telegram') as 'telegram' | 'whatsapp',
+        (channel ?? 'telegram') as 'email' | 'telegram' | 'whatsapp',
       ),
       meta: {},
     };

@@ -19,6 +19,7 @@ import {
 import { WhatsAppApiError, WhatsAppCloudApi } from '@omnicus/channel-whatsapp';
 import {
   MediaValidationError,
+  prepareMediaForEmail,
   prepareMediaForTelegram,
   prepareMediaForWhatsApp,
   S3MediaStorage,
@@ -87,7 +88,7 @@ export class MediaService {
     file: UploadedFile | undefined,
     actor: AuthenticatedUser,
     context: RequestSecurityContext,
-    channel: 'telegram' | 'whatsapp' = 'telegram',
+    channel: 'email' | 'telegram' | 'whatsapp' = 'telegram',
   ) {
     const stored = await this.store(projectId, kind, file, undefined, channel);
     await this.audit.record({
@@ -139,14 +140,19 @@ export class MediaService {
     kind: MediaKind,
     file: UploadedFile | undefined,
     requestedId?: string,
-    channel: 'telegram' | 'whatsapp' = 'telegram',
+    channel: 'email' | 'telegram' | 'whatsapp' = 'telegram',
   ) {
     if (!file)
       throw new BadRequestException({ code: 'MEDIA_FILE_REQUIRED', message: 'A file is required' });
     const storage = this.requireStorage();
     let validated;
     try {
-      const prepare = channel === 'whatsapp' ? prepareMediaForWhatsApp : prepareMediaForTelegram;
+      const prepare =
+        channel === 'email'
+          ? prepareMediaForEmail
+          : channel === 'whatsapp'
+            ? prepareMediaForWhatsApp
+            : prepareMediaForTelegram;
       validated = await prepare({
         bytes: file.buffer,
         declaredMimeType: file.mimetype,
@@ -434,14 +440,19 @@ export class MediaService {
     context: RequestSecurityContext,
   ) {
     const asset = await this.asset(projectId, assetId);
-    const publishedUsage = await this.database.client.messageTemplateVersion.count({
+    const [publishedUsage, emailUsage] = await Promise.all([
+      this.database.client.messageTemplateVersion.count({
       where: {
         mediaAssetId: assetId,
         projectId,
         status: { in: ['PUBLISHED', 'SUPERSEDED'] },
       },
-    });
-    if (publishedUsage)
+      }),
+      this.database.client.emailAssetReference.count({
+        where: { mediaAssetId: assetId, projectId },
+      }),
+    ]);
+    if (publishedUsage || emailUsage)
       throw new BadRequestException({
         code: 'MEDIA_USED_BY_PUBLISHED_TEMPLATE',
         message: 'Published templates still reference this media',

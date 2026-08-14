@@ -7,6 +7,7 @@ export const automationNodeTypes = [
   'REMOVE_TAG',
   'SEND_MESSAGE',
   'SEND_TEMPLATE',
+  'SEND_EMAIL',
   'CREATE_OR_UPDATE_LEAD',
   'FORWARD_TO_CRM',
   'SET_CUSTOM_FIELD',
@@ -21,6 +22,11 @@ export const automationNodeTypes = [
 ] as const;
 
 export type AutomationNodeType = (typeof automationNodeTypes)[number];
+
+export const sendEmailAutomationConfigSchema = z.object({
+  templateId: z.string().uuid(),
+  templateVersionId: z.string().uuid(),
+});
 
 export const conditionOperators = [
   'equals',
@@ -427,6 +433,11 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
       if (telegramTemplate && node.config.whatsAppTemplate !== undefined)
         errors.push(`Send Template node ${node.id} cannot mix Telegram and WhatsApp templates`);
     }
+    if (
+      node.type === 'SEND_EMAIL' &&
+      !sendEmailAutomationConfigSchema.safeParse(node.config).success
+    )
+      errors.push(`Send Email node ${node.id} requires a pinned published email template`);
     if (
       node.type === 'SEND_MESSAGE' &&
       (typeof node.config.text !== 'string' || node.config.text.trim().length === 0) &&

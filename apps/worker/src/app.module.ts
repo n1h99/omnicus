@@ -6,6 +6,7 @@ import { DemoQueueModule } from './queue/demo-queue.module';
 import { AutomationModule } from './automation/automation.module';
 import { CrmModule } from './crm/crm.module';
 import { DatabaseModule } from './database/database.module';
+import { EmailDeliveryModule } from './email/email-delivery.module';
 import { TelegramInboundModule } from './telegram-inbound/telegram-inbound.module';
 import { TelegramOutboundModule } from './telegram-outbound/telegram-outbound.module';
 import { WorkerHealthController } from './worker-health.controller';
@@ -30,6 +31,7 @@ const rootEnvFile =
       validate: validateWorkerEnvironment,
     }),
     DatabaseModule,
+    EmailDeliveryModule,
     AutomationModule,
     CrmModule,
     DemoQueueModule,

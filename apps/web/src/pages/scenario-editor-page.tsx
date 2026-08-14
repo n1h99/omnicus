@@ -109,6 +109,7 @@ import {
 import { hasProjectPermission, useProjectAccess } from '../project-access';
 import { StatusText } from '../status-text';
 import { useTemplates } from '../templates-api';
+import { useEmailTemplates } from '../email-api';
 
 const paletteGroups = [
   {
@@ -138,6 +139,7 @@ const paletteGroups = [
     nodes: [
       ['SEND_MESSAGE', 'Send message'],
       ['SEND_TEMPLATE', 'Send template'],
+      ['SEND_EMAIL', 'Send email'],
       ['FORWARD_TO_CRM', 'Forward to CRM'],
     ],
   },
@@ -167,7 +169,8 @@ type AutomationCanvasNodeDefinition = Node<{ label: string }, 'automation'>;
 function automationNodeIcon(type: string) {
   if (type === 'INCOMING_MESSAGE') return <ThunderboltOutlined />;
   if (type === 'CONDITION') return <BranchesOutlined />;
-  if (type === 'SEND_MESSAGE' || type === 'SEND_TEMPLATE') return <SendOutlined />;
+  if (type === 'SEND_MESSAGE' || type === 'SEND_TEMPLATE' || type === 'SEND_EMAIL')
+    return <SendOutlined />;
   if (type === 'FORWARD_TO_CRM' || type === 'EXTERNAL_HTTP_REQUEST') return <ApiOutlined />;
   if (
     type === 'CREATE_OR_UPDATE_LEAD' ||
@@ -245,6 +248,7 @@ export function ScenarioEditorPage() {
   const scenarioQuery = useScenario(projectId, scenarioId === 'new' ? undefined : scenarioId);
   const scenarios = useScenarios(projectId);
   const templates = useTemplates(projectId);
+  const emailTemplates = useEmailTemplates(projectId);
   const tags = useAutomationTags(projectId);
   const customFields = useAutomationCustomFields(projectId);
   const automationSecrets = useAutomationSecrets(projectId);
@@ -293,6 +297,7 @@ export function ScenarioEditorPage() {
       ...(automationSecrets.data ? { secrets: automationSecrets.data } : {}),
       ...(tags.data ? { tags: tags.data } : {}),
       ...(templates.data ? { templates: templates.data } : {}),
+      ...(emailTemplates.data ? { emailTemplates: emailTemplates.data } : {}),
     }),
   ];
   const validationWarnings = validation.warnings.map((issue) =>
@@ -969,6 +974,7 @@ export function ScenarioEditorPage() {
                         secrets={automationSecrets.data ?? []}
                         tags={tags.data ?? []}
                         templates={templates.data ?? []}
+                        emailTemplates={emailTemplates.data ?? []}
                         testHttpRequest={async (config, variables) =>
                           automationHttp.testRequest.mutateAsync({
                             config,

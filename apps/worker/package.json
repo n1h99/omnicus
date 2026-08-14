@@ -31,9 +31,11 @@
     "@omnicus/config": "workspace:*",
     "@omnicus/contracts": "workspace:*",
     "@omnicus/database": "workspace:*",
+    "@omnicus/email-core": "workspace:*",
     "@omnicus/media-core": "workspace:*",
     "bullmq": "5.81.1",
     "reflect-metadata": "0.2.2",
+    "resend": "6.12.4",
     "rxjs": "7.8.2"
   },
   "devDependencies": {

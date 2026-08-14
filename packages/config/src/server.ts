@@ -203,6 +203,7 @@ export const apiEnvironmentSchema = serviceEnvironmentSchema
     LOGIN_RATE_LIMIT_WINDOW_SECONDS: positiveIntegerSchema.max(3_600).default(900),
     CRM_INBOUND_AUTH_TOKEN: z.string().min(32).optional(),
     CRM_INBOUND_ENABLED: booleanEnvironmentSchema.default(false),
+    RESEND_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
     REFRESH_TOKEN_TTL_DAYS: positiveIntegerSchema.max(90).default(30),
     SWAGGER_ENABLED: booleanEnvironmentSchema.default(false),
     TRUST_PROXY: trustProxySchema,
@@ -290,6 +291,7 @@ export const apiEnvironmentSchema = serviceEnvironmentSchema
 
 export const workerEnvironmentSchema = serviceEnvironmentSchema
   .extend({
+    API_PUBLIC_URL: exactHttpOriginSchema.optional(),
     BULLMQ_READY_TIMEOUT_MS: durationSchema.default(5_000),
     CHANNEL_SECRETS_KEY: channelSecretsKeySchema,
     CRM_AUTH_TOKEN: z.string().min(32).optional(),
@@ -301,6 +303,12 @@ export const workerEnvironmentSchema = serviceEnvironmentSchema
     AUTOMATION_CONTINUATION_BATCH_SIZE: positiveIntegerSchema.max(1_000).default(100),
     AUTOMATION_CONTINUATION_INTERVAL_MS: durationSchema.default(10_000),
     DEMO_JOB_ENABLED: booleanEnvironmentSchema.default(false),
+    EMAIL_DELIVERY_BATCH_SIZE: positiveIntegerSchema.max(100).default(20),
+    EMAIL_DELIVERY_INTERVAL_MS: durationSchema.default(2_000),
+    EMAIL_DELIVERY_LEASE_MS: durationSchema.default(60_000),
+    EMAIL_FROM: z.string().trim().min(3).optional(),
+    EMAIL_REPLY_TO: z.string().trim().email().optional(),
+    RESEND_API_KEY: z.string().trim().startsWith('re_').optional(),
     TELEGRAM_INBOUND_LEASE_MS: durationSchema.default(60_000),
     TELEGRAM_INBOUND_RECOVERY_BATCH_SIZE: positiveIntegerSchema.max(1_000).default(100),
     TELEGRAM_INBOUND_RECOVERY_INTERVAL_MS: durationSchema.default(10_000),

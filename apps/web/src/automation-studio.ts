@@ -100,6 +100,7 @@ interface AutomationResourceCatalog {
   secrets?: Array<{ id: string }>;
   tags?: Array<{ id: string }>;
   templates?: Array<{ activeVersionId: string | null; id: string; status: string }>;
+  emailTemplates?: Array<{ activeVersionId: string | null; id: string; status: string }>;
 }
 
 export function validateAutomationResources(
@@ -179,6 +180,19 @@ export function validateAutomationResources(
       )
         add({ message: 'Select an available published template.', nodeId: node.id });
     }
+    if (node.type === 'SEND_EMAIL') {
+      const template = resources.emailTemplates?.find(
+        (candidate) => candidate.id === config.templateId,
+      );
+      if (
+        resources.emailTemplates &&
+        (!template ||
+          template.status !== 'PUBLISHED' ||
+          !template.activeVersionId ||
+          template.activeVersionId !== config.templateVersionId)
+      )
+        add({ message: 'Select an available published email template.', nodeId: node.id });
+    }
     if (resources.scenarios && node.type === 'START_SUBFLOW') {
       const scenario = resources.scenarios.find(
         (candidate) =>
@@ -249,6 +263,8 @@ export function automationActionErrorMessage(error: unknown): string {
     SCENARIO_SUBFLOW_VERSION_INVALID: 'Select an available published subflow before continuing.',
     SCENARIO_TAG_INVALID: 'Select an available project tag before continuing.',
     SCENARIO_TEMPLATE_VERSION_INVALID: 'Select an available published template before continuing.',
+    SCENARIO_EMAIL_TEMPLATE_VERSION_INVALID:
+      'Select an available published email template before continuing.',
   };
   return messages[code] ?? 'The automation action could not be completed safely.';
 }
@@ -267,6 +283,7 @@ const automationNodeLabels: Record<string, string> = {
   RESUME_AUTOMATION: 'Resume automation',
   SEND_MESSAGE: 'Send message',
   SEND_TEMPLATE: 'Send template',
+  SEND_EMAIL: 'Send email',
   SET_CUSTOM_FIELD: 'Set custom field',
   START_SUBFLOW: 'Subflow',
   STOP: 'Stop',
@@ -293,6 +310,7 @@ export function automationNodeDescription(nodeType: string): string {
     SEND_MESSAGE:
       'Reply through the conversation channel with portable text and optional contact variables.',
     SEND_TEMPLATE: 'Queue one approved, channel-compatible template version.',
+    SEND_EMAIL: 'Queue a consent-aware email from a pinned published template version.',
     SET_CUSTOM_FIELD: 'Set a typed custom-field value on the contact.',
     START_SUBFLOW: 'Run a pinned published version of another scenario.',
     STOP: 'Finish this path without another action.',

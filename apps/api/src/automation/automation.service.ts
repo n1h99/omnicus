@@ -605,6 +605,25 @@ export class AutomationService {
           message: 'Scenario references an unavailable template version',
         });
     }
+    for (const node of parsed.data.nodes.filter((candidate) => candidate.type === 'SEND_EMAIL')) {
+      const templateId = node.config.templateId;
+      const templateVersionId = node.config.templateVersionId;
+      if (typeof templateId !== 'string' || typeof templateVersionId !== 'string') continue;
+      const version = await this.database.client.emailTemplateVersion.findFirst({
+        where: {
+          id: templateVersionId,
+          projectId,
+          status: 'PUBLISHED',
+          templateId,
+          template: { activeVersionId: templateVersionId, status: 'PUBLISHED' },
+        },
+      });
+      if (!version)
+        throw new BadRequestException({
+          code: 'SCENARIO_EMAIL_TEMPLATE_VERSION_INVALID',
+          message: 'Scenario references an unavailable email template version',
+        });
+    }
   }
 
   private async assertAutomationSecrets(projectId: string, graph: unknown): Promise<void> {

@@ -20,6 +20,7 @@ import {
   assertWhatsAppTemplateComponents,
   whatsAppTemplateDisabledReason,
 } from '@omnicus/channel-whatsapp';
+import { emailAssetReferences, emailDocumentSchema } from '@omnicus/email-core';
 import { renderTemplate } from '@omnicus/media-core';
 
 import { DatabaseService } from '../database/database.service';
@@ -449,6 +450,8 @@ export class AutomationRuntimeService {
           [
             'automation_channel_connection_unavailable',
             'automation_channel_identity_unavailable',
+            'automation_email_not_eligible',
+            'automation_email_template_unavailable',
             'automation_whatsapp_service_window_closed',
           ].includes(error.message)
             ? error.message
@@ -757,6 +760,11 @@ export class AutomationRuntimeService {
     }
     if (node.type === 'ADD_TAG' || node.type === 'REMOVE_TAG')
       await this.applyTag(transaction, node, context);
+    if (node.type === 'SEND_EMAIL')
+      return {
+        next: defaultEdge,
+        operationSafe: await this.queueEmail(transaction, node, context, executionId),
+      };
     if (node.type === 'SEND_MESSAGE' || node.type === 'SEND_TEMPLATE')
       return {
         next: defaultEdge,
@@ -948,6 +956,89 @@ export class AutomationRuntimeService {
       data: { payload: { crmOperationId: operation.id } },
       where: { projectId_id: { id: outbox.id, projectId: context.projectId } },
     });
+  }
+
+  private async queueEmail(
+    transaction: RuntimeTransaction,
+    node: ScenarioGraphNode,
+    context: RuntimeContext,
+    executionId: string,
+  ): Promise<Prisma.InputJsonObject> {
+    const templateId =
+      typeof node.config.templateId === 'string' ? node.config.templateId : undefined;
+    const templateVersionId =
+      typeof node.config.templateVersionId === 'string'
+        ? node.config.templateVersionId
+        : undefined;
+    if (!templateId || !templateVersionId)
+      throw new Error('automation_email_template_unavailable');
+    const version = await transaction.emailTemplateVersion.findFirst({
+      where: {
+        id: templateVersionId,
+        projectId: context.projectId,
+        status: 'PUBLISHED',
+        templateId,
+        template: { activeVersionId: templateVersionId, status: 'PUBLISHED' },
+      },
+    });
+    if (!version) throw new Error('automation_email_template_unavailable');
+    const contact = await transaction.contact.findUnique({
+      select: {
+        email: true,
+        emailConsentStatus: true,
+        id: true,
+        normalizedEmail: true,
+      },
+      where: { projectId_id: { id: context.contactId, projectId: context.projectId } },
+    });
+    if (
+      !contact?.email ||
+      !contact.normalizedEmail ||
+      contact.emailConsentStatus !== 'GRANTED'
+    )
+      throw new Error('automation_email_not_eligible');
+    const suppression = await transaction.emailSuppression.findUnique({
+      where: {
+        projectId_normalizedEmail: {
+          normalizedEmail: contact.normalizedEmail,
+          projectId: context.projectId,
+        },
+      },
+    });
+    if (suppression) throw new Error('automation_email_not_eligible');
+    const existing = await transaction.emailDelivery.findFirst({
+      where: { nodeId: node.id, projectId: context.projectId, scenarioExecutionId: executionId },
+    });
+    if (existing)
+      return {
+        emailDeliveryId: existing.id,
+        emailTemplateId: templateId,
+        emailTemplateVersionId: templateVersionId,
+      };
+    const design = emailDocumentSchema.parse(version.design);
+    const delivery = await transaction.emailDelivery.create({
+      data: {
+        attachmentAssetIds: JSON.parse(
+          JSON.stringify(emailAssetReferences(design).map((reference) => reference.assetId)),
+        ) as Prisma.InputJsonValue,
+        contactId: contact.id,
+        designSnapshot: JSON.parse(JSON.stringify(design)) as Prisma.InputJsonValue,
+        nodeId: node.id,
+        normalizedEmail: contact.normalizedEmail,
+        preheader: version.preheader,
+        projectId: context.projectId,
+        scenarioExecutionId: executionId,
+        source: 'AUTOMATION',
+        subject: version.subject,
+        templateVersionId: version.id,
+        toEmail: contact.email,
+      },
+    });
+    return {
+      emailDeliveryId: delivery.id,
+      emailTemplateId: templateId,
+      emailTemplateVersionId: templateVersionId,
+    };
   }
 
   private async queueMessage(
