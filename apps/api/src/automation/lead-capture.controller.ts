@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Headers, Inject, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 
 import { RequireProjectPermission } from '../access/access.decorators';
 import { PermissionGuard } from '../access/permission.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import type { CaptureLeadDto } from './lead-capture.dto';
+import { CaptureLeadDto } from './lead-capture.dto';
 import { LeadCaptureService } from './lead-capture.service';
 
 @ApiTags('automation')
@@ -30,6 +30,7 @@ export class PublicLeadCaptureController {
   constructor(@Inject(LeadCaptureService) private readonly leadCapture: LeadCaptureService) {}
 
   @Post(':sourceKey')
+  @ApiBody({ type: CaptureLeadDto })
   async capture(
     @Param('projectId') projectId: string,
     @Param('sourceKey') sourceKey: string,
