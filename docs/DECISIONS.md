@@ -1,6 +1,6 @@
 # OMNICUS — Architecture Decision Records
 
-Status reviewed: 2026-08-02. ADR-001 through ADR-044 are the accepted decision
+Status reviewed: 2026-08-14. ADR-001 through ADR-056 are the accepted decision
 history; superseded implementation-stage language is retained for traceability.
 
 Статус документа: обязательные решения для pilot.  
@@ -1443,3 +1443,45 @@ an implicit template conversion or provider call.
 Meta capabilities. PostgreSQL owns the schedule, optimistic revision and
 recovery. Capability discovery advertises no WhatsApp frequencies and a maximum
 count of one.
+
+## ADR-055: Public lead capture and tracked links use durable opaque boundaries
+
+**Status:** Accepted, 2026-08-14.
+
+**Context:** Website registrations must create/update contacts, start an
+automation and synchronize CRM without letting a public caller impersonate an
+operator or create duplicate effects. Webinar links need per-contact click
+evidence without exposing PII in URLs.
+
+**Decision:** Each website source uses a project/source-derived ingest key and a
+required caller idempotency key. The API persists `LeadCaptureEvent` and contact
+state before asynchronous CRM/automation work. Tracked links use opaque tokens,
+store the original allowlisted HTTP(S) target server-side and forward normalized
+click facts through the CRM outbox. Reusing an idempotency key with another
+fingerprint is rejected.
+
+**Consequences:** Website retries and worker restarts are safe, but an accepted
+request is not downstream delivery evidence. The ingest key is server-only.
+Omnicus can prove link clicks, not attendance inside Zoom or another external
+platform.
+
+## ADR-056: Email is a separate durable Resend delivery channel
+
+**Status:** Accepted, 2026-08-14.
+
+**Context:** Marketing email needs campaign drafts, scheduling, templates,
+attachments, analytics, unsubscribe and CRM history. Modeling it as Telegram or
+WhatsApp would invent a chat identity and reuse incompatible provider states.
+
+**Decision:** Email owns dedicated campaign, delivery, event, suppression and
+asset-reference models. The worker calls Resend with stable idempotency and
+lease recovery; the API verifies signed webhooks and hosts unsubscribe flows.
+Published template versions are immutable. Current eligibility is active
+contact plus valid email plus no project suppression; consent metadata remains
+auditable but is not an extra product filter. Provider events are monotonic and
+forwarded through the CRM outbox.
+
+**Consequences:** SMS remains a separate unimplemented provider scope. Auth
+invitation/reset delivery is not implicitly coupled to marketing email. A
+campaign snapshot is recoverable and deduplicated, while provider acceptance,
+delivery and clicks remain distinct evidence.

@@ -14,11 +14,8 @@ import {
 import { EmailController } from './email.controller';
 
 function parameterTypes(method: keyof EmailController): unknown[] | undefined {
-  return Reflect.getMetadata(
-    'design:paramtypes',
-    EmailController.prototype,
-    method,
-  ) as unknown[] | undefined;
+  return Reflect.getMetadata('design:paramtypes', EmailController.prototype, method) as
+    unknown[] | undefined;
 }
 
 describe('EmailController DTO metadata', () => {
@@ -49,7 +46,10 @@ describe('EmailController DTO metadata', () => {
         sourceTemplateVersionId: null,
         subject: 'A message from Omnicus',
       },
-      { metatype: parameterTypes('createCampaign')?.[1] as typeof CreateEmailCampaignDto, type: 'body' },
+      {
+        metatype: parameterTypes('createCampaign')?.[1] as typeof CreateEmailCampaignDto,
+        type: 'body',
+      },
     );
 
     expect(body).toMatchObject({

@@ -105,9 +105,7 @@ export const emailDocumentSchema = z.object({
     accentColor: colorSchema.default('#0f766e'),
     backgroundColor: colorSchema.default('#eef3f5'),
     contentColor: colorSchema.default('#ffffff'),
-    fontFamily: z
-      .enum(['Arial', 'Georgia', 'Tahoma', 'Trebuchet MS', 'Verdana'])
-      .default('Arial'),
+    fontFamily: z.enum(['Arial', 'Georgia', 'Tahoma', 'Trebuchet MS', 'Verdana']).default('Arial'),
     textColor: colorSchema.default('#172033'),
     width: z.number().int().min(480).max(720).default(640),
   }),
@@ -257,7 +255,10 @@ function renderBlock(
   missing: Set<string>,
 ): { html: string; text: string } {
   if (block.type === 'SPACER')
-    return { html: `<div style="height:${block.height}px;line-height:${block.height}px">&nbsp;</div>`, text: '' };
+    return {
+      html: `<div style="height:${block.height}px;line-height:${block.height}px">&nbsp;</div>`,
+      text: '',
+    };
   if (block.type === 'DIVIDER')
     return {
       html: `<div style="padding:${block.spacing}px 0"><div style="height:1px;background:${block.color}"></div></div>`,
@@ -306,8 +307,7 @@ function renderBlock(
       text: block.caption ?? block.alt,
     };
   }
-  if (block.type === 'ATTACHMENT')
-    return { html: '', text: '' };
+  if (block.type === 'ATTACHMENT') return { html: '', text: '' };
   const links = block.links
     .map(
       (link) =>

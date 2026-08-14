@@ -1,10 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import {
-  Inject,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { WorkerEnvironment } from '@omnicus/config/server';
@@ -305,9 +301,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     normalizedEmail: string;
     projectId: string;
   }) {
-    if (
-      !delivery.contact || delivery.contact.normalizedEmail !== delivery.normalizedEmail
-    )
+    if (!delivery.contact || delivery.contact.normalizedEmail !== delivery.normalizedEmail)
       throw new PermanentEmailError('email_contact_unavailable', 'SUPPRESSED');
     const suppression = await this.database.client.emailSuppression.findUnique({
       where: {
@@ -427,14 +421,17 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       error instanceof PermanentEmailError ||
       this.permanentProviderError(error) ||
       delivery.attempts >= delivery.maxAttempts;
-    const status = error instanceof PermanentEmailError ? error.status : permanent ? 'FAILED' : 'RETRY';
+    const status =
+      error instanceof PermanentEmailError ? error.status : permanent ? 'FAILED' : 'RETRY';
     await this.database.client.emailDelivery.update({
       data: {
         ...(permanent ? { completedAt: new Date() } : {}),
         lastError: message,
         lockedAt: null,
         lockedBy: null,
-        nextAttemptAt: new Date(Date.now() + Math.min(15 * 60_000, 15_000 * 2 ** delivery.attempts)),
+        nextAttemptAt: new Date(
+          Date.now() + Math.min(15 * 60_000, 15_000 * 2 ** delivery.attempts),
+        ),
         status,
       },
       where: { id: delivery.id },
@@ -443,7 +440,9 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   }
 
   private async finishCampaignIfComplete(campaignId: string) {
-    const campaign = await this.database.client.emailCampaign.findUnique({ where: { id: campaignId } });
+    const campaign = await this.database.client.emailCampaign.findUnique({
+      where: { id: campaignId },
+    });
     if (!campaign || campaign.status !== 'RUNNING') return;
     const remaining = await this.database.client.emailDelivery.count({
       where: { campaignId, status: { in: ['PENDING', 'PROCESSING', 'RETRY'] } },
@@ -530,7 +529,12 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     if (audience.mode === 'CONTACTS') where.id = { in: audience.contactIds ?? [] };
     if (audience.mode === 'SEGMENT') {
       const segment = await this.database.client.segment.findFirst({
-        where: { archivedAt: null, id: audience.segmentId ?? '__missing__', projectId, status: 'ACTIVE' },
+        where: {
+          archivedAt: null,
+          id: audience.segmentId ?? '__missing__',
+          projectId,
+          status: 'ACTIVE',
+        },
       });
       if (!segment) throw new PermanentEmailError('email_segment_not_found');
       Object.assign(where, await this.segmentWhere(projectId, segment.filter));

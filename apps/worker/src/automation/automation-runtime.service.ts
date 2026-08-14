@@ -967,11 +967,8 @@ export class AutomationRuntimeService {
     const templateId =
       typeof node.config.templateId === 'string' ? node.config.templateId : undefined;
     const templateVersionId =
-      typeof node.config.templateVersionId === 'string'
-        ? node.config.templateVersionId
-        : undefined;
-    if (!templateId || !templateVersionId)
-      throw new Error('automation_email_template_unavailable');
+      typeof node.config.templateVersionId === 'string' ? node.config.templateVersionId : undefined;
+    if (!templateId || !templateVersionId) throw new Error('automation_email_template_unavailable');
     const version = await transaction.emailTemplateVersion.findFirst({
       where: {
         id: templateVersionId,
@@ -990,9 +987,7 @@ export class AutomationRuntimeService {
       },
       where: { projectId_id: { id: context.contactId, projectId: context.projectId } },
     });
-    if (
-      !contact?.email || !contact.normalizedEmail
-    )
+    if (!contact?.email || !contact.normalizedEmail)
       throw new Error('automation_email_not_eligible');
     const suppression = await transaction.emailSuppression.findUnique({
       where: {

@@ -641,8 +641,7 @@ export async function prepareMediaForTelegram(input: MediaValidationInput): Prom
 export async function prepareMediaForEmail(input: MediaValidationInput): Promise<PreparedMedia> {
   if (input.kind !== 'DOCUMENT' && input.kind !== 'PHOTO')
     throw new MediaValidationError('email_media_kind_unsupported');
-  const validationInput =
-    input.kind === 'PHOTO' ? { ...input, kind: 'DOCUMENT' as const } : input;
+  const validationInput = input.kind === 'PHOTO' ? { ...input, kind: 'DOCUMENT' as const } : input;
   const validated = validateMedia(validationInput);
   if (input.kind === 'PHOTO' && !validated.mimeType.startsWith('image/'))
     throw new MediaValidationError('email_image_type_rejected');

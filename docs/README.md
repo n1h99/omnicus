@@ -1,8 +1,9 @@
 # Omnicus documentation index
 
-Status reviewed: 2026-08-08, `main` at Automation Studio 2.2, Telegram Chat
-v3.3, WhatsApp Chat v4, cross-system contact merge, platform operations
-completion and Automation Activity.
+Status reviewed: 2026-08-14. `main` includes Automation Studio 2.2, Telegram
+Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
+Resend email campaigns, cross-system contact merge, platform operations and
+Automation Activity.
 
 ## Current product status
 
@@ -18,7 +19,9 @@ completion and Automation Activity.
 - Account lifecycle is complete for the current operator-delivered model:
   global/project invitations, hashed expiring single-use links, invitation
   acceptance, password-reset requests, one-time admin-generated reset links and
-  active-session revocation after reset. No email provider contract is invented.
+  active-session revocation after reset. Authentication links remain
+  operator-delivered; the separate marketing-email provider is not reused
+  implicitly for account lifecycle messages.
 - Built-in global/project roles remain immutable; authorized operators can
   create custom roles from scope-safe permission catalogs. Project Settings can
   update general metadata and make a safe draft clone containing only general
@@ -47,7 +50,20 @@ completion and Automation Activity.
 - Permission, audit, health, operation and status codes are translated into
   plain-language UI labels. Action buttons keep accessible names without
   rendering intrusive hover tooltips.
-- Telegram and Cyber Pulse CRM remain the live-verified integration slice.
+- Public website lead capture accepts project/source-scoped requests with a
+  derived ingest key and caller idempotency key. It creates or updates one
+  contact, queues the CRM lead projection and starts published
+  `WEBSITE_REGISTRATION` scenarios. Telegram deep-link scenarios expose a
+  copyable bot start URL.
+- Send Message nodes are channel-aware: Automatic is universal text, Telegram
+  supports validated media and URL buttons, and WhatsApp supports one
+  attachment or up to three quick-reply buttons inside the service window.
+  Optional per-contact tracking rewrites message and Telegram-button links;
+  clicks appear in Omnicus contact history and the linked CRM lead history.
+- Telegram, the connected WhatsApp test path and Cyber Pulse CRM are
+  live-verified integration slices. The remaining WhatsApp external gate is an
+  approved-template send outside the service window plus production-scale
+  acceptance on the customer's Meta account.
 - Contact name/email/phone edits queue a durable CRM upsert for the already
   linked lead. Explicit contact merge preserves both channel histories in one
   CRM lead, and migration `20260808000000_crm_contact_merge` plus an idempotent
@@ -92,14 +108,27 @@ completion and Automation Activity.
   inbox/outbox, CRM and automation boundaries. It includes manual and Meta
   Embedded Signup setup, signed app-level webhooks, normalized message/status
   processing, customer-service-window enforcement, approved templates,
-  WhatsApp broadcasts and channel-aware CRM chat. Live Meta verification stays
-  explicitly pending until the Meta app and test business phone exist.
+  WhatsApp broadcasts and channel-aware CRM chat. Live testing has verified
+  the connected test number, website-triggered automation, open-window text and
+  interactive replies, inbound reply routing and CRM history synchronization.
+  The closed-window guard is verified; an approved production template is not
+  yet available for the final outside-window send.
 - CRM can create, update and cancel one-time WhatsApp text schedules while the
   current 24-hour window is open. The worker rechecks that window at delivery;
   WhatsApp recurrence and scheduled media remain intentionally unsupported.
 - Telegram and WhatsApp voice recording preserve playable duration metadata.
   Telegram video notes are upload-only; media and sticker inputs are validated
   against channel-specific type, MIME, signature, size and dimension rules.
+- `Email & SMS Broadcast` now provides Resend-backed email campaign drafts,
+  audience estimates and filters, scheduling, a block editor, test sends,
+  reusable versioned templates, suppressions, recipient reports and a project
+  analytics table. Automation Studio can pin a published template in `Send
+  email`. SMS remains explicitly under construction.
+- Email delivery uses the verified `mail.omnicus.app` sending domain,
+  `links.mail.omnicus.app` tracking domain and signed Resend webhook. Active
+  contacts with a valid non-suppressed address are eligible; consent metadata
+  remains auditable but is not an additional campaign filter. Email lifecycle
+  events and clicked target URLs are forwarded idempotently to CRM.
 - Instagram remains deliberately deferred until its test account and separate
   provider scope exist.
 
@@ -121,6 +150,8 @@ into the final verification stage.
 | Operations and incident recovery       | [RUNBOOK.md](RUNBOOK.md)                                               |
 | Railway topology                       | [RAILWAY.md](RAILWAY.md)                                               |
 | Test gates                             | [TESTING.md](TESTING.md)                                               |
+| Operator workflows                     | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                 |
+| Email campaigns and Resend             | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
 | Cyber Pulse integration                | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
 | WhatsApp Business Cloud API            | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                         |
 | CRM-to-Omnicus OpenAPI                 | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml) |

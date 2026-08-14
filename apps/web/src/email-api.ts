@@ -13,14 +13,7 @@ export type EmailAudience = {
 };
 
 export type EmailCampaignStatus =
-  | 'DRAFT'
-  | 'SCHEDULED'
-  | 'PREPARING'
-  | 'RUNNING'
-  | 'PAUSED'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'FAILED';
+  'DRAFT' | 'SCHEDULED' | 'PREPARING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 export type EmailCampaign = {
   audience: EmailAudience;

@@ -341,7 +341,15 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
         const source = this.stringProperty(operation.inputSafe, 'source');
         const subject = this.stringProperty(operation.inputSafe, 'subject');
         const toEmail = this.stringProperty(operation.inputSafe, 'toEmail');
-        if (!deliveryId || !eventId || !eventType || !occurredAt || !source || !subject || !toEmail) {
+        if (
+          !deliveryId ||
+          !eventId ||
+          !eventType ||
+          !occurredAt ||
+          !source ||
+          !subject ||
+          !toEmail
+        ) {
           await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_email_event_invalid');
           return;
         }

@@ -49,10 +49,7 @@ export class EmailWebhooksService {
     this.resend = new Resend('re_webhook_verification_only');
   }
 
-  async receive(
-    rawBody: Buffer,
-    headers: { id: string; signature: string; timestamp: string },
-  ) {
+  async receive(rawBody: Buffer, headers: { id: string; signature: string; timestamp: string }) {
     const secret = this.config.get('RESEND_WEBHOOK_SECRET', { infer: true });
     if (!secret) throw new UnauthorizedException('resend_webhook_not_configured');
 

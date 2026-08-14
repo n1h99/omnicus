@@ -1,10 +1,10 @@
 # Cyber Pulse CRM integration
 
-Status reviewed: 2026-08-08. Telegram Chat v3.3 is implemented and its core
+Status reviewed: 2026-08-14. Telegram Chat v3.3 is implemented and its core
 live acceptance is complete. Channel-aware contract 4.0.0 adds WhatsApp Cloud
-API in both directions. Automated acceptance is part of the repository; live
-Meta acceptance remains an external gate until a Meta app and test business
-phone are supplied.
+API in both directions. The connected WhatsApp test route has passed
+open-window automation, interactive reply and CRM-history checks; approved
+outside-window templates and production volume remain external gates.
 
 ## Verified contract
 
@@ -28,6 +28,8 @@ POST /integrations/v1/omnicus/messages/edited
 POST /integrations/v1/omnicus/contacts/shared
 POST /integrations/v1/omnicus/contacts/merge
 POST /integrations/v1/omnicus/conversations/automation-state
+POST /integrations/v1/omnicus/tracking/clicked
+POST /integrations/v1/omnicus/email/events
 GET  /integrations/v1/omnicus/operations?crmProjectId=...&idempotencyKey=...
 ```
 
@@ -98,6 +100,14 @@ intent immediately. For an unlinked contact Omnicus queues one stable lead
 bootstrap operation and uses the existing bounded history backfill after the
 link succeeds. A published `Forward to CRM` node cannot create a duplicate for
 the normalized event.
+
+Tracked automation links and email lifecycle events use their own idempotent
+CRM operations. A click carries the linked contact, scenario execution, node,
+target URL and occurrence time. Email events carry the delivery/event IDs,
+source, subject, recipient and optional campaign/automation/target URL context.
+Both resolve the existing project-scoped contact link and add a human-readable
+lead-history entry. If the link is not ready, CRM returns a retryable pending
+result and the Omnicus CRM outbox remains authoritative.
 
 ## Direction: CRM to Omnicus
 
@@ -243,10 +253,10 @@ E2E on 2026-08-02. The retained checklist is the regression gate:
    expired/unavailable files remain metadata-only with a safe status.
 7. Neither service logs either service token or message payload.
 
-WhatsApp production/live acceptance is intentionally deferred until Meta
-credentials exist. The final gate is: Embedded Signup, app-secret webhook
-verification, one inbound text/media/contact/location/interactive response,
-open-window text/reply/media, closed-window approved template, SENT → DELIVERED
-→ READ progression, FAILED retry, UNKNOWN reconciliation, reaction add/remove,
-duplicate delivery and cross-project/contact/connection rejection. No code or
-contract change is required merely to supply those credentials.
+WhatsApp live acceptance is partial rather than blocked on missing credentials.
+The connected test number has verified website registration, open-window
+automation, quick-reply interaction, inbound continuation and CRM history in
+both directions. The retained final gate is a real `APPROVED` template outside
+the window, production-scale broadcast/rate behavior, remaining media/status
+cases, duplicate delivery and deliberate cross-route rejection. No code or
+contract change is required merely to supply an approved customer template.

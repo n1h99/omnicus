@@ -1,11 +1,12 @@
 # WhatsApp Business Cloud API
 
-Status: approved implementation scope. Provider contract reviewed against the
+Status: implemented with partial live acceptance. Provider contract reviewed against the
 official Meta WhatsApp Business Platform Postman collections on 2026-08-03.
-Live verification remains blocked until a Meta app, Embedded Signup
-configuration and test business phone number are available.
+The connected test number has verified open-window automation, interactive
+replies and CRM synchronization. The remaining provider gate is an approved
+template outside the service window and production-volume acceptance.
 
-Implementation behavior reviewed: 2026-08-08.
+Implementation behavior reviewed: 2026-08-14.
 
 ## Authoritative Meta references
 
@@ -188,7 +189,12 @@ WhatsApp.
 
 ## Live acceptance gate
 
-After Meta assets are available, one combined acceptance run must verify:
+Completed live checks on the connected test route include website-triggered
+contact creation, open-window text, quick-reply buttons, inbound button/text
+responses, branch continuation and bidirectional CRM history. The closed-window
+guard also rejects free-form or incomplete template configuration as expected.
+
+The remaining combined acceptance run must verify:
 
 1. Embedded Signup and encrypted credential persistence.
 2. WABA subscription and signed webhook challenge/delivery.
@@ -204,4 +210,7 @@ After Meta assets are available, one combined acceptance run must verify:
 11. Automation response and template-based WhatsApp broadcast.
 12. Disconnect/reconnect UI updates without page reload.
 
-No capability is described as live-verified until this run is complete.
+Items already evidenced above remain live-verified. Approved-template delivery
+outside the window, production-scale broadcast/rate behavior and any untested
+multi-account route remain explicitly unverified until real customer Meta
+assets are supplied.

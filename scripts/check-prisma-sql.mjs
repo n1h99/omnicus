@@ -102,6 +102,13 @@ const expectedTables = new Set([
   'lead_capture_events',
   'tracked_links',
   'tracked_link_clicks',
+  'email_templates',
+  'email_template_versions',
+  'email_campaigns',
+  'email_deliveries',
+  'email_events',
+  'email_suppressions',
+  'email_asset_references',
 ]);
 const generatedTables = new Set(
   [...sql.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => match[1]),

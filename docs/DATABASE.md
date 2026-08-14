@@ -1,11 +1,12 @@
 # OMNICUS — Prisma schema and migration design
 
-Current status (reviewed 2026-08-02):
+Current status (reviewed 2026-08-14):
 `packages/database/prisma/schema.prisma` is the executable platform schema with
-50 models. Reviewed ordered migrations cover Auth/RBAC, contacts, Telegram
+62 models. Reviewed ordered migrations cover Auth/RBAC, contacts, Telegram
 inbox/outbox and chat v3.3, automation and continuations, CRM, broadcasts,
-media/templates and Automation Studio 2.2 External HTTP through
-`20260802000200_automation_studio_22_http`. Railway applies these migrations
+media/templates, Automation Studio 2.2 External HTTP, WhatsApp Cloud API,
+cross-system merge, lead capture/tracking, WhatsApp mailing eligibility and
+email campaigns through `20260814030000_email_campaigns`. Railway applies these migrations
 once through the designated release path.
 
 The stage-by-stage prose and model excerpts below record the design evolution.
@@ -1532,3 +1533,30 @@ without raw storage. `RawWebhookEvent.externalUpdateId` is the stable
 provider-derived item key, so a retry or another provider envelope cannot
 create a second domain effect. The existing Telegram one-to-one relation and
 semantics remain unchanged.
+
+## Current acquisition and email schema addendum
+
+- `LeadCaptureEvent` is the durable idempotent registration fact. It stores the
+  project/source/contact relationship, a request fingerprint and processing
+  lifecycle without storing an ingest credential.
+- `TrackedLink` stores an opaque redirect token and bounded original HTTP(S)
+  target for one contact/scenario node. `TrackedLinkClick` deduplicates observed
+  clicks and supplies the safe Omnicus/CRM timeline projection.
+- WhatsApp consent belongs to `Contact`; reachability evidence belongs to the
+  exact WhatsApp `ChannelIdentity`. These values must not be collapsed into one
+  boolean because consent, provider availability and service-window state are
+  independent facts.
+- `EmailTemplate` owns the mutable draft identity;
+  `EmailTemplateVersion` is immutable after publication.
+- `EmailCampaign` owns the saved audience definition and launch lifecycle.
+  `EmailDelivery` is the per-recipient snapshot and lease/retry authority.
+- `EmailEvent` deduplicates signed provider lifecycle events and preserves
+  monotonic delivery evidence. `EmailSuppression` is project/address scoped and
+  takes precedence over consent or campaign filters.
+- `EmailAssetReference` pins project-owned media used by a campaign/template so
+  retention cannot remove an asset while a delivery may still need it.
+
+The ordered migrations `20260814000000_lead_capture_tracking`,
+`20260814020000_whatsapp_mailing_eligibility` and
+`20260814030000_email_campaigns` must be applied before the corresponding API
+and worker artifacts start.

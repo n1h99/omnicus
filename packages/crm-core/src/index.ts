@@ -332,10 +332,7 @@ export interface CrmClient {
     context: CrmCallContext,
     input: ForwardMessageStatusInput,
   ): Promise<CrmResult>;
-  forwardEmailEvent?(
-    context: CrmCallContext,
-    input: ForwardEmailEventInput,
-  ): Promise<CrmResult>;
+  forwardEmailEvent?(context: CrmCallContext, input: ForwardEmailEventInput): Promise<CrmResult>;
   forwardTrackedLinkClick(
     context: CrmCallContext,
     input: ForwardTrackedLinkClickInput,
@@ -704,9 +701,7 @@ export class HttpCrmClient implements CrmClient {
         omnicusContactId: input.contactId,
         omnicusProjectId: context.projectId,
         ...(input.providerEmailId ? { providerEmailId: input.providerEmailId } : {}),
-        ...(input.scenarioExecutionId
-          ? { scenarioExecutionId: input.scenarioExecutionId }
-          : {}),
+        ...(input.scenarioExecutionId ? { scenarioExecutionId: input.scenarioExecutionId } : {}),
         source: input.source,
         subject: input.subject,
         ...(input.targetUrl ? { targetUrl: input.targetUrl } : {}),

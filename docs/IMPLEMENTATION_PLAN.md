@@ -1,11 +1,13 @@
 # OMNICUS — implementation plan
 
-Current status (reviewed 2026-08-03): the pilot and approved post-pilot Telegram,
+Current status (reviewed 2026-08-14): the pilot and approved post-pilot Telegram,
 CRM, broadcasts, media/templates, Automation Studio 2.1 and Automation Studio
 2.2 slices are implemented and deployed from `main`. Telegram Chat v3.2 live
 acceptance is complete and `userReactionEvents.supported=true`. The approved
-WhatsApp Business Cloud API post-pilot slice is implemented; its live Meta
-acceptance remains gated by the Meta app and test business phone. Instagram
+WhatsApp Business Cloud API post-pilot slice is implemented; its connected
+test route is live-verified while approved-template and production-volume
+acceptance remain external. Public website lead capture, tracked links and the
+Resend email campaign/automation slice are also implemented. Instagram
 remains intentionally deferred until its test account and separate scope are
 approved. Earlier stage sections below are retained as implementation
 history, not as the current deployment status. Telegram Chat v3.3 implements
@@ -720,3 +722,26 @@ the final combined user verification stage.
   supported feature.
 - Cyber Pulse Kanban persists same-column card order. Email & SMS Broadcast is
   present as an explicit under-construction tool, not a working sender.
+
+## Acquisition, tracking and email completion update - 2026-08-14
+
+- Public project/source-scoped lead ingestion accepts a server-side ingest key
+  and required caller idempotency key, creates or updates one contact, queues
+  the CRM projection and starts matching published website-registration flows.
+- Automation Studio generates website endpoint/header examples and Telegram
+  deep links. Send Message supports channel-specific Telegram media/URL buttons
+  and WhatsApp attachment-or-quick-reply content, with service-window guards.
+- Optional tracked links record per-contact clicks, redirect to the original
+  target and forward normalized click history to Cyber Pulse CRM.
+- WhatsApp consent and evidence-based reachability are stored separately.
+  Delivery/read or inbound evidence marks availability; Meta recipient error
+  `131026` marks unavailability. The product does not invent a bulk number
+  lookup capability that Meta does not provide.
+- The Omnicus `Email & SMS Broadcast` project tool is now a working email
+  product. The earlier Cyber Pulse placeholder statement above is historical:
+  CRM still has no native sender, while Omnicus owns drafts, scheduling, the
+  block editor, templates/versions, suppressions, analytics and Resend delivery.
+- `Send email` automation pins a published template version. Signed Resend
+  events and tracked URLs update Omnicus analytics and linked CRM lead history.
+- SMS, Zoom attendance and Instagram remain outside the implemented provider
+  scope. Link clicks can be measured; webinar attendance cannot yet be claimed.

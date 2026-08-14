@@ -1,7 +1,8 @@
 # OMNICUS — формальные state machines
 
-Status reviewed: 2026-08-08. The generic outbox machine applies to Telegram,
-CRM and Automation Studio 2.2 HTTP operations.
+Status reviewed: 2026-08-14. The generic outbox machine applies to Telegram,
+WhatsApp, CRM, Automation Studio 2.2 HTTP operations and email/attribution side
+effects.
 
 ## Общие правила
 
@@ -278,3 +279,43 @@ States: `PENDING`, `PROCESSING`, `SUCCEEDED`, `FAILED`, `UNKNOWN`.
 SSRF/DNS/redirect rejection is a confirmed `FAILED` security result, never an
 `UNKNOWN`. Request/response bodies, rendered URLs and secret values are not
 state-machine metadata.
+
+## LeadCaptureEvent
+
+States: `PENDING`, `PROCESSING`, `PROCESSED`, `FAILED`.
+
+| From | Event | Guard | To | Side effects | Retry policy |
+| --- | --- | --- | --- | --- | --- |
+| - | `lead.capture.accepted` | Valid ingest key, payload and new/replayed idempotency fingerprint | `PENDING` | Create/update contact and durable event | worker recovery |
+| `PENDING` | `lead.capture.claim` | Lease free/expired | `PROCESSING` | Claim event | lease recovery |
+| `PROCESSING` | `lead.capture.completed` | CRM/bootstrap and matching scenario intents persisted | `PROCESSED` | Record completion | none |
+| `PROCESSING` | `lead.capture.failed` | Known processing failure | `FAILED` | Safe bounded error | bounded/manual |
+
+An accepted public response does not mean CRM or an automation send completed.
+Reusing one idempotency key with a different fingerprint is a conflict and does
+not create a second event.
+
+## EmailCampaign and EmailDelivery
+
+Campaign states are `DRAFT`, `SCHEDULED`, `PREPARING`, `RUNNING`, `PAUSED`,
+`COMPLETED`, `CANCELLED`, `FAILED` and `ARCHIVED`. Delivery states are
+`PENDING`, `PROCESSING`, `RETRY`, `SENT`, `DELIVERED`, `DELIVERY_DELAYED`,
+`OPENED`, `CLICKED`, `BOUNCED`, `COMPLAINED`, `SUPPRESSED`, `FAILED` and
+`CANCELLED`. `UNSUBSCRIBED` is an email event and suppression reason, not a
+delivery status.
+
+| From | Event | Guard | To | Side effects | Retry policy |
+| --- | --- | --- | --- | --- | --- |
+| `DRAFT` | `campaign.launch` | Valid design, subject and audience | `PREPARING` or `SCHEDULED` | Persist immutable launch input | worker recovery |
+| `PREPARING` | `campaign.snapshot` | Project active | `RUNNING` | Deduplicated eligible delivery rows | bounded |
+| `RUNNING` | `campaign.pause` | Operator permission | `PAUSED` | Stop new claims | none |
+| `PAUSED` | `campaign.resume` | Content/provider still valid | `RUNNING` | Resume claims | automatic |
+| active | `campaign.cancel` | Operator permission | `CANCELLED` | Cancel unclaimed deliveries | none |
+| `PENDING/RETRY` | `email.claim` | Due, eligible, unsuppressed, lease free | `PROCESSING` | Render and call Resend with idempotency key | lease recovery |
+| `PROCESSING` | `provider.accepted` | Resend returns provider email ID | `SENT` | Store safe provider reference | webhook |
+| non-terminal | `provider.event` | Valid signed, deduplicated, monotonic event | matching later state | CRM event intent | none |
+| pre-send | `suppression.applied` | Project/address suppression exists | `SUPPRESSED` | No provider call | none |
+
+Out-of-order provider events cannot regress later evidence. Retryable confirmed
+failures use bounded backoff; an ambiguous result is never converted into a
+second uncorrelated send.

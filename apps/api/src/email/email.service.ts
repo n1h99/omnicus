@@ -9,11 +9,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { ApiEnvironment } from '@omnicus/config/server';
-import {
-  emailAssetReferences,
-  emailDocumentSchema,
-  type EmailDocument,
-} from '@omnicus/email-core';
+import { emailAssetReferences, emailDocumentSchema, type EmailDocument } from '@omnicus/email-core';
 import { Prisma, type EmailCampaignStatus } from '@omnicus/database';
 
 import { AuditService } from '../audit/audit.service';
@@ -120,9 +116,7 @@ export class EmailService {
         code: 'EMAIL_CAMPAIGN_NOT_EDITABLE',
         message: 'Only a draft email campaign can be edited',
       });
-    const design = input.design
-      ? this.design(input.design)
-      : this.design(current.design);
+    const design = input.design ? this.design(input.design) : this.design(current.design);
     const audience = input.audience
       ? this.audience(input.audience)
       : this.audience(current.audience);
@@ -133,9 +127,7 @@ export class EmailService {
           audience: this.json(audience),
           design: this.json(design),
           ...(input.name === undefined ? {} : { name: input.name.trim() }),
-          ...(input.preheader === undefined
-            ? {}
-            : { preheader: input.preheader?.trim() || null }),
+          ...(input.preheader === undefined ? {} : { preheader: input.preheader?.trim() || null }),
           ...(input.scheduledAt === undefined
             ? {}
             : { scheduledAt: input.scheduledAt ? new Date(input.scheduledAt) : null }),
@@ -403,19 +395,13 @@ export class EmailService {
           deliveryId: event.delivery.id,
           email: event.delivery.toEmail,
           id: event.id,
-          ipAddress:
-            jsonText(client?.ipAddress) ??
-            jsonText(client?.ip_address) ??
-            null,
+          ipAddress: jsonText(client?.ipAddress) ?? jsonText(client?.ip_address) ?? null,
           occurredAt: event.occurredAt,
           source: event.delivery.source,
           subject: event.delivery.subject,
           targetUrl: event.targetUrl,
           type: event.type,
-          userAgent:
-            jsonText(client?.userAgent) ??
-            jsonText(client?.user_agent) ??
-            null,
+          userAgent: jsonText(client?.userAgent) ?? jsonText(client?.user_agent) ?? null,
         };
       }),
       page,
@@ -594,12 +580,7 @@ export class EmailService {
         });
         return draft;
       });
-      await this.syncAssetReferences(
-        projectId,
-        'EMAIL_TEMPLATE_VERSION',
-        version.id,
-        references,
-      );
+      await this.syncAssetReferences(projectId, 'EMAIL_TEMPLATE_VERSION', version.id, references);
       await this.recordAudit(
         'email.template_draft_saved',
         projectId,
@@ -955,16 +936,18 @@ export class EmailService {
     return this.templateView(template);
   }
 
-  private templateView<T extends {
-    activeVersionId: string | null;
-    draftVersionId: string | null;
-    versions: Array<{
-      design: Prisma.JsonValue;
-      id: string;
-      preheader: string | null;
-      subject: string;
-    }>;
-  }>(template: T) {
+  private templateView<
+    T extends {
+      activeVersionId: string | null;
+      draftVersionId: string | null;
+      versions: Array<{
+        design: Prisma.JsonValue;
+        id: string;
+        preheader: string | null;
+        subject: string;
+      }>;
+    },
+  >(template: T) {
     return {
       ...template,
       activeVersion:
@@ -1034,7 +1017,10 @@ export class EmailService {
         },
       });
       if (!segment)
-        throw new NotFoundException({ code: 'SEGMENT_NOT_FOUND', message: 'Segment was not found' });
+        throw new NotFoundException({
+          code: 'SEGMENT_NOT_FOUND',
+          message: 'Segment was not found',
+        });
       Object.assign(where, await this.segmentWhere(projectId, segment.filter));
       where.projectId = projectId;
       where.email = { not: null };
@@ -1096,29 +1082,37 @@ export class EmailService {
 
   private audience(value: unknown): Audience {
     if (!value || typeof value !== 'object' || Array.isArray(value))
-      throw new BadRequestException({ code: 'EMAIL_AUDIENCE_INVALID', message: 'Email audience is invalid' });
+      throw new BadRequestException({
+        code: 'EMAIL_AUDIENCE_INVALID',
+        message: 'Email audience is invalid',
+      });
     const audience = value as Audience;
     this.assertAudience(audience);
     return {
       mode: audience.mode,
       ...(audience.segmentId ? { segmentId: audience.segmentId } : {}),
       ...(audience.contactIds ? { contactIds: [...new Set(audience.contactIds)] } : {}),
-      ...(audience.includeTagIds
-        ? { includeTagIds: [...new Set(audience.includeTagIds)] }
-        : {}),
-      ...(audience.excludeTagIds
-        ? { excludeTagIds: [...new Set(audience.excludeTagIds)] }
-        : {}),
+      ...(audience.includeTagIds ? { includeTagIds: [...new Set(audience.includeTagIds)] } : {}),
+      ...(audience.excludeTagIds ? { excludeTagIds: [...new Set(audience.excludeTagIds)] } : {}),
     };
   }
 
   private assertAudience(audience: Audience): void {
     if (!['ALL_ACTIVE', 'SEGMENT', 'CONTACTS'].includes(audience.mode))
-      throw new BadRequestException({ code: 'EMAIL_AUDIENCE_INVALID', message: 'Email audience mode is invalid' });
+      throw new BadRequestException({
+        code: 'EMAIL_AUDIENCE_INVALID',
+        message: 'Email audience mode is invalid',
+      });
     if (audience.mode === 'SEGMENT' && !audience.segmentId)
-      throw new BadRequestException({ code: 'EMAIL_AUDIENCE_SEGMENT_REQUIRED', message: 'Choose a saved segment' });
+      throw new BadRequestException({
+        code: 'EMAIL_AUDIENCE_SEGMENT_REQUIRED',
+        message: 'Choose a saved segment',
+      });
     if (audience.mode === 'CONTACTS' && !audience.contactIds?.length)
-      throw new BadRequestException({ code: 'EMAIL_AUDIENCE_CONTACTS_REQUIRED', message: 'Choose at least one contact' });
+      throw new BadRequestException({
+        code: 'EMAIL_AUDIENCE_CONTACTS_REQUIRED',
+        message: 'Choose at least one contact',
+      });
   }
 
   private design(value: unknown): EmailDocument {
@@ -1179,7 +1173,9 @@ export class EmailService {
     references: Array<{ assetId: string; usage: string }>,
   ) {
     await this.database.client.$transaction(async (transaction) => {
-      await transaction.emailAssetReference.deleteMany({ where: { ownerId, ownerType, projectId } });
+      await transaction.emailAssetReference.deleteMany({
+        where: { ownerId, ownerType, projectId },
+      });
       if (references.length)
         await transaction.emailAssetReference.createMany({
           data: references.map((reference) => ({
@@ -1227,11 +1223,23 @@ export class EmailService {
     const title = completed ? 'You are unsubscribed' : 'Email preferences';
     const copy = completed
       ? 'We will no longer send marketing email to ' + email + '.'
-      : 'Stop marketing email to ' + email + '. Transactional messages required to operate your account are unaffected.';
+      : 'Stop marketing email to ' +
+        email +
+        '. Transactional messages required to operate your account are unaffected.';
     const form = completed
       ? ''
-      : '<form method="post" action="' + action + '"><button style="width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#0f766e;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unsubscribe</button></form>';
-    return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Omnicus email preferences</title></head><body style="margin:0;background:#edf3f2;font-family:Arial,sans-serif;color:#172033"><main style="width:min(520px,calc(100% - 32px));margin:12vh auto;background:#fff;border-radius:22px;padding:36px;box-shadow:0 22px 60px rgba(15,23,42,.12)"><div style="width:44px;height:5px;border-radius:99px;background:#0f766e;margin-bottom:26px"></div><h1 style="margin:0 0 12px;font-size:28px">' + title + '</h1><p style="color:#607080;line-height:1.6">' + copy + '</p>' + form + '</main></body></html>';
+      : '<form method="post" action="' +
+        action +
+        '"><button style="width:100%;margin-top:14px;padding:14px;border:0;border-radius:12px;background:#0f766e;color:#fff;font-size:15px;font-weight:700;cursor:pointer">Unsubscribe</button></form>';
+    return (
+      '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Omnicus email preferences</title></head><body style="margin:0;background:#edf3f2;font-family:Arial,sans-serif;color:#172033"><main style="width:min(520px,calc(100% - 32px));margin:12vh auto;background:#fff;border-radius:22px;padding:36px;box-shadow:0 22px 60px rgba(15,23,42,.12)"><div style="width:44px;height:5px;border-radius:99px;background:#0f766e;margin-bottom:26px"></div><h1 style="margin:0 0 12px;font-size:28px">' +
+      title +
+      '</h1><p style="color:#607080;line-height:1.6">' +
+      copy +
+      '</p>' +
+      form +
+      '</main></body></html>'
+    );
   }
 
   async queueCrmEvent(

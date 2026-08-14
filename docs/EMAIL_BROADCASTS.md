@@ -1,5 +1,9 @@
 # Email Broadcasts
 
+Status reviewed: 2026-08-14. Resend sending/tracking domains and the signed
+webhook are configured; the email product is implemented and deployed. SMS is
+not implemented.
+
 Omnicus email delivery is a separate, durable delivery path. It does not emulate a Telegram or
 WhatsApp connection and does not depend on a chat identity.
 
@@ -15,8 +19,16 @@ WhatsApp connection and does not depend on a chat identity.
 - Test sends that do not require marketing consent and do not affect campaign metrics.
 - Reusable templates with mutable drafts and immutable published versions.
 - Campaign delivery report with recipient status, attempts and safe errors.
+- Project Analytics table for safe lifecycle events and clicked target URLs.
 - Project suppression list with manual entries and automatic unsubscribe/bounce/complaint entries.
 - `Send email` Automation Studio node that pins a published email template version.
+
+The editor exposes a variable picker rather than requiring operators to type
+template syntax from memory. Image blocks keep a private media reference and
+support explicit width and height controls; attachments are listed in content
+settings and are not rendered as fake body content in the central preview.
+Campaign and template deletion use the shared application confirmation dialog
+and remain subject to server lifecycle guards.
 
 ## Delivery architecture
 
@@ -130,6 +142,20 @@ A fallback can be supplied with `|`, for example:
 ```text
 Hello {{contact.firstName|there}}
 ```
+
+`Save template` updates the mutable template draft. `Publish version` creates
+an immutable version for campaigns and Automation Studio; publishing does not
+delete or replace earlier versions.
+
+## Audience rules
+
+- `ALL_ACTIVE` starts from active contacts with a valid email.
+- Selected-contact mode targets the explicit project contacts.
+- Saved filters may include and exclude tags; the UI prevents the same tag from
+  being selected in both lists.
+- Addresses are normalized and deduplicated before delivery rows are created.
+- A project suppression always wins. Stored email consent remains visible for
+  audit but is not required by the current product eligibility rule.
 
 ## CRM history
 

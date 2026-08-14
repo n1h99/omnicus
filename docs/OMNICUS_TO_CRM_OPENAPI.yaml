@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Omnicus to CRM messaging contract
   version: 4.0.0
-  description: Exact channel-aware contract implemented by CRM for normalized Telegram and WhatsApp messages, contact/lead merge, WhatsApp delivery status, edits, contact shares, automation state and confirmed outbound history.
+  description: Exact channel-aware contract implemented by CRM for normalized Telegram and WhatsApp messages, contact/lead merge, WhatsApp delivery status, edits, contact shares, automation state, tracked-link clicks, email lifecycle events and confirmed outbound history.
 security:
   - serviceBearer: []
 paths:
@@ -158,6 +158,40 @@ paths:
       responses:
         '200': { description: Created or idempotently replayed state event. }
         '409': { description: Project, revision or idempotency conflict. }
+  /integrations/v1/omnicus/tracking/clicked:
+    post:
+      operationId: receiveOmnicusTrackedLinkClick
+      description: Adds one idempotent tracked-link event to the already linked CRM lead history.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TrackedLinkClickEvent' }
+      responses:
+        '200': { description: Created or idempotently replayed lead-history event. }
+        '400': { description: Safe validation error. }
+        '401': { description: Invalid service credential. }
+        '409': { description: Idempotency, project mapping or contact-link conflict. }
+  /integrations/v1/omnicus/email/events:
+    post:
+      operationId: receiveOmnicusEmailLifecycleEvent
+      description: Adds one idempotent email lifecycle event to the already linked CRM lead history.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailLifecycleEvent' }
+      responses:
+        '200': { description: Created or idempotently replayed lead-history event. }
+        '400': { description: Safe validation error or pending contact link. }
+        '401': { description: Invalid service credential. }
+        '409': { description: Idempotency, project mapping or contact-link conflict. }
 components:
   securitySchemes:
     serviceBearer:
@@ -182,6 +216,70 @@ components:
         minLength: 1
         maxLength: 128
   schemas:
+    TrackedLinkClickEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - crmProjectId
+        - omnicusProjectId
+        - omnicusContactId
+        - trackedLinkId
+        - scenarioExecutionId
+        - nodeId
+        - targetUrl
+        - clickedAt
+      properties:
+        crmProjectId: { type: string, minLength: 1, maxLength: 128 }
+        omnicusProjectId: { type: string, minLength: 1, maxLength: 128 }
+        omnicusContactId: { type: string, minLength: 1, maxLength: 128 }
+        trackedLinkId: { type: string, minLength: 1, maxLength: 128 }
+        scenarioExecutionId: { type: string, minLength: 1, maxLength: 128 }
+        nodeId: { type: string, minLength: 1, maxLength: 128 }
+        targetUrl: { type: string, format: uri, maxLength: 2000 }
+        clickedAt: { type: string, format: date-time }
+        userAgent: { type: string, maxLength: 1000 }
+    EmailLifecycleEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - crmProjectId
+        - omnicusProjectId
+        - omnicusContactId
+        - deliveryId
+        - eventId
+        - eventType
+        - occurredAt
+        - source
+        - subject
+        - toEmail
+      properties:
+        crmProjectId: { type: string, minLength: 1, maxLength: 128 }
+        omnicusProjectId: { type: string, minLength: 1, maxLength: 128 }
+        omnicusContactId: { type: string, minLength: 1, maxLength: 128 }
+        deliveryId: { type: string, minLength: 1, maxLength: 128 }
+        eventId: { type: string, minLength: 1, maxLength: 128 }
+        eventType:
+          type: string
+          enum:
+            - SENT
+            - DELIVERED
+            - DELIVERY_DELAYED
+            - OPENED
+            - CLICKED
+            - BOUNCED
+            - COMPLAINED
+            - FAILED
+            - SUPPRESSED
+            - UNSUBSCRIBED
+        occurredAt: { type: string, format: date-time }
+        source: { type: string, minLength: 1, maxLength: 50 }
+        subject: { type: string, minLength: 1, maxLength: 998 }
+        toEmail: { type: string, format: email, maxLength: 320 }
+        campaignId: { type: string, maxLength: 128 }
+        nodeId: { type: string, maxLength: 128 }
+        providerEmailId: { type: string, maxLength: 128 }
+        scenarioExecutionId: { type: string, maxLength: 128 }
+        targetUrl: { type: string, format: uri, maxLength: 2000 }
     ContactMergeRequest:
       type: object
       additionalProperties: false

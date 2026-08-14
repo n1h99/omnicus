@@ -1,6 +1,6 @@
 # OMNICUS — edge case decision table
 
-Status reviewed: 2026-08-02, including Telegram Chat v3.2 and Automation Studio
+Status reviewed: 2026-08-14, including Telegram Chat v3.2, Automation Studio
 2.2 External HTTP behavior.
 Current integration addendum reviewed: 2026-08-08.
 
@@ -78,3 +78,19 @@ Current integration addendum reviewed: 2026-08-08.
 | Draft содержит разорванную или пустую ветку                         | Разрешить save, сохранить validation issues; запретить publish/test до исправления                                                      | Draft saved, active published version unchanged                     | Нет                                                 | Validation visible                                         |
 | Broadcast template отклонён после draft                             | Запретить launch; уже scheduled вернуть в paused/failed review                                                                          | Broadcast не запускается                                            | После template correction                           | Template/broadcast action audited                          |
 | Broadcast отменён при processing recipients                         | Новые jobs не claim-ить; in-flight завершить и сохранить факт                                                                           | Broadcast cancelled; recipients terminal individually               | Recovery scan, не resend                            | Cancel audited                                             |
+
+## Acquisition, tracking and email addendum
+
+| Situation | Required behavior | Durable result | Retry | Audit/visibility |
+| --- | --- | --- | --- | --- |
+| Website repeats the same registration key and body | Return the original result | One `LeadCaptureEvent`, one contact | none | safe duplicate metadata |
+| Website reuses the key for another body | Reject conflict | Original event unchanged | caller uses a new key | validation/correlation only |
+| Concurrent registration matches one normalized contact | Serialize and reuse the project contact | One active contact | bounded transaction retry | no raw body in logs |
+| Registration accepted while CRM is down | Keep CRM outbox and start processing independently | Contact/event durable | bounded CRM recovery | Operations Center |
+| Tracked URL is clicked repeatedly | Record bounded click evidence; CRM event remains idempotent | No duplicate lead-history event for one tracked event identity | none | contact and CRM timeline |
+| WhatsApp phone has no prior evidence | Keep reachability `UNKNOWN`/`PENDING`; do not claim availability | Identity unchanged/pending | provider policy | contact summary |
+| Meta returns recipient error `131026` | Mark exact identity unavailable and sync CRM | `UNAVAILABLE` with safe code | no blind retry | contact/lead status |
+| Email address occurs twice in one audience | Normalize and deduplicate before snapshot | One delivery per address/campaign | none | audience estimate/report |
+| Address is suppressed after scheduling | Suppression wins before provider call | Delivery `SUPPRESSED` | none | suppression list/report |
+| Resend webhook is duplicated or out of order | Verify signature, deduplicate and keep monotonic evidence | Existing event/state | none | analytics/CRM history |
+| Campaign is cancelled with in-flight delivery | Stop new claims; preserve provider result already in flight | Campaign cancelled, delivery terminal independently | recovery only | campaign report |

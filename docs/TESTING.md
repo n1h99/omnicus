@@ -1,6 +1,6 @@
 # Testing
 
-Status reviewed: 2026-08-08.
+Status reviewed: 2026-08-14.
 
 ## Local quality gate
 
@@ -89,6 +89,16 @@ journaling. Automation Studio 2.2 adds explicit coverage for:
 - DNS/redirect validation, SSRF and cloud-metadata blocking;
 - request/response/time limits, idempotency and HTTP outbox recovery.
 
+Lead-capture and attribution tests cover ingest-key validation, required
+idempotency, conflicting replay, normalized contact reuse, CRM bootstrap,
+`WEBSITE_REGISTRATION` scenario matching, Telegram deep links, tracked redirect
+deduplication and project isolation.
+
+Email tests cover campaign/template lifecycle, immutable published versions,
+audience estimates and snapshots, address deduplication, suppression priority,
+automation delivery, Resend idempotency, retry/lease recovery, webhook
+signature/deduplication, monotonic events, unsubscribe and CRM forwarding.
+
 ## Service-backed integration tests
 
 API readiness and worker consumer tests require
@@ -109,12 +119,18 @@ silently ignored.
 
 ## Latest complete local regression
 
-The 2026-08-08 cross-repository gate completed green on the pinned toolchains:
+The 2026-08-14 cross-repository gate completed green on the pinned toolchains:
 
-- Omnicus: 34/34 test tasks, Playwright 4/4, API smoke, worker smoke, web
-  production 9/9, lint, typecheck, build, format, boundaries and Prisma checks;
-- Cyber Pulse backend: unit 189/189, e2e 1/1, lint and production build;
+- Omnicus: 577 package/unit tests, API integration 6/6, web production 9/9,
+  Playwright 4/4, lint, typecheck, build, format, boundaries, Prisma checks,
+  runtime artifacts and production dependency audit;
+- Cyber Pulse backend: unit 190/190, e2e 1/1, lint and production build;
 - Cyber Pulse frontend: Vitest 63/63, lint and production build.
+
+Five service-dependent cases were explicitly skipped locally: one API case and
+four worker cases require the isolated PostgreSQL/Redis integration flag. They
+remain CI/service-backed gates and are not counted as runtime evidence. Across
+the executed suites, 850 tests passed and no executed test failed.
 
 These counts document that run; future changes still require the full commands
 above and must not treat this record as a substitute for a new gate.

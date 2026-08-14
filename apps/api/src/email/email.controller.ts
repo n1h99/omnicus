@@ -18,6 +18,7 @@ import { PermissionGuard } from '../access/permission.guard';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import { firstHeaderValue, type AuthenticatedRequest } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Nest runtime validation needs DTO class metadata.
 import {
   CreateEmailCampaignDto,
   CreateEmailSuppressionDto,
@@ -56,10 +57,7 @@ export class EmailController {
 
   @Get('campaigns/:campaignId')
   @RequireProjectPermission('broadcasts:read')
-  async campaign(
-    @Param('projectId') projectId: string,
-    @Param('campaignId') campaignId: string,
-  ) {
+  async campaign(@Param('projectId') projectId: string, @Param('campaignId') campaignId: string) {
     return { data: await this.email.getCampaign(projectId, campaignId), meta: {} };
   }
 
@@ -103,10 +101,7 @@ export class EmailController {
 
   @Post('campaigns/:campaignId/estimate')
   @RequireProjectPermission('broadcasts:read')
-  async estimate(
-    @Param('projectId') projectId: string,
-    @Param('campaignId') campaignId: string,
-  ) {
+  async estimate(@Param('projectId') projectId: string, @Param('campaignId') campaignId: string) {
     return { data: await this.email.estimateCampaign(projectId, campaignId), meta: {} };
   }
 
@@ -202,10 +197,7 @@ export class EmailController {
 
   @Get('campaigns/:campaignId/deliveries')
   @RequireProjectPermission('broadcasts:read')
-  async deliveries(
-    @Param('projectId') projectId: string,
-    @Param('campaignId') campaignId: string,
-  ) {
+  async deliveries(@Param('projectId') projectId: string, @Param('campaignId') campaignId: string) {
     return { data: await this.email.listDeliveries(projectId, campaignId), meta: {} };
   }
 
@@ -224,10 +216,7 @@ export class EmailController {
 
   @Get('deliveries/:deliveryId')
   @RequireProjectPermission('broadcasts:read')
-  async delivery(
-    @Param('projectId') projectId: string,
-    @Param('deliveryId') deliveryId: string,
-  ) {
+  async delivery(@Param('projectId') projectId: string, @Param('deliveryId') deliveryId: string) {
     return { data: await this.email.getDelivery(projectId, deliveryId), meta: {} };
   }
 

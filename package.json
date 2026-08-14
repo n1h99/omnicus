@@ -51,7 +51,8 @@
     "overrides": {
       "find-my-way": "9.7.0",
       "js-yaml": "5.2.2",
-      "valibot": "1.4.2"
+      "valibot": "1.4.2",
+      "fast-uri": "3.1.5"
     }
   },
   "devDependencies": {

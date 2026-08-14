@@ -442,11 +442,11 @@ export class MediaService {
     const asset = await this.asset(projectId, assetId);
     const [publishedUsage, emailUsage] = await Promise.all([
       this.database.client.messageTemplateVersion.count({
-      where: {
-        mediaAssetId: assetId,
-        projectId,
-        status: { in: ['PUBLISHED', 'SUPERSEDED'] },
-      },
+        where: {
+          mediaAssetId: assetId,
+          projectId,
+          status: { in: ['PUBLISHED', 'SUPERSEDED'] },
+        },
       }),
       this.database.client.emailAssetReference.count({
         where: { mediaAssetId: assetId, projectId },

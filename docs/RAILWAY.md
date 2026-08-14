@@ -1,6 +1,6 @@
 # Railway deployment
 
-Status reviewed: 2026-08-08. Omnicus is deployed on Railway from `main`; pushes
+Status reviewed: 2026-08-14. Omnicus is deployed on Railway from `main`; pushes
 to `origin/main` trigger the configured web, API and worker deployments.
 
 ## Services
@@ -44,6 +44,23 @@ different values. New project pairings store project-scoped credentials; the
 global `CRM_BASE_URL`, `CRM_AUTH_TOKEN` and `CRM_INBOUND_AUTH_TOKEN` values are
 compatibility inputs only for the legacy paired project.
 
+Email delivery adds `RESEND_API_KEY`, `EMAIL_FROM`, optional
+`EMAIL_REPLY_TO`, `EMAIL_DELIVERY_BATCH_SIZE`,
+`EMAIL_DELIVERY_INTERVAL_MS` and `EMAIL_DELIVERY_LEASE_MS` to the worker. The
+API alone owns `RESEND_WEBHOOK_SECRET`. `API_PUBLIC_URL` must be the public API
+origin on both API and worker because it is used for public registration,
+tracked redirects and unsubscribe links.
+
+Current public domain ownership:
+
+- web: `https://omnicus.app`;
+- API/webhooks: `https://api.omnicus.app`;
+- Resend sending domain: `mail.omnicus.app`;
+- Resend tracking domain: `links.mail.omnicus.app`.
+
+The worker has no customer-facing route and does not need a branded custom
+domain. Its Railway-generated HTTP endpoint is used only for health checks.
+
 Never commit Railway variables or paste them into logs, documentation or test
 fixtures. `.railway/` is ignored.
 
@@ -65,7 +82,8 @@ ranges by convenience.
 ## Migration flow
 
 The executable schema has reviewed migrations through
-`20260808000000_crm_contact_merge`. Exactly one designated API
+`20260814030000_email_campaigns`, including lead capture/link tracking and
+WhatsApp mailing eligibility. Exactly one designated API
 pre-deploy step runs:
 
 ```text

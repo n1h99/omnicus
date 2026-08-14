@@ -1,6 +1,6 @@
 # Omnicus operations runbook
 
-Status reviewed: 2026-08-08 for the deployed Railway `main` environment.
+Status reviewed: 2026-08-14 for the deployed Railway `main` environment.
 
 ## One-time production administrator bootstrap
 
@@ -459,3 +459,58 @@ Use the journey drawer for the safe step timeline and the existing Automation
 execution diagnostics or Operations Center for deeper recovery work. Never add
 variables, normalized event payloads, node input/output, message content or
 provider errors to the Board to diagnose an incident.
+
+## Public lead capture recovery
+
+Confirm that migration `20260814000000_lead_capture_tracking` is applied before
+investigating worker failures. Use the project Operations Center and the safe
+`LeadCaptureEvent` status, source key, attempt/lease and contact reference. Do
+not log the `X-Omnicus-Ingest-Key` or full registration body.
+
+- `401/403`: rotate or recopy the project/source ingest key and keep it on the
+  website backend only.
+- Missing `Idempotency-Key`: fix the caller. Do not synthesize one in a proxy.
+- Idempotency conflict: the caller reused one key for another payload; generate
+  a new key for the new registration.
+- `PENDING/PROCESSING` after a worker restart: confirm worker readiness and let
+  the expired lease recovery scan reclaim it.
+- Contact exists but CRM lead is missing: inspect the contact's CRM outbox and
+  reconcile by stable operation key before retrying.
+- Contact/lead exists but no automation ran: confirm that a published scenario
+  has `WEBSITE_REGISTRATION` with the exact same `sourceKey`. A draft does not
+  run.
+
+## Tracked-link recovery
+
+Tracked redirect tokens are opaque and must not contain PII. A `HEAD` request
+may resolve the target without recording a click; a browser `GET` records the
+click and redirects. Duplicate CRM forwarding is safe by tracked-link/event
+identity. If the Omnicus timeline has the click but CRM does not, inspect the
+CRM outbox and the project-scoped contact link rather than replaying the public
+URL manually.
+
+## Email and Resend recovery
+
+Confirm migration `20260814030000_email_campaigns`, worker
+`RESEND_API_KEY`/sender variables, API `RESEND_WEBHOOK_SECRET`, verified sending
+domain and webhook subscriptions. Never paste these values into an incident.
+
+- Campaign stuck in `SCHEDULED`: compare the project timezone and saved UTC
+  launch time, then check worker readiness.
+- Campaign stuck in `PREPARING`: inspect recipient snapshot attempts and lease;
+  do not launch it again under a new campaign ID.
+- Delivery stuck in `PROCESSING`: wait for lease expiry/recovery and reconcile
+  using the stable Resend idempotency/provider email ID.
+- `FAILED`: use the safe error classification. Retry only confirmed retryable
+  failures through the campaign action.
+- `SUPPRESSED`: inspect the project suppression reason. Removing it is an
+  operator policy decision and does not resend an old terminal delivery.
+- Missing delivery/click event: verify the Resend webhook endpoint
+  `https://api.omnicus.app/webhooks/resend`, signing secret and event
+  subscriptions. Replayed valid webhook IDs are intentionally no-ops.
+- Email event visible in Omnicus but absent from CRM: reconcile the email CRM
+  outbox after confirming the contact-to-lead link.
+
+Cancel/pause stops new claims but cannot recall a provider request already
+accepted. `SENT` is not `DELIVERED`; clicks and other later statuses require
+signed provider evidence.

@@ -29,11 +29,7 @@ import {
   Upload,
   message,
 } from 'antd';
-import {
-  renderEmailDocument,
-  type EmailBlock,
-  type EmailDocument,
-} from '@omnicus/email-core';
+import { renderEmailDocument, type EmailBlock, type EmailDocument } from '@omnicus/email-core';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { getUserErrorMessage } from './api';
@@ -84,8 +80,7 @@ function blockFor(type: (typeof palette)[number]['type']): EmailBlock | null {
       type,
       url: 'https://example.com',
     };
-  if (type === 'DIVIDER')
-    return { color: '#e2e8f0', id: id(type), spacing: 24, type };
+  if (type === 'DIVIDER') return { color: '#e2e8f0', id: id(type), spacing: 24, type };
   if (type === 'SPACER') return { height: 24, id: id(type), type };
   if (type === 'SOCIAL')
     return {
@@ -101,7 +96,12 @@ function blockName(block: EmailBlock) {
   return palette.find((item) => item.type === block.type)?.label ?? block.type;
 }
 
-export function EmailBuilder({ disabled = false, document, onChange, projectId }: EmailBuilderProps) {
+export function EmailBuilder({
+  disabled = false,
+  document,
+  onChange,
+  projectId,
+}: EmailBuilderProps) {
   const media = useMediaMutations(projectId);
   const [selectedId, setSelectedId] = useState<string>();
   const [mode, setMode] = useState<'design' | 'preview'>('design');
@@ -201,7 +201,9 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
   const addMarkup = (prefix: string, suffix: string, value: string) => {
     if (!selected || !['HEADING', 'TEXT'].includes(selected.type)) return;
     const content = 'content' in selected ? selected.content : '';
-    updateSelected({ content: `${content}${content ? ' ' : ''}${prefix}${value}${suffix}` } as never);
+    updateSelected({
+      content: `${content}${content ? ' ' : ''}${prefix}${value}${suffix}`,
+    } as never);
   };
   const uploadImage = async (file: File) => {
     try {
@@ -259,7 +261,8 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                 showUploadList={false}
               >
                 <button className="email-palette-item" disabled={disabled} type="button">
-                  {item.icon}<span>{item.label}</span>
+                  {item.icon}
+                  <span>{item.label}</span>
                 </button>
               </Upload>
             ) : item.type === 'ATTACHMENT' ? (
@@ -274,7 +277,8 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                 showUploadList={false}
               >
                 <button className="email-palette-item" disabled={disabled} type="button">
-                  {item.icon}<span>{item.label}</span>
+                  {item.icon}
+                  <span>{item.label}</span>
                 </button>
               </Upload>
             ) : (
@@ -285,7 +289,8 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                 onClick={() => add(item.type)}
                 type="button"
               >
-                {item.icon}<span>{item.label}</span>
+                {item.icon}
+                <span>{item.label}</span>
               </button>
             ),
           )}
@@ -300,9 +305,7 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
           disabled={disabled}
           max={720}
           min={480}
-          onChange={(width) =>
-            onChange({ ...document, settings: { ...document.settings, width } })
-          }
+          onChange={(width) => onChange({ ...document, settings: { ...document.settings, width } })}
           value={document.settings.width}
         />
         <label className="email-field-label">Font family</label>
@@ -391,7 +394,10 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                   onDrop={() => drop(block.id)}
                 >
                   <div className="email-canvas-block-label">{blockName(block)}</div>
-                  <BlockVisual block={block} imageUrl={block.type === 'IMAGE' ? previewUrls[block.assetId] : undefined} />
+                  <BlockVisual
+                    block={block}
+                    imageUrl={block.type === 'IMAGE' ? previewUrls[block.assetId] : undefined}
+                  />
                   <div className="email-canvas-block-actions">
                     <Tooltip title="Duplicate">
                       <Button
@@ -424,7 +430,9 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
 
       <aside className="email-builder-properties">
         <Typography.Text className="email-builder-kicker">PROPERTIES</Typography.Text>
-        <Typography.Title level={5}>{selected ? blockName(selected) : 'Select a block'}</Typography.Title>
+        <Typography.Title level={5}>
+          {selected ? blockName(selected) : 'Select a block'}
+        </Typography.Title>
         {selected ? (
           <BlockProperties
             addMarkup={addMarkup}
@@ -462,7 +470,15 @@ function Alignment({
   );
 }
 
-function ColorField({ label, onChange, value }: { label: string; onChange: (value: string) => void; value: string }) {
+function ColorField({
+  label,
+  onChange,
+  value,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  value: string;
+}) {
   return (
     <label className="email-color-field">
       <span>{label}</span>
@@ -498,17 +514,37 @@ function BlockProperties({
     const end = Math.min(selection?.end ?? start, block.content.length);
     const content = `${block.content.slice(0, start)}${token}${block.content.slice(end)}`;
     update({ content } as never);
-    setContentSelection({ blockId: block.id, end: start + token.length, start: start + token.length });
+    setContentSelection({
+      blockId: block.id,
+      end: start + token.length,
+      start: start + token.length,
+    });
   };
 
   if (block.type === 'HEADING' || block.type === 'TEXT')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <div className="email-format-toolbar">
-          <Button disabled={disabled} icon={<BoldOutlined />} onClick={() => addMarkup('**', '**', 'bold text')} />
-          <Button disabled={disabled} icon={<ItalicOutlined />} onClick={() => addMarkup('_', '_', 'italic text')} />
-          <Button disabled={disabled} icon={<UnderlineOutlined />} onClick={() => addMarkup('__', '__', 'underlined text')} />
-          <Button disabled={disabled} icon={<LinkOutlined />} onClick={() => addMarkup('[', '](https://example.com)', 'link text')} />
+          <Button
+            disabled={disabled}
+            icon={<BoldOutlined />}
+            onClick={() => addMarkup('**', '**', 'bold text')}
+          />
+          <Button
+            disabled={disabled}
+            icon={<ItalicOutlined />}
+            onClick={() => addMarkup('_', '_', 'italic text')}
+          />
+          <Button
+            disabled={disabled}
+            icon={<UnderlineOutlined />}
+            onClick={() => addMarkup('__', '__', 'underlined text')}
+          />
+          <Button
+            disabled={disabled}
+            icon={<LinkOutlined />}
+            onClick={() => addMarkup('[', '](https://example.com)', 'link text')}
+          />
         </div>
         <label className="email-field-label">Content</label>
         <Input.TextArea
@@ -548,42 +584,126 @@ function BlockProperties({
           </>
         ) : (
           <div className="email-two-fields">
-            <label>Font size<InputNumber disabled={disabled} max={32} min={11} onChange={(fontSize) => update({ fontSize: fontSize ?? 16 } as never)} value={block.fontSize} /></label>
-            <label>Line height<InputNumber disabled={disabled} max={2.5} min={1} onChange={(lineHeight) => update({ lineHeight: lineHeight ?? 1.6 } as never)} step={0.1} value={block.lineHeight} /></label>
+            <label>
+              Font size
+              <InputNumber
+                disabled={disabled}
+                max={32}
+                min={11}
+                onChange={(fontSize) => update({ fontSize: fontSize ?? 16 } as never)}
+                value={block.fontSize}
+              />
+            </label>
+            <label>
+              Line height
+              <InputNumber
+                disabled={disabled}
+                max={2.5}
+                min={1}
+                onChange={(lineHeight) => update({ lineHeight: lineHeight ?? 1.6 } as never)}
+                step={0.1}
+                value={block.lineHeight}
+              />
+            </label>
           </div>
         )}
         <label className="email-field-label">Alignment</label>
-        <Alignment disabled={disabled} onChange={(align) => update({ align } as never)} value={block.align} />
-        <ColorField label="Text color" onChange={(color) => update({ color } as never)} value={block.color ?? '#172033'} />
+        <Alignment
+          disabled={disabled}
+          onChange={(align) => update({ align } as never)}
+          value={block.align}
+        />
+        <ColorField
+          label="Text color"
+          onChange={(color) => update({ color } as never)}
+          value={block.color ?? '#172033'}
+        />
       </Space>
     );
   if (block.type === 'BUTTON')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <label className="email-field-label">Button label</label>
-        <Input disabled={disabled} onChange={(event) => update({ label: event.target.value } as never)} value={block.label} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ label: event.target.value } as never)}
+          value={block.label}
+        />
         <label className="email-field-label">Destination URL</label>
-        <Input disabled={disabled} onChange={(event) => update({ url: event.target.value } as never)} value={block.url} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ url: event.target.value } as never)}
+          value={block.url}
+        />
         <label className="email-field-label">Alignment</label>
-        <Alignment disabled={disabled} onChange={(align) => update({ align } as never)} value={block.align} />
-        <ColorField label="Button" onChange={(backgroundColor) => update({ backgroundColor } as never)} value={block.backgroundColor} />
-        <ColorField label="Label" onChange={(textColor) => update({ textColor } as never)} value={block.textColor} />
+        <Alignment
+          disabled={disabled}
+          onChange={(align) => update({ align } as never)}
+          value={block.align}
+        />
+        <ColorField
+          label="Button"
+          onChange={(backgroundColor) => update({ backgroundColor } as never)}
+          value={block.backgroundColor}
+        />
+        <ColorField
+          label="Label"
+          onChange={(textColor) => update({ textColor } as never)}
+          value={block.textColor}
+        />
         <label className="email-field-label">Corner radius</label>
-        <Slider disabled={disabled} max={32} min={0} onChange={(borderRadius) => update({ borderRadius } as never)} value={block.borderRadius} />
+        <Slider
+          disabled={disabled}
+          max={32}
+          min={0}
+          onChange={(borderRadius) => update({ borderRadius } as never)}
+          value={block.borderRadius}
+        />
       </Space>
     );
   if (block.type === 'IMAGE')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <label className="email-field-label">Alternative text</label>
-        <Input disabled={disabled} onChange={(event) => update({ alt: event.target.value } as never)} value={block.alt} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ alt: event.target.value } as never)}
+          value={block.alt}
+        />
         <label className="email-field-label">Caption</label>
-        <Input disabled={disabled} onChange={(event) => update({ caption: event.target.value || undefined } as never)} value={block.caption ?? ''} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ caption: event.target.value || undefined } as never)}
+          value={block.caption ?? ''}
+        />
         <label className="email-field-label">Click-through URL</label>
-        <Input disabled={disabled} onChange={(event) => update({ linkUrl: event.target.value || undefined } as never)} value={block.linkUrl ?? ''} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ linkUrl: event.target.value || undefined } as never)}
+          value={block.linkUrl ?? ''}
+        />
         <div className="email-two-fields">
-          <label>Width (%)<InputNumber disabled={disabled} max={100} min={10} onChange={(widthPercent) => update({ widthPercent: widthPercent ?? 100 } as never)} value={block.widthPercent} /></label>
-          <label>Height (px)<InputNumber disabled={disabled} max={1200} min={40} onChange={(heightPx) => update({ heightPx: heightPx ?? undefined } as never)} placeholder="Auto" value={block.heightPx ?? null} /></label>
+          <label>
+            Width (%)
+            <InputNumber
+              disabled={disabled}
+              max={100}
+              min={10}
+              onChange={(widthPercent) => update({ widthPercent: widthPercent ?? 100 } as never)}
+              value={block.widthPercent}
+            />
+          </label>
+          <label>
+            Height (px)
+            <InputNumber
+              disabled={disabled}
+              max={1200}
+              min={40}
+              onChange={(heightPx) => update({ heightPx: heightPx ?? undefined } as never)}
+              placeholder="Auto"
+              value={block.heightPx ?? null}
+            />
+          </label>
         </div>
         <label className="email-field-label">Image fitting</label>
         <Select
@@ -595,29 +715,63 @@ function BlockProperties({
           ]}
           value={block.objectFit}
         />
-        <Alignment disabled={disabled} onChange={(align) => update({ align } as never)} value={block.align} />
+        <Alignment
+          disabled={disabled}
+          onChange={(align) => update({ align } as never)}
+          value={block.align}
+        />
       </Space>
     );
   if (block.type === 'ATTACHMENT')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
         <label className="email-field-label">Attachment label</label>
-        <Input disabled={disabled} onChange={(event) => update({ label: event.target.value } as never)} value={block.label} />
+        <Input
+          disabled={disabled}
+          onChange={(event) => update({ label: event.target.value } as never)}
+          value={block.label}
+        />
         <label className="email-field-label">Description</label>
-        <Input.TextArea disabled={disabled} onChange={(event) => update({ description: event.target.value || undefined } as never)} rows={4} value={block.description ?? ''} />
-        <div className="email-file-reference"><PaperClipOutlined /><span>{block.fileName}</span></div>
+        <Input.TextArea
+          disabled={disabled}
+          onChange={(event) => update({ description: event.target.value || undefined } as never)}
+          rows={4}
+          value={block.description ?? ''}
+        />
+        <div className="email-file-reference">
+          <PaperClipOutlined />
+          <span>{block.fileName}</span>
+        </div>
       </Space>
     );
   if (block.type === 'DIVIDER')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
-        <ColorField label="Divider" onChange={(color) => update({ color } as never)} value={block.color} />
+        <ColorField
+          label="Divider"
+          onChange={(color) => update({ color } as never)}
+          value={block.color}
+        />
         <label className="email-field-label">Vertical spacing</label>
-        <Slider disabled={disabled} max={64} min={4} onChange={(spacing) => update({ spacing } as never)} value={block.spacing} />
+        <Slider
+          disabled={disabled}
+          max={64}
+          min={4}
+          onChange={(spacing) => update({ spacing } as never)}
+          value={block.spacing}
+        />
       </Space>
     );
   if (block.type === 'SPACER')
-    return <Slider disabled={disabled} max={120} min={4} onChange={(height) => update({ height } as never)} value={block.height} />;
+    return (
+      <Slider
+        disabled={disabled}
+        max={120}
+        min={4}
+        onChange={(height) => update({ height } as never)}
+        value={block.height}
+      />
+    );
   if (block.type === 'SOCIAL')
     return (
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
@@ -643,13 +797,33 @@ function BlockProperties({
               placeholder="https://"
               value={link.url}
             />
-            <Button danger disabled={disabled || block.links.length === 1} icon={<DeleteOutlined />} onClick={() => update({ links: block.links.filter((_, itemIndex) => itemIndex !== index) } as never)} />
+            <Button
+              danger
+              disabled={disabled || block.links.length === 1}
+              icon={<DeleteOutlined />}
+              onClick={() =>
+                update({
+                  links: block.links.filter((_, itemIndex) => itemIndex !== index),
+                } as never)
+              }
+            />
           </div>
         ))}
-        <Button disabled={disabled || block.links.length >= 8} onClick={() => update({ links: [...block.links, { label: 'Social', url: 'https://example.com' }] } as never)}>
+        <Button
+          disabled={disabled || block.links.length >= 8}
+          onClick={() =>
+            update({
+              links: [...block.links, { label: 'Social', url: 'https://example.com' }],
+            } as never)
+          }
+        >
           Add social link
         </Button>
-        <Alignment disabled={disabled} onChange={(align) => update({ align } as never)} value={block.align} />
+        <Alignment
+          disabled={disabled}
+          onChange={(align) => update({ align } as never)}
+          value={block.align}
+        />
       </Space>
     );
   return null;
@@ -727,14 +901,82 @@ function BlockVisual({ block, imageUrl }: { block: EmailBlock; imageUrl?: string
     return <h2 style={style}>{block.content}</h2>;
   }
   if (block.type === 'TEXT')
-    return <p style={{ color: block.color, fontSize: block.fontSize, lineHeight: block.lineHeight, textAlign: block.align, whiteSpace: 'pre-wrap' }}>{block.content}</p>;
+    return (
+      <p
+        style={{
+          color: block.color,
+          fontSize: block.fontSize,
+          lineHeight: block.lineHeight,
+          textAlign: block.align,
+          whiteSpace: 'pre-wrap',
+        }}
+      >
+        {block.content}
+      </p>
+    );
   if (block.type === 'BUTTON')
-    return <div style={{ textAlign: block.align }}><span className="email-visual-button" style={{ background: block.backgroundColor, borderRadius: block.borderRadius, color: block.textColor }}>{block.label}</span></div>;
+    return (
+      <div style={{ textAlign: block.align }}>
+        <span
+          className="email-visual-button"
+          style={{
+            background: block.backgroundColor,
+            borderRadius: block.borderRadius,
+            color: block.textColor,
+          }}
+        >
+          {block.label}
+        </span>
+      </div>
+    );
   if (block.type === 'IMAGE')
-    return imageUrl ? <div style={{ textAlign: block.align }}><img alt={block.alt} src={imageUrl} style={{ display: 'inline-block', height: block.heightPx ?? 'auto', maxWidth: '100%', objectFit: block.objectFit, width: `${block.widthPercent}%` }} />{block.caption ? <small>{block.caption}</small> : null}</div> : <div className="email-image-placeholder"><PictureOutlined /> Image is loading</div>;
+    return imageUrl ? (
+      <div style={{ textAlign: block.align }}>
+        <img
+          alt={block.alt}
+          src={imageUrl}
+          style={{
+            display: 'inline-block',
+            height: block.heightPx ?? 'auto',
+            maxWidth: '100%',
+            objectFit: block.objectFit,
+            width: `${block.widthPercent}%`,
+          }}
+        />
+        {block.caption ? <small>{block.caption}</small> : null}
+      </div>
+    ) : (
+      <div className="email-image-placeholder">
+        <PictureOutlined /> Image is loading
+      </div>
+    );
   if (block.type === 'ATTACHMENT')
-    return <div className="email-file-reference"><PaperClipOutlined /><span><strong>{block.label}</strong><small>{block.fileName}</small></span></div>;
-  if (block.type === 'DIVIDER') return <div style={{ borderTop: `1px solid ${block.color}`, margin: `${block.spacing}px 0` }} />;
-  if (block.type === 'SPACER') return <div className="email-spacer-visual" style={{ height: block.height }}><span>{block.height}px</span></div>;
-  return <div style={{ textAlign: block.align }}>{block.links.map((link) => <span className="email-social-pill" key={link.label}>{link.label}</span>)}</div>;
+    return (
+      <div className="email-file-reference">
+        <PaperClipOutlined />
+        <span>
+          <strong>{block.label}</strong>
+          <small>{block.fileName}</small>
+        </span>
+      </div>
+    );
+  if (block.type === 'DIVIDER')
+    return (
+      <div style={{ borderTop: `1px solid ${block.color}`, margin: `${block.spacing}px 0` }} />
+    );
+  if (block.type === 'SPACER')
+    return (
+      <div className="email-spacer-visual" style={{ height: block.height }}>
+        <span>{block.height}px</span>
+      </div>
+    );
+  return (
+    <div style={{ textAlign: block.align }}>
+      {block.links.map((link) => (
+        <span className="email-social-pill" key={link.label}>
+          {link.label}
+        </span>
+      ))}
+    </div>
+  );
 }
