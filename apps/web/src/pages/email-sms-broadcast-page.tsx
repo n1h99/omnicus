@@ -196,9 +196,9 @@ export function EmailSmsBroadcastPage() {
               activeKey={tab}
               items={[
                 { key: 'campaigns', label: 'Campaigns' },
-                { key: 'analytics', label: 'Analytics' },
                 { key: 'templates', label: 'Templates' },
                 { key: 'suppressions', label: 'Suppression list' },
+                { key: 'analytics', label: 'Analytics' },
               ]}
               onChange={(value) => setTab(value as EmailTab)}
               tabBarExtraContent={
@@ -209,30 +209,32 @@ export function EmailSmsBroadcastPage() {
                 ) : null
               }
             />
-            {tab === 'campaigns' ? (
-              <CampaignTable
-                campaigns={campaigns.data ?? []}
-                loading={campaigns.isLoading}
-                onEdit={setEditingCampaign}
-                onResults={setResultsCampaign}
-              />
-            ) : null}
-            {tab === 'analytics' ? <EmailAnalytics projectId={projectId} /> : null}
-            {tab === 'templates' ? (
-              <TemplateLibrary
-                loading={templates.isLoading}
-                onCreateCampaign={(version) => void createCampaign(version)}
-                onEdit={setEditingTemplate}
-                templates={templates.data ?? []}
-              />
-            ) : null}
-            {tab === 'suppressions' ? (
-              <SuppressionList
-                items={suppressions.data ?? []}
-                loading={suppressions.isLoading}
-                projectId={projectId}
-              />
-            ) : null}
+            <div className="email-command-content">
+              {tab === 'campaigns' ? (
+                <CampaignTable
+                  campaigns={campaigns.data ?? []}
+                  loading={campaigns.isLoading}
+                  onEdit={setEditingCampaign}
+                  onResults={setResultsCampaign}
+                />
+              ) : null}
+              {tab === 'analytics' ? <EmailAnalytics projectId={projectId} /> : null}
+              {tab === 'templates' ? (
+                <TemplateLibrary
+                  loading={templates.isLoading}
+                  onCreateCampaign={(version) => void createCampaign(version)}
+                  onEdit={setEditingTemplate}
+                  templates={templates.data ?? []}
+                />
+              ) : null}
+              {tab === 'suppressions' ? (
+                <SuppressionList
+                  items={suppressions.data ?? []}
+                  loading={suppressions.isLoading}
+                  projectId={projectId}
+                />
+              ) : null}
+            </div>
           </Card>
         </>
       )}
@@ -430,16 +432,20 @@ function CampaignTable({
 }) {
   const { projectId } = useParams();
   const mutations = useEmailMutations(projectId);
+  const [deleteTarget, setDeleteTarget] = useState<EmailCampaign>();
   const run = async (operation: () => Promise<unknown>, success: string) => {
     try {
       await operation();
       void message.success(success);
+      return true;
     } catch (error) {
       void message.error(getUserErrorMessage(error, 'Campaign action failed.'));
+      return false;
     }
   };
   return (
-    <Table<EmailCampaign>
+    <>
+      <Table<EmailCampaign>
       columns={[
         {
           dataIndex: 'name',
@@ -459,7 +465,7 @@ function CampaignTable({
           render: (_, record) => (
             <Space>
               <Button icon={<EditOutlined />} onClick={() => onEdit(record)} size="small">Open</Button>
-              {record.status === 'DRAFT' ? <Popconfirm onConfirm={() => void run(() => mutations.deleteCampaign.mutateAsync(record.id), 'Campaign deleted.')} title="Delete this draft campaign?"><Button danger icon={<DeleteOutlined />} size="small">Delete</Button></Popconfirm> : null}
+              {record.status === 'DRAFT' ? <Button danger icon={<DeleteOutlined />} onClick={() => setDeleteTarget(record)} size="small">Delete</Button> : null}
               {record.status === 'RUNNING' ? <Button icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
               {record.status === 'PAUSED' ? <Button icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
               {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small" /> : null}
@@ -475,8 +481,40 @@ function CampaignTable({
       locale={{ emptyText: <Empty description="Create your first email campaign" image={Empty.PRESENTED_IMAGE_SIMPLE} /> }}
       pagination={{ pageSize: 10 }}
       rowKey="id"
-      scroll={{ x: 1050 }}
-    />
+        scroll={{ x: 1050 }}
+      />
+      <Modal
+        className="account-confirm-modal"
+        footer={null}
+        onCancel={() => setDeleteTarget(undefined)}
+        open={Boolean(deleteTarget)}
+        title="Delete this email campaign?"
+        width={460}
+      >
+        <Typography.Paragraph type="secondary">
+          {deleteTarget
+            ? `“${deleteTarget.name}” will be permanently deleted. This action cannot be undone.`
+            : ''}
+        </Typography.Paragraph>
+        <div className="modal-form-actions">
+          <Button onClick={() => setDeleteTarget(undefined)}>Cancel</Button>
+          <Button
+            danger
+            loading={mutations.deleteCampaign.isPending}
+            onClick={async () => {
+              if (!deleteTarget) return;
+              const deleted = await run(
+                () => mutations.deleteCampaign.mutateAsync(deleteTarget.id),
+                'Campaign deleted.',
+              );
+              if (deleted) setDeleteTarget(undefined);
+            }}
+          >
+            Delete campaign
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }
 

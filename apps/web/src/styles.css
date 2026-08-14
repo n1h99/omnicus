@@ -1202,6 +1202,12 @@
   scrollbar-width: thin;
 }
 
+.ant-picker-time-panel-column::after {
+  display: none;
+  height: 0;
+  content: none;
+}
+
 .ant-picker-time-panel-column::-webkit-scrollbar {
   width: 4px;
 }

@@ -549,22 +549,28 @@
   height: 32px;
   justify-content: center;
   margin-inline-end: 10px;
+  position: relative;
   width: 32px;
 }
 
 .email-stat-grid .ant-statistic-content-prefix .anticon {
-  align-items: center;
-  display: inline-flex;
+  display: block;
   height: 18px;
-  justify-content: center;
+  inset: 50% auto auto 50%;
   line-height: 1;
+  margin: 0;
+  position: absolute;
+  transform: translate(-50%, -50%);
   width: 18px;
 }
 
 .email-stat-grid .ant-statistic-content-prefix .anticon svg {
   display: block;
-  height: 16px;
-  width: 16px;
+  height: 18px;
+  margin: 0;
+  position: static;
+  transform: none;
+  width: 18px;
 }
 
 .email-stat-grid .ant-statistic-content-value {
@@ -575,12 +581,12 @@
 }
 
 .email-command-card {
-  background: transparent;
-  border: 0;
+  background: #fff;
+  border: 1px solid var(--email-line);
   border-color: var(--email-line);
-  border-radius: 0;
-  box-shadow: none;
-  overflow: visible;
+  border-radius: 18px;
+  box-shadow: 0 5px 18px rgb(29 71 67 / 5%);
+  overflow: hidden;
 }
 
 .email-command-card > .ant-card-body {
@@ -589,7 +595,15 @@
 
 .email-command-card .ant-tabs-nav {
   align-items: center;
+  margin: 0;
   min-height: 54px;
+  padding: 0 20px;
+  background: #fbfcfe;
+  border-bottom: 1px solid #edf1f6;
+}
+
+.email-command-card .ant-tabs-nav::before {
+  border-bottom: 0;
 }
 
 .email-command-card .ant-tabs-tab {
@@ -602,6 +616,10 @@
   border-radius: 10px;
   height: 38px;
   padding-inline: 15px;
+}
+
+.email-command-content {
+  padding: 18px 20px 20px;
 }
 
 .email-command-card .ant-table-container {
@@ -1286,6 +1304,28 @@
 
 .email-variable-picker__controls .ant-btn {
   min-width: 70px;
+}
+
+.email-variable-dropdown {
+  padding: 4px;
+}
+
+.email-variable-dropdown .ant-select-item {
+  min-height: 32px;
+  padding: 5px 9px;
+  border-radius: 7px;
+}
+
+.email-variable-dropdown .ant-select-item-group {
+  min-height: 0;
+  padding: 5px 9px 3px;
+  color: #718087;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.email-variable-dropdown .ant-select-item-option-content {
+  line-height: 20px;
 }
 
 .sms-construction .sms-orbit {

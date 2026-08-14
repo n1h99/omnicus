@@ -683,6 +683,8 @@ function EmailVariablePicker({
           onChange={setVariable}
           options={emailVariableOptions}
           placeholder="Choose a contact field"
+          popupClassName="email-variable-dropdown"
+          popupMatchSelectWidth={190}
           showSearch
           value={variable}
         />
