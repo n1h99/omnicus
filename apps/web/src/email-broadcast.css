@@ -624,7 +624,10 @@
 
 .email-command-card .ant-table-container {
   background: #fff;
-  border: 0;
+  border-top: 0;
+  border-right: 1px solid var(--email-line);
+  border-bottom: 0;
+  border-left: 1px solid var(--email-line);
   border-radius: 0;
   box-shadow: none;
   overflow: visible;
