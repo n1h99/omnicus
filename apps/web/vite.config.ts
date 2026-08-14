@@ -42,7 +42,6 @@ export default defineConfig(({ mode }) => {
           codeSplitting: {
             groups: [
               {
-                maxSize: 200 * 1024,
                 name: 'initial-vendor',
                 priority: 10,
                 tags: ['$initial'],
@@ -50,6 +49,7 @@ export default defineConfig(({ mode }) => {
               },
             ],
           },
+          strictExecutionOrder: true,
         },
       },
       sourcemap: false,
