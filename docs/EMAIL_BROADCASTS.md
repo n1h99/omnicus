@@ -23,8 +23,8 @@ WhatsApp connection and does not depend on a chat identity.
 1. The API saves campaign/template content and immutable media references in PostgreSQL.
 2. Launch changes a campaign to `PREPARING` or `SCHEDULED`.
 3. The worker takes a recipient snapshot using the saved audience definition.
-4. Every address is normalized and deduplicated. Only active contacts with `GRANTED` email
-   consent and no suppression entry receive a delivery row.
+4. Every address is normalized and deduplicated. Active contacts with a valid email and no
+   suppression entry receive a delivery row.
 5. The worker claims delivery rows atomically, renders per-contact variables, loads media from S3,
    embeds inline images with CID, and sends through Resend with an idempotency key.
 6. Retryable provider/network failures use bounded exponential backoff. Permanent 4xx failures are
@@ -106,14 +106,14 @@ registration payload contains `leadRegistration.consents.email = true`.
 ## Consent and unsubscribe
 
 - Website lead capture persists explicit `consents.email` with its source and timestamp.
-- Missing consent is `UNKNOWN`; it is never treated as opt-in.
+- Consent metadata is retained for auditing but is not required for campaign eligibility.
 - Every marketing email has `List-Unsubscribe` and `List-Unsubscribe-Post` headers plus a visible
   unsubscribe footer.
 - GET shows a confirmation page. POST performs RFC 8058 one-click unsubscribe.
 - Unsubscribe revokes contact consent, creates a suppression, and suppresses all queued deliveries
   for the same normalized address in the project.
 - Complaint, bounce and provider suppression webhooks automatically add suppressions.
-- Removing a suppression does not manufacture consent; consent must still be `GRANTED`.
+- Removing a suppression makes an otherwise active contact with a valid email eligible again.
 
 ## Variables
 
@@ -150,7 +150,7 @@ CRM outbox retries until reconciliation creates it.
 
 1. Create a template, send a test email, and verify its image and attachment.
 2. Publish the template and select it in a `Send email` automation node.
-3. Register a lead with `consents.email: true` and verify the automation delivery.
+3. Register a lead with an email and verify the automation delivery.
 4. Create a small selected-contact campaign and inspect the audience estimate before launch.
 5. Click a tracked link and verify `CLICKED` in the campaign delivery and CRM lead history.
 6. Use the unsubscribe link and verify that a second campaign excludes the address.

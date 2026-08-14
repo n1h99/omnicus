@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -75,6 +76,24 @@ export class EmailController {
         projectId,
         campaignId,
         input,
+        request.auth!,
+        this.context(request),
+      ),
+      meta: {},
+    };
+  }
+
+  @Delete('campaigns/:campaignId')
+  @RequireProjectPermission('broadcasts:create')
+  async deleteCampaign(
+    @Param('projectId') projectId: string,
+    @Param('campaignId') campaignId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return {
+      data: await this.email.deleteCampaign(
+        projectId,
+        campaignId,
         request.auth!,
         this.context(request),
       ),
@@ -188,6 +207,19 @@ export class EmailController {
     @Param('campaignId') campaignId: string,
   ) {
     return { data: await this.email.listDeliveries(projectId, campaignId), meta: {} };
+  }
+
+  @Get('analytics/events')
+  @RequireProjectPermission('broadcasts:read')
+  async analytics(
+    @Param('projectId') projectId: string,
+    @Query('page') page = '1',
+    @Query('pageSize') pageSize = '25',
+  ) {
+    return {
+      data: await this.email.listAnalytics(projectId, page, pageSize),
+      meta: {},
+    };
   }
 
   @Get('deliveries/:deliveryId')

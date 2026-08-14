@@ -54,11 +54,13 @@ import { getUserErrorMessage } from '../api';
 import { EmailBuilder } from '../email-builder';
 import {
   type EmailAudience,
+  type EmailAnalyticsEvent,
   type EmailCampaign,
   type EmailCampaignInput,
   type EmailCampaignStatus,
   type EmailTemplate,
   type EmailTemplateVersion,
+  useEmailAnalytics,
   useEmailAudienceOptions,
   useEmailCampaignDeliveries,
   useEmailCampaigns,
@@ -69,7 +71,7 @@ import {
 import '../email-broadcast.css';
 
 type ChannelView = 'email' | 'sms';
-type EmailTab = 'campaigns' | 'templates' | 'suppressions';
+type EmailTab = 'analytics' | 'campaigns' | 'templates' | 'suppressions';
 
 const statusColor: Record<EmailCampaignStatus, string> = {
   CANCELLED: 'default',
@@ -165,10 +167,11 @@ export function EmailSmsBroadcastPage() {
           <Typography.Text className="email-hero-kicker">OUTBOUND STUDIO</Typography.Text>
           <Typography.Title level={2}>Email & SMS Broadcast</Typography.Title>
           <Typography.Paragraph>
-            Design personal campaigns, protect consent and follow delivery from inbox to CRM.
+            Design personal campaigns, manage recipients and follow delivery from inbox to CRM.
           </Typography.Paragraph>
         </div>
         <Segmented
+          block
           className="email-channel-switch"
           onChange={(value) => setChannel(value as ChannelView)}
           options={[
@@ -193,6 +196,7 @@ export function EmailSmsBroadcastPage() {
               activeKey={tab}
               items={[
                 { key: 'campaigns', label: 'Campaigns' },
+                { key: 'analytics', label: 'Analytics' },
                 { key: 'templates', label: 'Templates' },
                 { key: 'suppressions', label: 'Suppression list' },
               ]}
@@ -213,6 +217,7 @@ export function EmailSmsBroadcastPage() {
                 onResults={setResultsCampaign}
               />
             ) : null}
+            {tab === 'analytics' ? <EmailAnalytics projectId={projectId} /> : null}
             {tab === 'templates' ? (
               <TemplateLibrary
                 loading={templates.isLoading}
@@ -271,6 +276,146 @@ export function EmailSmsBroadcastPage() {
   );
 }
 
+const emailActivityPresentation: Record<string, { color: string; label: string }> = {
+  BOUNCED: { color: 'orange', label: 'Bounced' },
+  CLICKED: { color: 'green', label: 'Link clicked' },
+  COMPLAINED: { color: 'red', label: 'Spam complaint' },
+  DELIVERED: { color: 'cyan', label: 'Delivered' },
+  DELIVERY_DELAYED: { color: 'gold', label: 'Delivery delayed' },
+  FAILED: { color: 'red', label: 'Failed' },
+  OPENED: { color: 'blue', label: 'Opened' },
+  SENT: { color: 'geekblue', label: 'Sent' },
+  UNSUBSCRIBED: { color: 'volcano', label: 'Unsubscribed' },
+};
+
+function emailSourceLabel(source: string) {
+  if (source === 'CAMPAIGN') return 'Email campaign';
+  if (source === 'AUTOMATION') return 'Automation';
+  if (source === 'TEST') return 'Test email';
+  return titleCase(source);
+}
+
+function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const analytics = useEmailAnalytics(projectId, page, pageSize);
+  const data = analytics.data;
+
+  return (
+    <div className="email-analytics">
+      <div className="email-section-intro">
+        <div>
+          <Typography.Title level={4}>Email activity</Typography.Title>
+          <Typography.Text type="secondary">
+            A detailed delivery timeline across campaigns, automations and test messages.
+          </Typography.Text>
+        </div>
+        <Tag color="cyan">{data?.total ?? 0} events</Tag>
+      </div>
+      <Table<EmailAnalyticsEvent>
+        columns={[
+          {
+            dataIndex: 'type',
+            render: (value: string) => {
+              const presentation = emailActivityPresentation[value] ?? {
+                color: 'default',
+                label: titleCase(value),
+              };
+              return <Tag color={presentation.color}>{presentation.label}</Tag>;
+            },
+            title: 'Activity',
+            width: 160,
+          },
+          {
+            render: (_, event) => (
+              <div className="email-analytics-primary">
+                <strong>{event.contactName || event.email}</strong>
+                <small>{event.contactName ? event.email : 'Contact is not linked'}</small>
+              </div>
+            ),
+            title: 'Recipient',
+            width: 250,
+          },
+          {
+            render: (_, event) => (
+              <div className="email-analytics-primary">
+                <strong>{event.campaignName || emailSourceLabel(event.source)}</strong>
+                <small>{emailSourceLabel(event.source)}</small>
+              </div>
+            ),
+            title: 'Campaign / source',
+            width: 220,
+          },
+          {
+            dataIndex: 'subject',
+            ellipsis: true,
+            title: 'Subject',
+            width: 230,
+          },
+          {
+            dataIndex: 'targetUrl',
+            render: (targetUrl: string | null) => targetUrl ? (
+              <Typography.Link
+                copyable={{ text: targetUrl }}
+                ellipsis={{ tooltip: targetUrl }}
+                href={targetUrl}
+                rel="noreferrer"
+                style={{ maxWidth: 260 }}
+                target="_blank"
+              >
+                {targetUrl}
+              </Typography.Link>
+            ) : <Typography.Text type="secondary">Not applicable</Typography.Text>,
+            title: 'Opened link',
+            width: 290,
+          },
+          {
+            render: (_, event) => (
+              <div className="email-analytics-client">
+                <span>{event.ipAddress || 'IP not provided'}</span>
+                <Typography.Text ellipsis={{ tooltip: event.userAgent || undefined }} type="secondary">
+                  {event.userAgent || 'Client details unavailable'}
+                </Typography.Text>
+              </div>
+            ),
+            title: 'Client',
+            width: 230,
+          },
+          {
+            dataIndex: 'occurredAt',
+            render: (value: string) => (
+              <div className="email-analytics-time">
+                <strong>{dayjs(value).format('MMM D, YYYY')}</strong>
+                <small>{dayjs(value).format('HH:mm:ss')}</small>
+              </div>
+            ),
+            title: 'Time',
+            width: 150,
+          },
+        ]}
+        dataSource={data?.items ?? []}
+        loading={analytics.isLoading}
+        locale={{
+          emptyText: <Empty description="Email activity will appear after messages are sent" image={Empty.PRESENTED_IMAGE_SIMPLE} />,
+        }}
+        onChange={(pagination) => {
+          setPage(pagination.current ?? 1);
+          setPageSize(pagination.pageSize ?? 25);
+        }}
+        pagination={{
+          current: data?.page ?? page,
+          pageSize: data?.pageSize ?? pageSize,
+          showSizeChanger: true,
+          showTotal: (total) => `${total} events`,
+          total: data?.total ?? 0,
+        }}
+        rowKey="id"
+        scroll={{ x: 1530 }}
+      />
+    </div>
+  );
+}
+
 function CampaignTable({
   campaigns,
   loading,
@@ -313,6 +458,7 @@ function CampaignTable({
           render: (_, record) => (
             <Space>
               <Button icon={<EditOutlined />} onClick={() => onEdit(record)} size="small">Open</Button>
+              {record.status === 'DRAFT' ? <Popconfirm onConfirm={() => void run(() => mutations.deleteCampaign.mutateAsync(record.id), 'Campaign deleted.')} title="Delete this draft campaign?"><Button danger icon={<DeleteOutlined />} size="small">Delete</Button></Popconfirm> : null}
               {record.status === 'RUNNING' ? <Button icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
               {record.status === 'PAUSED' ? <Button icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
               {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small" /> : null}
@@ -428,7 +574,6 @@ function CampaignEditor({
           <Descriptions column={1} size="small">
             <Descriptions.Item label="Matched">{estimate.totalMatched}</Descriptions.Item>
             <Descriptions.Item label="Eligible">{estimate.eligibleRecipients}</Descriptions.Item>
-            <Descriptions.Item label="No consent">{estimate.excludedNoConsent}</Descriptions.Item>
             <Descriptions.Item label="Suppressed">{estimate.excludedSuppressed}</Descriptions.Item>
             <Descriptions.Item label="Duplicate addresses">{estimate.duplicateAddresses}</Descriptions.Item>
           </Descriptions>
@@ -504,15 +649,15 @@ function CampaignEditor({
 
 function AudiencePanel({ audience, disabled, onChange, options }: { audience: EmailAudience; disabled: boolean; onChange: (audience: EmailAudience) => void; options?: ReturnType<typeof useEmailAudienceOptions>['data'] }) {
   return (
-    <Card className="email-audience-card" title={<span><SafetyCertificateOutlined /> Audience & consent</span>}>
+    <Card className="email-audience-card" title={<span><SafetyCertificateOutlined /> Audience & delivery rules</span>}>
       <div className="email-audience-grid">
-        <label>Recipients<Select disabled={disabled} onChange={(mode) => onChange({ ...audience, mode })} options={[{ label: 'All active contacts with consent', value: 'ALL_ACTIVE' }, { label: 'Saved segment', value: 'SEGMENT' }, { label: 'Selected contacts', value: 'CONTACTS' }]} value={audience.mode} /></label>
+        <label>Recipients<Select disabled={disabled} onChange={(mode) => onChange({ ...audience, mode })} options={[{ label: 'All active contacts with email', value: 'ALL_ACTIVE' }, { label: 'Saved segment', value: 'SEGMENT' }, { label: 'Selected contacts', value: 'CONTACTS' }]} value={audience.mode} /></label>
         {audience.mode === 'SEGMENT' ? <label>Segment<Select<string> disabled={disabled} onChange={(segmentId) => onChange({ ...audience, segmentId })} options={(options?.segments ?? []).map((item) => ({ label: item.name, value: item.id }))} value={audience.segmentId ?? null} /></label> : null}
-        {audience.mode === 'CONTACTS' ? <label>Contacts<Select<string[]> disabled={disabled} mode="multiple" onChange={(contactIds) => onChange({ ...audience, contactIds })} optionFilterProp="label" options={(options?.contacts ?? []).map((item) => ({ disabled: item.emailConsentStatus !== 'GRANTED', label: `${item.displayName} · ${item.email}`, value: item.id }))} value={audience.contactIds ?? []} /></label> : null}
-        <label>Must have tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(includeTagIds) => onChange({ ...audience, includeTagIds })} options={(options?.tags ?? []).map((item) => ({ label: item.name, value: item.id }))} value={audience.includeTagIds ?? []} /></label>
-        <label>Exclude tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(excludeTagIds) => onChange({ ...audience, excludeTagIds })} options={(options?.tags ?? []).map((item) => ({ label: item.name, value: item.id }))} value={audience.excludeTagIds ?? []} /></label>
+        {audience.mode === 'CONTACTS' ? <label>Contacts<Select<string[]> disabled={disabled} mode="multiple" onChange={(contactIds) => onChange({ ...audience, contactIds })} optionFilterProp="label" options={(options?.contacts ?? []).map((item) => ({ disabled: !item.eligible, label: `${item.displayName} · ${item.email}`, value: item.id }))} value={audience.contactIds ?? []} /></label> : null}
+        <label>Must have tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(includeTagIds) => onChange({ ...audience, includeTagIds, excludeTagIds: (audience.excludeTagIds ?? []).filter((tagId) => !includeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: audience.excludeTagIds?.includes(item.id), label: item.name, value: item.id }))} value={audience.includeTagIds ?? []} /></label>
+        <label>Exclude tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(excludeTagIds) => onChange({ ...audience, excludeTagIds, includeTagIds: (audience.includeTagIds ?? []).filter((tagId) => !excludeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: audience.includeTagIds?.includes(item.id), label: item.name, value: item.id }))} value={audience.excludeTagIds ?? []} /></label>
       </div>
-      <Typography.Text type="secondary">Only active contacts with explicit email consent are included. Unsubscribed, bounced and complained addresses are removed again immediately before delivery.</Typography.Text>
+      <Typography.Text type="secondary">Active contacts with a valid email are included. Unsubscribed, bounced, complained and manually suppressed addresses are removed again immediately before delivery.</Typography.Text>
     </Card>
   );
 }
@@ -573,5 +718,24 @@ function SuppressionList({ items, loading, projectId }: { items: Array<{ created
 }
 
 function SmsUnderConstruction() {
-  return <div className="sms-construction"><div className="sms-orbit"><span /><span /><span /><SendOutlined /></div><Typography.Text className="email-hero-kicker">COMING NEXT</Typography.Text><Typography.Title level={2}>SMS campaigns are under construction</Typography.Title><Typography.Paragraph>Sender verification, providers, quiet hours and consent rules will be connected here without compromising the email and messenger delivery paths.</Typography.Paragraph><div className="sms-roadmap"><span><CheckCircleOutlined /> Product surface reserved</span><span><ClockCircleOutlined /> Provider selection pending</span><span><SafetyCertificateOutlined /> Consent-first architecture</span></div></div>;
+  return (
+    <div className="sms-construction">
+      <div className="sms-orbit">
+        <span />
+        <span />
+        <span />
+        <SendOutlined className="sms-orbit-icon" />
+      </div>
+      <Typography.Text className="email-hero-kicker">COMING NEXT</Typography.Text>
+      <Typography.Title level={2}>SMS campaigns are under construction</Typography.Title>
+      <Typography.Paragraph>
+        Sender verification, providers, quiet hours and consent rules will be connected here without compromising the email and messenger delivery paths.
+      </Typography.Paragraph>
+      <div className="sms-roadmap">
+        <span><CheckCircleOutlined className="sms-roadmap-icon" /> Product surface reserved</span>
+        <span><ClockCircleOutlined className="sms-roadmap-icon" /> Provider selection pending</span>
+        <span><SafetyCertificateOutlined className="sms-roadmap-icon" /> Consent-first architecture</span>
+      </div>
+    </div>
+  );
 }

@@ -37,6 +37,17 @@ type Audience = {
   excludeTagIds?: string[];
 };
 
+type JsonRecord = Record<string, Prisma.JsonValue>;
+
+function jsonRecord(value: Prisma.JsonValue | undefined): JsonRecord | undefined {
+  if (!value || Array.isArray(value) || typeof value !== 'object') return undefined;
+  return value as JsonRecord;
+}
+
+function jsonText(value: Prisma.JsonValue | undefined) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
 @Injectable()
 export class EmailService {
   constructor(
@@ -148,6 +159,38 @@ export class EmailService {
     } catch (error) {
       this.rethrowNameConflict(error, 'EMAIL_CAMPAIGN_NAME_EXISTS');
     }
+  }
+
+  async deleteCampaign(
+    projectId: string,
+    campaignId: string,
+    actor: AuthenticatedUser,
+    context: RequestSecurityContext,
+  ) {
+    const campaign = await this.campaign(projectId, campaignId);
+    if (campaign.status !== 'DRAFT')
+      throw new ConflictException({
+        code: 'EMAIL_CAMPAIGN_NOT_DELETABLE',
+        message: 'Only a draft email campaign can be deleted',
+      });
+    await this.database.client.$transaction(async (transaction) => {
+      await transaction.emailAssetReference.deleteMany({
+        where: { ownerId: campaignId, ownerType: 'EMAIL_CAMPAIGN', projectId },
+      });
+      await transaction.emailCampaign.delete({
+        where: { projectId_id: { id: campaignId, projectId } },
+      });
+    });
+    await this.recordAudit(
+      'email.campaign_deleted',
+      projectId,
+      campaignId,
+      'EmailCampaign',
+      actor,
+      context,
+      { name: campaign.name, status: campaign.status },
+    );
+    return { deleted: true };
   }
 
   async estimateCampaign(projectId: string, campaignId: string) {
@@ -314,6 +357,71 @@ export class EmailService {
       take: 500,
       where: { campaignId, projectId },
     });
+  }
+
+  async listAnalytics(projectId: string, requestedPage: string, requestedPageSize: string) {
+    const parsedPage = Number.parseInt(requestedPage, 10);
+    const parsedPageSize = Number.parseInt(requestedPageSize, 10);
+    const page = Number.isFinite(parsedPage) ? Math.max(1, parsedPage) : 1;
+    const pageSize = Number.isFinite(parsedPageSize)
+      ? Math.min(100, Math.max(10, parsedPageSize))
+      : 25;
+    const where = { projectId };
+    const [events, total] = await this.database.client.$transaction([
+      this.database.client.emailEvent.findMany({
+        include: {
+          delivery: {
+            select: {
+              campaign: { select: { id: true, name: true } },
+              contact: { select: { displayName: true, id: true } },
+              id: true,
+              source: true,
+              subject: true,
+              toEmail: true,
+            },
+          },
+        },
+        orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+        where,
+      }),
+      this.database.client.emailEvent.count({ where }),
+    ]);
+
+    return {
+      items: events.map((event) => {
+        const payload = jsonRecord(event.providerPayload);
+        const data = jsonRecord(payload?.data);
+        const click = jsonRecord(data?.click);
+        const client = click ?? data;
+        return {
+          campaignId: event.delivery.campaign?.id ?? null,
+          campaignName: event.delivery.campaign?.name ?? null,
+          contactId: event.delivery.contact?.id ?? null,
+          contactName: event.delivery.contact?.displayName ?? null,
+          deliveryId: event.delivery.id,
+          email: event.delivery.toEmail,
+          id: event.id,
+          ipAddress:
+            jsonText(client?.ipAddress) ??
+            jsonText(client?.ip_address) ??
+            null,
+          occurredAt: event.occurredAt,
+          source: event.delivery.source,
+          subject: event.delivery.subject,
+          targetUrl: event.targetUrl,
+          type: event.type,
+          userAgent:
+            jsonText(client?.userAgent) ??
+            jsonText(client?.user_agent) ??
+            null,
+        };
+      }),
+      page,
+      pageSize,
+      total,
+    };
   }
 
   async getDelivery(projectId: string, deliveryId: string) {
@@ -610,7 +718,6 @@ export class EmailService {
         select: {
           displayName: true,
           email: true,
-          emailConsentStatus: true,
           id: true,
           normalizedEmail: true,
         },
@@ -637,9 +744,7 @@ export class EmailService {
       contacts: contacts.map((contact) => ({
         ...contact,
         eligible:
-          contact.emailConsentStatus === 'GRANTED' &&
-          Boolean(contact.normalizedEmail) &&
-          !suppressed.has(contact.normalizedEmail ?? ''),
+          Boolean(contact.normalizedEmail) && !suppressed.has(contact.normalizedEmail ?? ''),
       })),
       segments,
       tags,
@@ -890,7 +995,6 @@ export class EmailService {
     const suppressed = new Set(suppressions.map((item) => item.normalizedEmail));
     const seen = new Set<string>();
     let eligibleRecipients = 0;
-    let excludedNoConsent = 0;
     let excludedSuppressed = 0;
     let duplicateAddresses = 0;
     for (const contact of candidates) {
@@ -900,14 +1004,12 @@ export class EmailService {
         continue;
       }
       seen.add(contact.normalizedEmail);
-      if (contact.emailConsentStatus !== 'GRANTED') excludedNoConsent += 1;
-      else if (suppressed.has(contact.normalizedEmail)) excludedSuppressed += 1;
+      if (suppressed.has(contact.normalizedEmail)) excludedSuppressed += 1;
       else eligibleRecipients += 1;
     }
     return {
       duplicateAddresses,
       eligibleRecipients,
-      excludedNoConsent,
       excludedSuppressed,
       totalMatched: candidates.length,
     };
@@ -949,7 +1051,6 @@ export class EmailService {
       select: {
         displayName: true,
         email: true,
-        emailConsentStatus: true,
         id: true,
         normalizedEmail: true,
       },

@@ -103,7 +103,7 @@ function blockName(block: EmailBlock) {
 
 export function EmailBuilder({ disabled = false, document, onChange, projectId }: EmailBuilderProps) {
   const media = useMediaMutations(projectId);
-  const [selectedId, setSelectedId] = useState(document.blocks[0]?.id);
+  const [selectedId, setSelectedId] = useState<string>();
   const [mode, setMode] = useState<'design' | 'preview'>('design');
   const [draggedId, setDraggedId] = useState<string>();
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -111,8 +111,8 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
   const selected = document.blocks.find((block) => block.id === selectedId);
 
   useEffect(() => {
-    if (!selected && document.blocks[0]) setSelectedId(document.blocks[0].id);
-  }, [document.blocks, selected]);
+    if (selectedId && !selected) setSelectedId(undefined);
+  }, [selected, selectedId]);
 
   useEffect(() => {
     const missing = document.blocks
@@ -347,6 +347,7 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
             <Typography.Text type="secondary"> Drag blocks to reorder</Typography.Text>
           </div>
           <Segmented
+            className="email-preview-switch"
             onChange={(value) => setMode(value as 'design' | 'preview')}
             options={[
               { label: 'Design', value: 'design' },
@@ -360,7 +361,11 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
             <iframe className="email-preview-frame" srcDoc={previewHtml} title="Email preview" />
           </div>
         ) : (
-          <div className="email-design-canvas" style={{ background: document.settings.backgroundColor }}>
+          <div
+            className="email-design-canvas"
+            onClick={() => setSelectedId(undefined)}
+            style={{ background: document.settings.backgroundColor }}
+          >
             <div
               className="email-design-sheet"
               style={{
@@ -375,7 +380,10 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                   className={`email-canvas-block${block.id === selectedId ? ' is-selected' : ''}${block.id === draggedId ? ' is-dragging' : ''}`}
                   draggable={!disabled}
                   key={block.id}
-                  onClick={() => setSelectedId(block.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setSelectedId(block.id);
+                  }}
                   onDragEnd={() => setDraggedId(undefined)}
                   onDragOver={(event) => event.preventDefault()}
                   onDragStart={() => setDraggedId(block.id)}
@@ -476,6 +484,22 @@ function BlockProperties({
   disabled?: boolean | undefined;
   update: (patch: Partial<EmailBlock>) => void;
 }) {
+  const [contentSelection, setContentSelection] = useState<{
+    blockId: string;
+    end: number;
+    start: number;
+  }>();
+
+  const insertVariable = (token: string) => {
+    if (block.type !== 'HEADING' && block.type !== 'TEXT') return;
+    const selection = contentSelection?.blockId === block.id ? contentSelection : undefined;
+    const start = Math.min(selection?.start ?? block.content.length, block.content.length);
+    const end = Math.min(selection?.end ?? start, block.content.length);
+    const content = `${block.content.slice(0, start)}${token}${block.content.slice(end)}`;
+    update({ content } as never);
+    setContentSelection({ blockId: block.id, end: start + token.length, start: start + token.length });
+  };
+
   if (block.type === 'HEADING' || block.type === 'TEXT')
     return (
       <Space direction="vertical" size={14} style={{ width: '100%' }}>
@@ -489,12 +513,24 @@ function BlockProperties({
         <Input.TextArea
           autoSize={{ minRows: 7, maxRows: 14 }}
           disabled={disabled}
-          onChange={(event) => update({ content: event.target.value } as never)}
+          onChange={(event) => {
+            update({ content: event.target.value } as never);
+            setContentSelection({
+              blockId: block.id,
+              end: event.target.selectionEnd,
+              start: event.target.selectionStart,
+            });
+          }}
+          onSelect={(event) =>
+            setContentSelection({
+              blockId: block.id,
+              end: event.currentTarget.selectionEnd,
+              start: event.currentTarget.selectionStart,
+            })
+          }
           value={block.content}
         />
-        <Typography.Text className="email-variable-hint" type="secondary">
-          Personalize with {'{{contact.firstName}}'}, {'{{contact.fullName}}'} or {'{{contact.email}}'}.
-        </Typography.Text>
+        <EmailVariablePicker disabled={disabled} onInsert={insertVariable} />
         {block.type === 'HEADING' ? (
           <>
             <label className="email-field-label">Heading size</label>
@@ -604,6 +640,68 @@ function BlockProperties({
       </Space>
     );
   return null;
+}
+
+const emailVariableOptions = [
+  {
+    label: 'Contact',
+    options: [
+      { label: 'First name', value: 'contact.firstName' },
+      { label: 'Full name', value: 'contact.fullName' },
+      { label: 'Email address', value: 'contact.email' },
+    ],
+  },
+];
+
+function EmailVariablePicker({
+  disabled,
+  onInsert,
+}: {
+  disabled: boolean;
+  onInsert: (token: string) => void;
+}) {
+  const [fallback, setFallback] = useState('');
+  const [variable, setVariable] = useState<string>();
+
+  const insert = () => {
+    if (!variable) return;
+    const safeFallback = fallback.replace(/[{}|]/g, ' ').replace(/\s+/g, ' ').trim();
+    onInsert(`{{${variable}${safeFallback ? `|${safeFallback}` : ''}}}`);
+    setFallback('');
+    setVariable(undefined);
+  };
+
+  return (
+    <div className="email-variable-picker">
+      <div className="email-variable-picker__heading">
+        <strong>Personalization</strong>
+        <span>Insert contact data without typing a variable.</span>
+      </div>
+      <div className="email-variable-picker__controls">
+        <Select
+          disabled={disabled}
+          onChange={setVariable}
+          options={emailVariableOptions}
+          placeholder="Choose a contact field"
+          showSearch
+          value={variable}
+        />
+        <Input
+          disabled={disabled}
+          onChange={(event) => setFallback(event.target.value)}
+          onPressEnter={insert}
+          placeholder="Fallback (optional)"
+          value={fallback}
+        />
+        <Button disabled={disabled || !variable} onClick={insert} type="primary">
+          Insert
+        </Button>
+      </div>
+      <Typography.Text type="secondary">
+        Fallback is shown when the selected contact field is empty, for example “there”.
+      </Typography.Text>
+    </div>
+  );
 }
 
 function BlockVisual({ block, imageUrl }: { block: EmailBlock; imageUrl?: string | undefined }) {

@@ -985,16 +985,13 @@ export class AutomationRuntimeService {
     const contact = await transaction.contact.findUnique({
       select: {
         email: true,
-        emailConsentStatus: true,
         id: true,
         normalizedEmail: true,
       },
       where: { projectId_id: { id: context.contactId, projectId: context.projectId } },
     });
     if (
-      !contact?.email ||
-      !contact.normalizedEmail ||
-      contact.emailConsentStatus !== 'GRANTED'
+      !contact?.email || !contact.normalizedEmail
     )
       throw new Error('automation_email_not_eligible');
     const suppression = await transaction.emailSuppression.findUnique({

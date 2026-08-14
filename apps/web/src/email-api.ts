@@ -70,7 +70,7 @@ export type EmailAudienceOptions = {
   contacts: Array<{
     displayName: string;
     email: string | null;
-    emailConsentStatus: string;
+    eligible: boolean;
     id: string;
     normalizedEmail: string | null;
   }>;
@@ -98,6 +98,30 @@ export type EmailDelivery = {
   status: string;
   subject: string;
   toEmail: string;
+};
+
+export type EmailAnalyticsEvent = {
+  campaignId: string | null;
+  campaignName: string | null;
+  contactId: string | null;
+  contactName: string | null;
+  deliveryId: string;
+  email: string;
+  id: string;
+  ipAddress: string | null;
+  occurredAt: string;
+  source: string;
+  subject: string;
+  targetUrl: string | null;
+  type: string;
+  userAgent: string | null;
+};
+
+export type EmailAnalyticsPage = {
+  items: EmailAnalyticsEvent[];
+  page: number;
+  pageSize: number;
+  total: number;
 };
 
 export type EmailCampaignInput = {
@@ -134,6 +158,21 @@ export function useEmailCampaignDeliveries(projectId?: string, campaignId?: stri
       ),
     queryKey: ['email-deliveries', projectId, campaignId],
     refetchInterval: 5_000,
+  });
+}
+
+export function useEmailAnalytics(projectId?: string, page = 1, pageSize = 25) {
+  const { accessToken } = useAuth();
+  return useQuery({
+    enabled: Boolean(projectId),
+    queryFn: () =>
+      apiRequest<EmailAnalyticsPage>(
+        `${base(projectId)}/analytics/events?page=${page}&pageSize=${pageSize}`,
+        {},
+        accessToken,
+      ),
+    queryKey: ['email-analytics', projectId, page, pageSize],
+    refetchInterval: 10_000,
   });
 }
 
@@ -203,6 +242,10 @@ export function useEmailMutations(projectId?: string) {
         request<EmailCampaign>('/campaigns', 'POST', input),
       onSuccess: invalidateCampaigns,
     }),
+    deleteCampaign: useMutation({
+      mutationFn: (id: string) => request<{ deleted: boolean }>(`/campaigns/${id}`, 'DELETE'),
+      onSuccess: invalidateCampaigns,
+    }),
     createTemplate: useMutation({
       mutationFn: (input: {
         description?: string;
@@ -222,7 +265,6 @@ export function useEmailMutations(projectId?: string) {
         request<{
           duplicateAddresses: number;
           eligibleRecipients: number;
-          excludedNoConsent: number;
           excludedSuppressed: number;
           totalMatched: number;
         }>(`/campaigns/${id}/estimate`, 'POST'),

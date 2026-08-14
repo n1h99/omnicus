@@ -866,8 +866,8 @@ export function AutomationNodeConfig({
       <Space direction="vertical" style={{ width: '100%' }}>
         <Alert
           className="automation-channel-note"
-          description="The published version is pinned when the scenario is saved. Delivery requires a contact email, explicit email consent and no suppression entry."
-          message="Consent-aware email delivery"
+          description="The published version is pinned when the scenario is saved. Delivery requires a valid contact email and no suppression entry."
+          message="Protected email delivery"
           type="info"
         />
         <Form.Item

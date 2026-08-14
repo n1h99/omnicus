@@ -192,7 +192,6 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       if (
         !contact.email ||
         !contact.normalizedEmail ||
-        contact.emailConsentStatus !== 'GRANTED' ||
         suppressed.has(contact.normalizedEmail) ||
         seen.has(contact.normalizedEmail)
       )
@@ -302,16 +301,14 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   }
 
   private async assertEligible(delivery: {
-    contact: { emailConsentStatus: string; normalizedEmail: string | null } | null;
+    contact: { normalizedEmail: string | null } | null;
     normalizedEmail: string;
     projectId: string;
   }) {
     if (
-      !delivery.contact ||
-      delivery.contact.emailConsentStatus !== 'GRANTED' ||
-      delivery.contact.normalizedEmail !== delivery.normalizedEmail
+      !delivery.contact || delivery.contact.normalizedEmail !== delivery.normalizedEmail
     )
-      throw new PermanentEmailError('email_consent_not_granted', 'SUPPRESSED');
+      throw new PermanentEmailError('email_contact_unavailable', 'SUPPRESSED');
     const suppression = await this.database.client.emailSuppression.findUnique({
       where: {
         projectId_normalizedEmail: {
@@ -551,7 +548,6 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       select: {
         displayName: true,
         email: true,
-        emailConsentStatus: true,
         id: true,
         normalizedEmail: true,
       },

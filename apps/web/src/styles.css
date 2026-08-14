@@ -1196,6 +1196,37 @@
   background-clip: padding-box;
 }
 
+.ant-picker-time-panel-column {
+  overscroll-behavior: contain;
+  scrollbar-color: rgba(100, 116, 139, 0.58) transparent;
+  scrollbar-width: thin;
+}
+
+.ant-picker-time-panel-column::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ant-picker-time-panel-column::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
+.ant-picker-time-panel-column::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.58);
+  border: 0;
+  border-radius: 999px;
+}
+
+.ant-picker-time-panel-column::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.76);
+}
+
+.ant-picker-ok .ant-btn {
+  min-width: 56px;
+  padding-inline: 14px;
+}
+
 html,
 body,
 #root {
@@ -2021,17 +2052,24 @@ button:disabled,
 .ant-btn.ant-btn-dangerous:not(:disabled),
 .ant-btn.ant-btn-color-dangerous:not(:disabled) {
   color: #b91c1c !important;
-  background: rgba(220, 38, 38, 0.09) !important;
-  border-color: transparent !important;
+  background: #fff !important;
+  border-color: #dc2626 !important;
 }
 
 .ant-btn.ant-btn-dangerous:not(:disabled):hover,
 .ant-btn.ant-btn-dangerous:not(:disabled):active,
+.ant-btn.ant-btn-dangerous:not(:disabled):focus-visible,
 .ant-btn.ant-btn-color-dangerous:not(:disabled):hover,
-.ant-btn.ant-btn-color-dangerous:not(:disabled):active {
+.ant-btn.ant-btn-color-dangerous:not(:disabled):active,
+.ant-btn.ant-btn-color-dangerous:not(:disabled):focus-visible {
   color: #991b1b !important;
-  background: rgba(220, 38, 38, 0.15) !important;
-  border-color: transparent !important;
+  background: #fff !important;
+  border-color: #b91c1c !important;
+}
+
+.ant-btn.ant-btn-dangerous .anticon,
+.ant-btn.ant-btn-color-dangerous .anticon {
+  color: inherit !important;
 }
 
 .ant-btn:focus {
