@@ -4453,12 +4453,19 @@ button:disabled,
   width: 100%;
 }
 
-.automation-deep-link-value.ant-typography {
+.automation-deep-link-row {
   align-items: center;
   display: flex;
-  margin: 0;
+  gap: 8px;
   min-width: 0;
   width: 100%;
+}
+
+.automation-deep-link-value.ant-typography {
+  display: block;
+  flex: 1 1 auto;
+  margin: 0;
+  min-width: 0;
 }
 
 .automation-deep-link-value.ant-typography code {
@@ -4469,9 +4476,12 @@ button:disabled,
   white-space: nowrap;
 }
 
-.automation-deep-link-value .ant-typography-copy {
+.automation-deep-link-copy.ant-btn {
   flex: 0 0 auto;
-  margin-inline-start: 8px;
+}
+
+.automation-settings-content .ant-alert-icon {
+  display: none;
 }
 
 .contact-custom-fields-textarea.ant-input {

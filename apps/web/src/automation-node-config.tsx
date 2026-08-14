@@ -372,14 +372,29 @@ export function AutomationNodeConfig({
               />
             </Form.Item>
             {deepLink ? (
-              <Typography.Text
-                className="automation-deep-link-value"
-                code
-                copyable={{ text: deepLink }}
-                title={deepLink}
-              >
-                {deepLink}
-              </Typography.Text>
+              <div className="automation-deep-link-row">
+                <Typography.Text
+                  className="automation-deep-link-value"
+                  code
+                  title={deepLink}
+                >
+                  {deepLink}
+                </Typography.Text>
+                <Button
+                  className="automation-deep-link-copy"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(deepLink);
+                      void message.success('Telegram link copied.');
+                    } catch {
+                      void message.error('Telegram link could not be copied.');
+                    }
+                  }}
+                  size="small"
+                >
+                  Copy
+                </Button>
+              </div>
             ) : (
               <Alert
                 description="Choose an active Telegram connection with a bot username."
