@@ -624,10 +624,23 @@
 
 .email-command-card .ant-table-container {
   background: #fff;
-  border: 1px solid var(--email-line);
-  border-radius: 13px;
-  box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
-  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.email-command-card .ant-table-wrapper {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.email-command-card .ant-table-wrapper::before,
+.email-command-card .ant-table-wrapper::after {
+  display: none;
+  content: none;
 }
 
 .email-command-card .ant-table-thead > tr > th {

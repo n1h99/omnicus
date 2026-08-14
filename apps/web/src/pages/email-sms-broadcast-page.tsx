@@ -34,7 +34,6 @@ import {
   Form,
   Input,
   Modal,
-  Popconfirm,
   Segmented,
   Select,
   Space,
@@ -86,6 +85,48 @@ const statusColor: Record<EmailCampaignStatus, string> = {
 
 function titleCase(value: string) {
   return value.toLowerCase().replaceAll('_', ' ').replace(/^./, (letter) => letter.toUpperCase());
+}
+
+function ActionConfirmModal({
+  confirmLabel,
+  description,
+  loading = false,
+  onCancel,
+  onConfirm,
+  open,
+  title,
+}: {
+  confirmLabel: string;
+  description: string;
+  loading?: boolean | undefined;
+  onCancel: () => void;
+  onConfirm: () => Promise<void> | void;
+  open: boolean;
+  title: string;
+}) {
+  return (
+    <Modal
+      className="account-confirm-modal"
+      closable={!loading}
+      footer={null}
+      keyboard={!loading}
+      maskClosable={!loading}
+      onCancel={() => {
+        if (!loading) onCancel();
+      }}
+      open={open}
+      title={title}
+      width={460}
+    >
+      <Typography.Paragraph type="secondary">{description}</Typography.Paragraph>
+      <div className="modal-form-actions">
+        <Button disabled={loading} onClick={onCancel}>Cancel</Button>
+        <Button danger loading={loading} onClick={() => void onConfirm()}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </Modal>
+  );
 }
 
 function campaignInput(campaign: EmailCampaign): EmailCampaignInput {
@@ -326,7 +367,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               return <Tag color={presentation.color}>{presentation.label}</Tag>;
             },
             title: 'Activity',
-            width: 160,
+            width: 125,
           },
           {
             render: (_, event) => (
@@ -336,7 +377,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               </div>
             ),
             title: 'Recipient',
-            width: 250,
+            width: 210,
           },
           {
             render: (_, event) => (
@@ -346,13 +387,13 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               </div>
             ),
             title: 'Campaign / source',
-            width: 220,
+            width: 180,
           },
           {
             dataIndex: 'subject',
             ellipsis: true,
             title: 'Subject',
-            width: 230,
+            width: 185,
           },
           {
             dataIndex: 'targetUrl',
@@ -362,7 +403,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
                 ellipsis
                 href={targetUrl}
                 rel="noreferrer"
-                style={{ maxWidth: 260 }}
+                style={{ maxWidth: '100%' }}
                 target="_blank"
                 title={targetUrl}
               >
@@ -370,7 +411,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               </Typography.Link>
             ) : <Typography.Text type="secondary">Not applicable</Typography.Text>,
             title: 'Opened link',
-            width: 290,
+            width: 220,
           },
           {
             render: (_, event) => (
@@ -382,7 +423,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               </div>
             ),
             title: 'Client',
-            width: 230,
+            width: 190,
           },
           {
             dataIndex: 'occurredAt',
@@ -393,7 +434,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
               </div>
             ),
             title: 'Time',
-            width: 150,
+            width: 125,
           },
         ]}
         dataSource={data?.items ?? []}
@@ -413,7 +454,7 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
           total: data?.total ?? 0,
         }}
         rowKey="id"
-        scroll={{ x: 1530 }}
+        tableLayout="fixed"
       />
     </div>
   );
@@ -432,6 +473,7 @@ function CampaignTable({
 }) {
   const { projectId } = useParams();
   const mutations = useEmailMutations(projectId);
+  const [cancelTarget, setCancelTarget] = useState<EmailCampaign>();
   const [deleteTarget, setDeleteTarget] = useState<EmailCampaign>();
   const run = async (operation: () => Promise<unknown>, success: string) => {
     try {
@@ -469,7 +511,7 @@ function CampaignTable({
               {record.status === 'RUNNING' ? <Button icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
               {record.status === 'PAUSED' ? <Button icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
               {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small" /> : null}
-              {['SCHEDULED', 'PREPARING', 'RUNNING', 'PAUSED'].includes(record.status) ? <Popconfirm onConfirm={() => void run(() => mutations.cancelCampaign.mutateAsync(record.id), 'Campaign cancelled.')} title="Cancel this campaign?"><Button danger icon={<StopOutlined />} size="small" /></Popconfirm> : null}
+              {['SCHEDULED', 'PREPARING', 'RUNNING', 'PAUSED'].includes(record.status) ? <Button danger icon={<StopOutlined />} onClick={() => setCancelTarget(record)} size="small" /> : null}
             </Space>
           ),
           title: '',
@@ -483,37 +525,38 @@ function CampaignTable({
       rowKey="id"
         scroll={{ x: 1050 }}
       />
-      <Modal
-        className="account-confirm-modal"
-        footer={null}
+      <ActionConfirmModal
+        confirmLabel="Delete campaign"
+        description={deleteTarget ? `"${deleteTarget.name}" will be permanently deleted. This action cannot be undone.` : ''}
+        loading={mutations.deleteCampaign.isPending}
         onCancel={() => setDeleteTarget(undefined)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          const deleted = await run(
+            () => mutations.deleteCampaign.mutateAsync(deleteTarget.id),
+            'Campaign deleted.',
+          );
+          if (deleted) setDeleteTarget(undefined);
+        }}
         open={Boolean(deleteTarget)}
         title="Delete this email campaign?"
-        width={460}
-      >
-        <Typography.Paragraph type="secondary">
-          {deleteTarget
-            ? `“${deleteTarget.name}” will be permanently deleted. This action cannot be undone.`
-            : ''}
-        </Typography.Paragraph>
-        <div className="modal-form-actions">
-          <Button onClick={() => setDeleteTarget(undefined)}>Cancel</Button>
-          <Button
-            danger
-            loading={mutations.deleteCampaign.isPending}
-            onClick={async () => {
-              if (!deleteTarget) return;
-              const deleted = await run(
-                () => mutations.deleteCampaign.mutateAsync(deleteTarget.id),
-                'Campaign deleted.',
-              );
-              if (deleted) setDeleteTarget(undefined);
-            }}
-          >
-            Delete campaign
-          </Button>
-        </div>
-      </Modal>
+      />
+      <ActionConfirmModal
+        confirmLabel="Cancel campaign"
+        description={cancelTarget ? `"${cancelTarget.name}" will stop sending to recipients that have not been processed yet.` : ''}
+        loading={mutations.cancelCampaign.isPending}
+        onCancel={() => setCancelTarget(undefined)}
+        onConfirm={async () => {
+          if (!cancelTarget) return;
+          const cancelled = await run(
+            () => mutations.cancelCampaign.mutateAsync(cancelTarget.id),
+            'Campaign cancelled.',
+          );
+          if (cancelled) setCancelTarget(undefined);
+        }}
+        open={Boolean(cancelTarget)}
+        title="Cancel this email campaign?"
+      />
     </>
   );
 }
@@ -704,22 +747,45 @@ function AudiencePanel({ audience, disabled, onChange, options }: { audience: Em
 function TemplateLibrary({ loading, onCreateCampaign, onEdit, templates }: { loading: boolean; onCreateCampaign: (version: EmailTemplateVersion) => void; onEdit: (template: EmailTemplate) => void; templates: EmailTemplate[] }) {
   const { projectId } = useParams();
   const mutations = useEmailMutations(projectId);
+  const [archiveTarget, setArchiveTarget] = useState<EmailTemplate>();
   if (loading) return <Spin />;
   if (!templates.length) return <Empty description="Build a reusable design for campaigns and automations" />;
-  return <div className="email-template-grid">{templates.map((template) => {
-    const version = template.draftVersion ?? template.activeVersion;
-    return <Card actions={[
-      <Button icon={<EditOutlined />} key="edit" onClick={() => onEdit(template)} type="text">Edit</Button>,
-      <Button disabled={!template.activeVersion} icon={<ArrowRightOutlined />} key="use" onClick={() => template.activeVersion && onCreateCampaign(template.activeVersion)} type="text">Use</Button>,
-      <Button icon={<CopyOutlined />} key="copy" loading={mutations.duplicateTemplate.isPending} onClick={() => void mutations.duplicateTemplate.mutateAsync(template.id)} type="text">Duplicate</Button>,
-      <Popconfirm key="archive" onConfirm={() => void mutations.archiveTemplate.mutateAsync(template.id)} title="Archive this template?"><Button danger icon={<DeleteOutlined />} type="text" /></Popconfirm>,
-    ]} className="email-template-card" key={template.id}>
-      <div className="email-template-card-top"><span className="email-template-icon"><MailOutlined /></span><Tag color={template.activeVersion ? 'success' : 'default'}>{template.activeVersion ? `Published v${template.activeVersion.version}` : 'Draft'}</Tag></div>
-      <Typography.Title ellipsis level={4}>{template.name}</Typography.Title>
-      <Typography.Paragraph ellipsis={{ rows: 2 }} type="secondary">{template.description || version?.subject || 'Reusable email template'}</Typography.Paragraph>
-      <Typography.Text className="email-template-meta" type="secondary"><ClockCircleOutlined /> Updated {dayjs(template.updatedAt).format('MMM D, YYYY')}</Typography.Text>
-    </Card>;
-  })}</div>;
+  return (
+    <>
+      <div className="email-template-grid">{templates.map((template) => {
+        const version = template.draftVersion ?? template.activeVersion;
+        return <Card actions={[
+          <Button icon={<EditOutlined />} key="edit" onClick={() => onEdit(template)} type="text">Edit</Button>,
+          <Button disabled={!template.activeVersion} icon={<ArrowRightOutlined />} key="use" onClick={() => template.activeVersion && onCreateCampaign(template.activeVersion)} type="text">Use</Button>,
+          <Button icon={<CopyOutlined />} key="copy" loading={mutations.duplicateTemplate.isPending} onClick={() => void mutations.duplicateTemplate.mutateAsync(template.id)} type="text">Duplicate</Button>,
+          <Button danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text" />,
+        ]} className="email-template-card" key={template.id}>
+          <div className="email-template-card-top"><span className="email-template-icon"><MailOutlined /></span><Tag color={template.activeVersion ? 'success' : 'default'}>{template.activeVersion ? `Published v${template.activeVersion.version}` : 'Draft'}</Tag></div>
+          <Typography.Title ellipsis level={4}>{template.name}</Typography.Title>
+          <Typography.Paragraph ellipsis={{ rows: 2 }} type="secondary">{template.description || version?.subject || 'Reusable email template'}</Typography.Paragraph>
+          <Typography.Text className="email-template-meta" type="secondary"><ClockCircleOutlined /> Updated {dayjs(template.updatedAt).format('MMM D, YYYY')}</Typography.Text>
+        </Card>;
+      })}</div>
+      <ActionConfirmModal
+        confirmLabel="Archive template"
+        description={archiveTarget ? `"${archiveTarget.name}" will be removed from the active template library. Existing campaign history will remain available.` : ''}
+        loading={mutations.archiveTemplate.isPending}
+        onCancel={() => setArchiveTarget(undefined)}
+        onConfirm={async () => {
+          if (!archiveTarget) return;
+          try {
+            await mutations.archiveTemplate.mutateAsync(archiveTarget.id);
+            setArchiveTarget(undefined);
+            void message.success('Template archived.');
+          } catch (error) {
+            void message.error(getUserErrorMessage(error, 'Template could not be archived.'));
+          }
+        }}
+        open={Boolean(archiveTarget)}
+        title="Archive this email template?"
+      />
+    </>
+  );
 }
 
 function TemplateEditor({ onClose, onUpdated, projectId, template }: { onClose: () => void; onUpdated: (template: EmailTemplate) => void; projectId?: string | undefined; template?: EmailTemplate | undefined }) {
@@ -752,8 +818,9 @@ function TemplateEditor({ onClose, onUpdated, projectId, template }: { onClose: 
 function SuppressionList({ items, loading, projectId }: { items: Array<{ createdAt: string; id: string; normalizedEmail: string; note: string | null; reason: string; source: string }>; loading: boolean; projectId?: string | undefined }) {
   const mutations = useEmailMutations(projectId);
   const [open, setOpen] = useState(false);
+  const [removeTarget, setRemoveTarget] = useState<(typeof items)[number]>();
   const [form] = Form.useForm();
-  return <><div className="email-section-intro"><div><Typography.Title level={4}>Do-not-send addresses</Typography.Title><Typography.Text type="secondary">Permanent protection for unsubscribes, complaints, hard bounces and manual exclusions.</Typography.Text></div><Button icon={<PlusOutlined />} onClick={() => setOpen(true)}>Add address</Button></div><Table columns={[{ dataIndex: 'normalizedEmail', title: 'Email' }, { dataIndex: 'reason', render: (value) => <Tag>{titleCase(value)}</Tag>, title: 'Reason' }, { dataIndex: 'source', title: 'Source' }, { dataIndex: 'createdAt', render: (value) => dayjs(value).format('MMM D, YYYY HH:mm'), title: 'Added' }, { render: (_, record) => <Popconfirm onConfirm={() => void mutations.removeSuppression.mutateAsync(record.id)} title="Allow campaigns to send to this address again?"><Button danger icon={<DeleteOutlined />} size="small">Remove</Button></Popconfirm>, title: '' }]} dataSource={items} loading={loading} rowKey="id" /><Modal onCancel={() => setOpen(false)} onOk={() => form.validateFields().then(async (values) => { try { await mutations.addSuppression.mutateAsync(values); form.resetFields(); setOpen(false); void message.success('Address added to the suppression list.'); } catch (error) { void message.error(getUserErrorMessage(error, 'Address could not be suppressed.')); } })} open={open} title="Add a do-not-send address"><Form form={form} layout="vertical"><Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}><Input /></Form.Item><Form.Item initialValue="MANUAL" label="Reason" name="reason"><Select options={[{ label: 'Manual exclusion', value: 'MANUAL' }, { label: 'Unsubscribed', value: 'UNSUBSCRIBED' }]} /></Form.Item><Form.Item label="Internal note" name="note"><Input.TextArea rows={3} /></Form.Item></Form></Modal></>;
+  return <><div className="email-section-intro"><div><Typography.Title level={4}>Do-not-send addresses</Typography.Title><Typography.Text type="secondary">Permanent protection for unsubscribes, complaints, hard bounces and manual exclusions.</Typography.Text></div><Button icon={<PlusOutlined />} onClick={() => setOpen(true)}>Add address</Button></div><Table columns={[{ dataIndex: 'normalizedEmail', title: 'Email' }, { dataIndex: 'reason', render: (value) => <Tag>{titleCase(value)}</Tag>, title: 'Reason' }, { dataIndex: 'source', title: 'Source' }, { dataIndex: 'createdAt', render: (value) => dayjs(value).format('MMM D, YYYY HH:mm'), title: 'Added' }, { render: (_, record) => <Button danger icon={<DeleteOutlined />} onClick={() => setRemoveTarget(record)} size="small">Remove</Button>, title: '' }]} dataSource={items} loading={loading} rowKey="id" /><Modal onCancel={() => setOpen(false)} onOk={() => form.validateFields().then(async (values) => { try { await mutations.addSuppression.mutateAsync(values); form.resetFields(); setOpen(false); void message.success('Address added to the suppression list.'); } catch (error) { void message.error(getUserErrorMessage(error, 'Address could not be suppressed.')); } })} open={open} title="Add a do-not-send address"><Form form={form} layout="vertical"><Form.Item label="Email" name="email" rules={[{ required: true, type: 'email' }]}><Input /></Form.Item><Form.Item initialValue="MANUAL" label="Reason" name="reason"><Select options={[{ label: 'Manual exclusion', value: 'MANUAL' }, { label: 'Unsubscribed', value: 'UNSUBSCRIBED' }]} /></Form.Item><Form.Item label="Internal note" name="note"><Input.TextArea rows={3} /></Form.Item></Form></Modal><ActionConfirmModal confirmLabel="Allow sending" description={removeTarget ? `${removeTarget.normalizedEmail} will be removed from the do-not-send list and can receive future campaigns again.` : ''} loading={mutations.removeSuppression.isPending} onCancel={() => setRemoveTarget(undefined)} onConfirm={async () => { if (!removeTarget) return; try { await mutations.removeSuppression.mutateAsync(removeTarget.id); setRemoveTarget(undefined); void message.success('Address removed from the do-not-send list.'); } catch (error) { void message.error(getUserErrorMessage(error, 'Address could not be removed.')); } }} open={Boolean(removeTarget)} title="Allow sending to this address again?" /></>;
 }
 
 function SmsUnderConstruction() {
