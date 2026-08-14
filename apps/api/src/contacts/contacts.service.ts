@@ -216,11 +216,67 @@ export class ContactsService {
 
   async timeline(projectId: string, contactId: string) {
     const contact = await this.get(projectId, contactId);
-    const audit = await this.database.client.auditLog.findMany({
-      orderBy: { createdAt: 'desc' },
-      where: { entityId: contactId, entityType: 'Contact', projectId },
+    const [audit, clicks] = await Promise.all([
+      this.database.client.auditLog.findMany({
+        orderBy: { createdAt: 'desc' },
+        where: { entityId: contactId, entityType: 'Contact', projectId },
+      }),
+      this.database.client.trackedLinkClick.findMany({
+        orderBy: { occurredAt: 'desc' },
+        select: {
+          id: true,
+          isLikelyBot: true,
+          occurredAt: true,
+          trackedLinkId: true,
+        },
+        take: 100,
+        where: { contactId, projectId },
+      }),
+    ]);
+    const trackedLinkIds = [...new Set(clicks.map((click) => click.trackedLinkId))];
+    const links = trackedLinkIds.length
+      ? await this.database.client.trackedLink.findMany({
+          select: {
+            id: true,
+            nodeId: true,
+            scenarioExecutionId: true,
+            targetUrl: true,
+          },
+          where: { id: { in: trackedLinkIds }, projectId },
+        })
+      : [];
+    const executionIds = [...new Set(links.map((link) => link.scenarioExecutionId))];
+    const executions = executionIds.length
+      ? await this.database.client.scenarioExecution.findMany({
+          select: {
+            id: true,
+            scenario: { select: { id: true, name: true } },
+            triggerType: true,
+          },
+          where: { id: { in: executionIds }, projectId },
+        })
+      : [];
+    const linksById = new Map(links.map((link) => [link.id, link]));
+    const executionsById = new Map(executions.map((execution) => [execution.id, execution]));
+    const trackedLinkClicks = clicks.flatMap((click) => {
+      const link = linksById.get(click.trackedLinkId);
+      if (!link) return [];
+      const execution = executionsById.get(link.scenarioExecutionId);
+      return [
+        {
+          id: click.id,
+          isLikelyBot: click.isLikelyBot,
+          nodeId: link.nodeId,
+          occurredAt: click.occurredAt,
+          scenario: execution?.scenario ?? null,
+          scenarioExecutionId: link.scenarioExecutionId,
+          targetUrl: link.targetUrl,
+          trackedLinkId: link.id,
+          triggerType: execution?.triggerType ?? null,
+        },
+      ];
     });
-    return { audit, createdAt: contact.createdAt };
+    return { audit, createdAt: contact.createdAt, trackedLinkClicks };
   }
 
   async listTags(projectId: string) {

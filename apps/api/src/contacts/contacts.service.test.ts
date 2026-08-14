@@ -7,6 +7,61 @@ function service() {
 }
 
 describe('ContactsService v2', () => {
+  it('returns tracked link clicks with safe scenario context in the contact timeline', async () => {
+    const createdAt = new Date('2026-08-14T05:00:00.000Z');
+    const occurredAt = new Date('2026-08-14T05:26:23.000Z');
+    const database = {
+      client: {
+        auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+        scenarioExecution: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'execution-a',
+              scenario: { id: 'scenario-a', name: 'QA Tracked Link' },
+              triggerType: 'INCOMING_MESSAGE',
+            },
+          ]),
+        },
+        trackedLink: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'link-a',
+              nodeId: 'send-a',
+              scenarioExecutionId: 'execution-a',
+              targetUrl: 'https://example.com/tracked',
+            },
+          ]),
+        },
+        trackedLinkClick: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'click-a',
+              isLikelyBot: false,
+              occurredAt,
+              trackedLinkId: 'link-a',
+            },
+          ]),
+        },
+      },
+    };
+    const instance = new ContactsService({ record: vi.fn() } as never, database as never);
+    vi.spyOn(instance, 'get').mockResolvedValue({ createdAt } as never);
+
+    await expect(instance.timeline('project-a', 'contact-a')).resolves.toMatchObject({
+      createdAt,
+      trackedLinkClicks: [
+        {
+          id: 'click-a',
+          isLikelyBot: false,
+          occurredAt,
+          scenario: { id: 'scenario-a', name: 'QA Tracked Link' },
+          targetUrl: 'https://example.com/tracked',
+          triggerType: 'INCOMING_MESSAGE',
+        },
+      ],
+    });
+  });
+
   it('lists archived custom fields separately and restores them safely', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const findUnique = vi.fn().mockResolvedValue({ archivedAt: new Date(), id: 'field-a' });

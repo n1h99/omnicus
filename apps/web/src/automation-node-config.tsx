@@ -148,9 +148,13 @@ export function AutomationNodeConfig({
 }: Props) {
   const updateConfig = (next: Record<string, unknown>) => onChange({ ...config, ...next });
   const set = (key: string, value: unknown) => onChange({ ...config, [key]: value });
+  const triggerType =
+    typeof config.triggerType === 'string' ? config.triggerType : 'INCOMING_MESSAGE';
   const channels = useChannels(
     projectId,
-    nodeType === 'SEND_TEMPLATE' || nodeType === 'SEND_MESSAGE',
+    nodeType === 'SEND_TEMPLATE' ||
+      nodeType === 'SEND_MESSAGE' ||
+      (nodeType === 'INCOMING_MESSAGE' && triggerType === 'TELEGRAM_DEEP_LINK'),
   );
   const assets = useMediaAssets(
     projectId,
@@ -158,8 +162,6 @@ export function AutomationNodeConfig({
   );
   const mediaMutations = useMediaMutations(projectId);
   const [uploadKind, setUploadKind] = useState<MediaKind>('DOCUMENT');
-  const triggerType =
-    typeof config.triggerType === 'string' ? config.triggerType : 'INCOMING_MESSAGE';
   const sourceKey =
     typeof config.sourceKey === 'string' && config.sourceKey
       ? config.sourceKey

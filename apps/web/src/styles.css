@@ -4403,6 +4403,45 @@ button:disabled,
   width: 100%;
 }
 
+.tracked-link-activity-card {
+  margin-top: 18px;
+}
+
+.tracked-link-activity-card .ant-card-body {
+  padding-bottom: 8px;
+  padding-top: 8px;
+}
+
+.tracked-link-activity-item {
+  padding: 14px 0 !important;
+}
+
+.tracked-link-activity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  width: 100%;
+}
+
+.tracked-link-activity-url {
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.tracked-link-activity-meta {
+  align-items: center;
+  color: var(--text-soft);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 13px;
+  gap: 8px 14px;
+}
+
+.tracked-link-activity-meta .ant-tag {
+  margin-inline-end: 0;
+}
+
 .danger-card {
   border-color: rgba(220, 38, 38, 0.18);
 }

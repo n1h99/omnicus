@@ -3,6 +3,8 @@ import {
   Button,
   Card,
   Col,
+  Empty,
+  List,
   Modal,
   Form,
   Input,
@@ -50,8 +52,29 @@ interface TagItem {
   color: string | null;
 }
 
+interface ContactTimeline {
+  trackedLinkClicks: Array<{
+    id: string;
+    isLikelyBot: boolean;
+    nodeId: string;
+    occurredAt: string;
+    scenario: { id: string; name: string } | null;
+    scenarioExecutionId: string;
+    targetUrl: string;
+    trackedLinkId: string;
+    triggerType: string | null;
+  }>;
+}
+
 function formatIdentityValue(identity: Contact['channelIdentities'][number]): string {
   return identity.username ? `@${identity.username}` : (identity.externalUserId ?? '\u2014');
+}
+
+function triggerTypeLabel(triggerType: string | null): string {
+  if (triggerType === 'TELEGRAM_DEEP_LINK') return 'Telegram link';
+  if (triggerType === 'WEBSITE_REGISTRATION') return 'Website registration';
+  if (triggerType === 'INCOMING_MESSAGE') return 'Incoming message';
+  return 'Automation';
 }
 
 export function ContactDetailPage() {
@@ -71,6 +94,16 @@ export function ContactDetailPage() {
     enabled: Boolean(projectId),
     queryFn: () => apiRequest<TagItem[]>(`/api/v1/projects/${projectId}/tags`, {}, accessToken),
     queryKey: ['tags', projectId, accessToken],
+  });
+  const timeline = useQuery({
+    enabled: Boolean(projectId && contactId),
+    queryFn: () =>
+      apiRequest<ContactTimeline>(
+        `/api/v1/projects/${projectId}/contacts/${contactId}/timeline`,
+        {},
+        accessToken,
+      ),
+    queryKey: ['contact-timeline', projectId, contactId, accessToken],
   });
 
   if (contact.isLoading) return <Spin className="route-loading" />;
@@ -300,6 +333,63 @@ export function ContactDetailPage() {
           </Card>
         </Col>
       </Row>
+
+      <Card
+        className="tracked-link-activity-card"
+        extra={
+          timeline.data?.trackedLinkClicks.length ? (
+            <Tag color="green">
+              {timeline.data.trackedLinkClicks.filter((click) => !click.isLikelyBot).length} contact
+              clicks
+            </Tag>
+          ) : null
+        }
+        title="Tracked link activity"
+      >
+        {timeline.isLoading ? (
+          <Spin size="small" />
+        ) : timeline.isError ? (
+          <Alert
+            message={getUserErrorMessage(
+              timeline.error,
+              'Tracked link activity could not be loaded.',
+            )}
+            showIcon
+            type="error"
+          />
+        ) : timeline.data?.trackedLinkClicks.length ? (
+          <List
+            dataSource={timeline.data.trackedLinkClicks}
+            renderItem={(click) => (
+              <List.Item className="tracked-link-activity-item" key={click.id}>
+                <div className="tracked-link-activity-content">
+                  <Typography.Link
+                    className="tracked-link-activity-url"
+                    href={click.targetUrl}
+                    rel="noreferrer"
+                    target="_blank"
+                  >
+                    {click.targetUrl}
+                  </Typography.Link>
+                  <div className="tracked-link-activity-meta">
+                    <time>{new Date(click.occurredAt).toLocaleString()}</time>
+                    <span>{click.scenario?.name ?? 'Deleted automation'}</span>
+                    <span>{triggerTypeLabel(click.triggerType)}</span>
+                    <Tag color={click.isLikelyBot ? 'default' : 'green'}>
+                      {click.isLikelyBot ? 'Bot preview' : 'Contact click'}
+                    </Tag>
+                  </div>
+                </div>
+              </List.Item>
+            )}
+          />
+        ) : (
+          <Empty
+            description="No tracked links have been opened by this contact yet."
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          />
+        )}
+      </Card>
 
       <Row className="balanced-card-row contact-secondary-row" gutter={[18, 18]}>
         <Col lg={hasProjectPermission(access.data, 'contacts:merge') ? 15 : 24} xs={24}>
