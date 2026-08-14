@@ -679,6 +679,7 @@ export class BroadcastsService {
     this.assertAudience(audience);
     const connection = await this.assertConnection(projectId, connectionId);
     const contactWhere: Prisma.ContactWhereInput = { projectId, status: 'ACTIVE' };
+    if (connection.type === 'WHATSAPP') contactWhere.whatsAppConsentStatus = 'GRANTED';
     if (audience.mode === 'CONTACTS') contactWhere.id = { in: audience.contactIds! };
     if (audience.mode === 'SEGMENT') {
       const segment = await this.database.client.segment.findFirst({
@@ -702,6 +703,7 @@ export class BroadcastsService {
       connectionId,
       projectId,
       status: 'ACTIVE',
+      ...(connection.type === 'WHATSAPP' ? { whatsAppReachability: 'AVAILABLE' } : {}),
       contact: { is: contactWhere },
     };
   }

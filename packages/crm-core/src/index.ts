@@ -73,6 +73,15 @@ export interface CrmWhatsAppContactsInput {
   contacts: CrmWhatsAppContactInput[];
 }
 
+export interface CrmWhatsAppEligibilityInput {
+  activeForMailing: boolean;
+  consentSource?: string;
+  consentStatus: 'UNKNOWN' | 'GRANTED' | 'REVOKED';
+  lastCheckedAt?: string;
+  lastErrorCode?: string;
+  reachability: 'UNKNOWN' | 'PENDING' | 'AVAILABLE' | 'UNAVAILABLE' | 'BLOCKED';
+}
+
 export interface CrmInlineKeyboardButtonInput {
   callbackData?: string;
   text: string;
@@ -120,6 +129,7 @@ export interface CreateOrUpdateLeadInput {
   phone?: string;
   tags: CrmTagInput[];
   username?: string;
+  whatsApp?: CrmWhatsAppEligibilityInput;
 }
 
 export interface ForwardTrackedLinkClickInput {
@@ -386,6 +396,7 @@ export class HttpCrmClient implements CrmClient {
       phone: input.phone,
       tags: input.tags,
       username: input.username,
+      whatsApp: input.whatsApp,
     };
     const result = await this.postAndReconcile(
       '/integrations/v1/omnicus/leads/upsert',

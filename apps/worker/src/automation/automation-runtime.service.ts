@@ -140,7 +140,13 @@ export class AutomationRuntimeService {
         }
       }
       await transaction.leadCaptureEvent.update({
-        data: { lastError: null, lockedAt: null, lockedBy: null, processedAt: new Date(), status: 'COMPLETED' },
+        data: {
+          lastError: null,
+          lockedAt: null,
+          lockedBy: null,
+          processedAt: new Date(),
+          status: 'COMPLETED',
+        },
         where: { id: event.id },
       });
     });
@@ -920,14 +926,23 @@ export class AutomationRuntimeService {
     executionId: string,
   ): Promise<Prisma.InputJsonObject> {
     const nodeConfig = this.object(node.config);
+    const whatsAppTemplate = whatsAppAutomationTemplateSchema.safeParse(
+      node.config.whatsAppTemplate,
+    );
     const deliveryTarget =
       node.type === 'SEND_MESSAGE'
         ? this.resolveSendMessageDeliveryTarget(nodeConfig)
-        : 'INCOMING_CONVERSATION';
+        : whatsAppTemplate.success
+          ? 'WHATSAPP'
+          : 'INCOMING_CONVERSATION';
     const connectionId =
       node.type === 'SEND_MESSAGE' && deliveryTarget !== 'INCOMING_CONVERSATION'
         ? this.sendMessageConnectionId(nodeConfig, deliveryTarget)
-        : context.connectionId;
+        : node.type === 'SEND_TEMPLATE' &&
+            whatsAppTemplate.success &&
+            typeof nodeConfig.whatsappConnectionId === 'string'
+          ? nodeConfig.whatsappConnectionId
+          : context.connectionId;
     const connection = await transaction.channelConnection.findUnique({
       select: { id: true, status: true, type: true },
       where: { projectId_id: { id: connectionId, projectId: context.projectId } },
@@ -945,9 +960,6 @@ export class AutomationRuntimeService {
     )
       throw new Error('automation_channel_connection_unavailable');
     const channelType = connection.type === 'WHATSAPP' ? 'WHATSAPP' : 'TELEGRAM';
-    const whatsAppTemplate = whatsAppAutomationTemplateSchema.safeParse(
-      node.config.whatsAppTemplate,
-    );
     if (channelType === 'WHATSAPP' && node.type === 'SEND_TEMPLATE' && !whatsAppTemplate.success)
       throw new Error('automation_whatsapp_template_invalid');
     if (channelType === 'TELEGRAM' && whatsAppTemplate.success)
@@ -1008,10 +1020,7 @@ export class AutomationRuntimeService {
               configuredMediaAsset?.source === 'WHATSAPP'
             ? configuredMediaAsset.source
             : undefined;
-    if (
-      configuredMediaChannel &&
-      configuredMediaChannel !== channelType
-    )
+    if (configuredMediaChannel && configuredMediaChannel !== channelType)
       throw new Error('automation_media_channel_mismatch');
     if (
       !whatsAppTemplate.success &&
@@ -1077,23 +1086,40 @@ export class AutomationRuntimeService {
         name: approved.name,
       };
     }
-    const identity = await transaction.channelIdentity.findFirst({
-      where: {
-        channel: channelType,
-        connectionId,
-        contactId: context.contactId,
-        projectId: context.projectId,
-        status: 'ACTIVE',
-      },
-    });
+    const whatsAppRoute =
+      channelType === 'WHATSAPP' &&
+      whatsAppTemplate.success &&
+      (typeof nodeConfig.whatsappConnectionId === 'string' || !context.conversationId)
+        ? await this.whatsAppTemplateRoute(transaction, context, connectionId, executionId, node.id)
+        : undefined;
+    if (whatsAppRoute) {
+      context.connectionId = connectionId;
+      context.conversationId = whatsAppRoute.conversationId;
+      await transaction.scenarioExecution.updateMany({
+        data: { conversationId: whatsAppRoute.conversationId },
+        where: { id: executionId, projectId: context.projectId },
+      });
+    }
+    const identity =
+      whatsAppRoute?.identity ??
+      (await transaction.channelIdentity.findFirst({
+        where: {
+          channel: channelType,
+          connectionId,
+          contactId: context.contactId,
+          projectId: context.projectId,
+          status: 'ACTIVE',
+        },
+      }));
     if (!identity) throw new Error('automation_channel_identity_unavailable');
+    const conversationId = whatsAppRoute?.conversationId ?? context.conversationId;
     if (channelType === 'WHATSAPP' && !renderedWhatsAppTemplate) {
       if (Array.isArray(nodeConfig.telegramButtons) && nodeConfig.telegramButtons.length)
         throw new Error('automation_whatsapp_buttons_require_template');
       const conversation = await transaction.conversation.findUnique({
         select: { serviceWindowExpiresAt: true },
         where: {
-          projectId_id: { id: context.conversationId, projectId: context.projectId },
+          projectId_id: { id: conversationId, projectId: context.projectId },
         },
       });
       if (
@@ -1102,15 +1128,51 @@ export class AutomationRuntimeService {
       )
         throw new Error('automation_whatsapp_service_window_closed');
     }
+    if (
+      channelType !== 'WHATSAPP' &&
+      Array.isArray(nodeConfig.whatsappButtons) &&
+      nodeConfig.whatsappButtons.length
+    )
+      throw new Error('automation_whatsapp_buttons_channel_mismatch');
+    let renderedWhatsAppInteractive: Prisma.InputJsonObject | undefined;
+    if (
+      channelType === 'WHATSAPP' &&
+      node.type === 'SEND_MESSAGE' &&
+      Array.isArray(nodeConfig.whatsappButtons) &&
+      nodeConfig.whatsappButtons.length > 0
+    ) {
+      if (nodeConfig.whatsappButtons.length > 3)
+        throw new Error('automation_whatsapp_buttons_invalid');
+      if (configuredMediaAsset) throw new Error('automation_whatsapp_interactive_media_conflict');
+      if (!renderedText?.trim() || renderedText.length > 1_024)
+        throw new Error('automation_whatsapp_interactive_body_invalid');
+      const ids = new Set<string>();
+      const buttons = nodeConfig.whatsappButtons.map((candidate) => {
+        const button = this.object(candidate);
+        const id = typeof button.id === 'string' ? button.id : '';
+        const title = typeof button.title === 'string' ? button.title : '';
+        if (
+          id.length < 1 ||
+          id.length > 256 ||
+          id.trim() !== id ||
+          title.length < 1 ||
+          title.length > 20 ||
+          title.trim() !== title ||
+          ids.has(id)
+        )
+          throw new Error('automation_whatsapp_buttons_invalid');
+        ids.add(id);
+        return { id, title };
+      });
+      renderedWhatsAppInteractive = {
+        action: { buttons },
+        body: { text: renderedText },
+        type: 'button',
+      };
+    }
     const telegramButtons =
       channelType === 'TELEGRAM'
-        ? await this.telegramButtons(
-            transaction,
-            nodeConfig,
-            context,
-            executionId,
-            node.id,
-          )
+        ? await this.telegramButtons(transaction, nodeConfig, context, executionId, node.id)
         : undefined;
     const idempotencyKey = `automation-${executionId}-${node.id}`;
     const existing = await transaction.outboxRecord.findUnique({
@@ -1130,12 +1192,14 @@ export class AutomationRuntimeService {
         contactId: context.contactId,
         content: renderedWhatsAppTemplate
           ? { whatsAppTemplate: renderedWhatsAppTemplate }
-          : templateVersion && templateVersion.kind !== 'TEXT'
-            ? { caption: renderedText ?? '' }
-            : configuredMediaAsset
+          : renderedWhatsAppInteractive
+            ? { interactive: renderedWhatsAppInteractive }
+            : templateVersion && templateVersion.kind !== 'TEXT'
               ? { caption: renderedText ?? '' }
-              : { text: renderedText! },
-        conversationId: context.conversationId,
+              : configuredMediaAsset
+                ? { caption: renderedText ?? '' }
+                : { text: renderedText! },
+        conversationId,
         direction: 'OUTBOUND',
         mediaAssetId: templateVersion?.mediaAssetId ?? configuredMediaAsset?.id ?? null,
         metadata: {
@@ -1156,7 +1220,9 @@ export class AutomationRuntimeService {
         status: 'QUEUED',
         type: renderedWhatsAppTemplate
           ? 'TEXT'
-          : (templateVersion?.kind ?? configuredMediaAsset?.kind ?? 'TEXT'),
+          : renderedWhatsAppInteractive
+            ? 'INTERACTIVE'
+            : (templateVersion?.kind ?? configuredMediaAsset?.kind ?? 'TEXT'),
       },
     });
     const outbox = await transaction.outboxRecord.create({
@@ -1227,7 +1293,12 @@ export class AutomationRuntimeService {
       const punctuation = rawTarget.match(/[),.!?;:]+$/)?.[0] ?? '';
       const targetUrl = punctuation ? rawTarget.slice(0, -punctuation.length) : rawTarget;
       const existing = await transaction.trackedLink.findFirst({
-        where: { nodeId, projectId: context.projectId, scenarioExecutionId: executionId, targetUrl },
+        where: {
+          nodeId,
+          projectId: context.projectId,
+          scenarioExecutionId: executionId,
+          targetUrl,
+        },
       });
       const link =
         existing ??
@@ -1303,6 +1374,148 @@ export class AutomationRuntimeService {
       deliveryTarget === 'TELEGRAM' ? telegramConnectionId : whatsappConnectionId;
     if (!connectionId) throw new Error('automation_channel_connection_unavailable');
     return connectionId;
+  }
+
+  private async whatsAppTemplateRoute(
+    transaction: RuntimeTransaction,
+    context: RuntimeContext,
+    connectionId: string,
+    executionId: string,
+    nodeId: string,
+  ) {
+    const contact = await transaction.contact.findUnique({
+      select: {
+        normalizedPhone: true,
+        phone: true,
+        whatsAppConsentStatus: true,
+      },
+      where: { projectId_id: { id: context.contactId, projectId: context.projectId } },
+    });
+    if (!contact) throw new Error('automation_contact_unavailable');
+    const existingForContact = await transaction.channelIdentity.findFirst({
+      orderBy: { createdAt: 'desc' },
+      where: {
+        channel: 'WHATSAPP',
+        connectionId,
+        contactId: context.contactId,
+        projectId: context.projectId,
+        status: 'ACTIVE',
+      },
+    });
+    const normalizedPhone =
+      contact.normalizedPhone ??
+      contact.phone?.replace(/\D/g, '') ??
+      existingForContact?.externalUserId;
+    if (!normalizedPhone || normalizedPhone.length < 5)
+      throw new Error('automation_whatsapp_recipient_phone_missing');
+    if (!context.conversationId && contact.whatsAppConsentStatus !== 'GRANTED')
+      throw new Error('automation_whatsapp_marketing_consent_required');
+    const existingIdentity = await transaction.channelIdentity.findUnique({
+      where: {
+        projectId_connectionId_externalUserId: {
+          connectionId,
+          externalUserId: normalizedPhone,
+          projectId: context.projectId,
+        },
+      },
+    });
+    if (existingIdentity && existingIdentity.contactId !== context.contactId)
+      throw new Error('automation_whatsapp_identity_conflict');
+    if (existingIdentity?.whatsAppReachability === 'BLOCKED')
+      throw new Error('automation_whatsapp_recipient_blocked');
+    let identity = existingIdentity;
+    if (!identity) {
+      identity = await transaction.channelIdentity.create({
+        data: {
+          channel: 'WHATSAPP',
+          connectionId,
+          contactId: context.contactId,
+          externalUserId: normalizedPhone,
+          metadata: { source: 'website_registration_automation' },
+          projectId: context.projectId,
+          status: 'ACTIVE',
+          whatsAppReachability: 'PENDING',
+          whatsAppReachabilityCheckedAt: new Date(),
+        },
+      });
+      await this.queueCrmWhatsAppIdentitySync(
+        transaction,
+        context,
+        connectionId,
+        executionId,
+        nodeId,
+      );
+    }
+    if (identity.status !== 'ACTIVE') throw new Error('automation_channel_identity_unavailable');
+    const existingConversation = await transaction.conversation.findUnique({
+      where: {
+        projectId_connectionId_externalChatId: {
+          connectionId,
+          externalChatId: normalizedPhone,
+          projectId: context.projectId,
+        },
+      },
+    });
+    if (existingConversation && existingConversation.contactId !== context.contactId)
+      throw new Error('automation_whatsapp_conversation_conflict');
+    const conversation =
+      existingConversation ??
+      (await transaction.conversation.create({
+        data: {
+          connectionId,
+          contactId: context.contactId,
+          externalChatId: normalizedPhone,
+          projectId: context.projectId,
+          status: 'ACTIVE',
+        },
+      }));
+    return { conversationId: conversation.id, identity };
+  }
+
+  private async queueCrmWhatsAppIdentitySync(
+    transaction: RuntimeTransaction,
+    context: RuntimeContext,
+    connectionId: string,
+    executionId: string,
+    nodeId: string,
+  ): Promise<void> {
+    const crm = await transaction.crmProjectConfig.findUnique({
+      select: { enabled: true, status: true },
+      where: { projectId: context.projectId },
+    });
+    if (!crm?.enabled || crm.status !== 'ACTIVE') return;
+    const idempotencyKey = `crm-whatsapp-identity-${executionId}-${nodeId}`;
+    await transaction.outboxRecord.createMany({
+      data: [
+        {
+          idempotencyKey,
+          kind: 'CRM',
+          payload: {},
+          projectId: context.projectId,
+        },
+      ],
+      skipDuplicates: true,
+    });
+    const outbox = await transaction.outboxRecord.findUnique({
+      include: { crmOperation: { select: { id: true } } },
+      where: {
+        projectId_idempotencyKey: { idempotencyKey, projectId: context.projectId },
+      },
+    });
+    if (!outbox || outbox.crmOperation) return;
+    const operation = await transaction.crmOperation.create({
+      data: {
+        contactId: context.contactId,
+        inputSafe: { connectionId, source: 'whatsapp_identity_bootstrap' },
+        outboxRecordId: outbox.id,
+        projectId: context.projectId,
+        type: 'CREATE_OR_UPDATE_LEAD',
+      },
+    });
+    await transaction.outboxRecord.update({
+      data: { payload: { crmOperationId: operation.id } },
+      where: { projectId_id: { id: outbox.id, projectId: context.projectId } },
+    });
   }
 
   private async nodeExecution(

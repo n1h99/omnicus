@@ -25,11 +25,7 @@ import { ApiError, getUserErrorMessage } from './api';
 import type { ScenarioSummary } from './automation-api';
 import { channelAccountLabel } from './channel-provider';
 import { useChannels, type TelegramChannel } from './channels-api';
-import {
-  useMediaAssets,
-  useMediaMutations,
-  type MediaKind,
-} from './media-api';
+import { useMediaAssets, useMediaMutations, type MediaKind } from './media-api';
 import {
   type AutomationCustomField,
   type AutomationSecret,
@@ -229,6 +225,7 @@ export function AutomationNodeConfig({
     typeof config.whatsappConnectionId === 'string' ? config.whatsappConnectionId : undefined;
 
   useEffect(() => {
+    if (nodeType !== 'SEND_MESSAGE') return;
     const updates: Record<string, unknown> = {};
     const telegramActiveIds = activeTelegramChannels.map((channel) => channel.id);
     const whatsappActiveIds = activeWhatsAppChannels.map((channel) => channel.id);
@@ -268,6 +265,7 @@ export function AutomationNodeConfig({
     telegramConnectionId,
     whatsappConnectionId,
     config,
+    nodeType,
   ]);
 
   const sendDeliveryInfo = {
@@ -285,13 +283,29 @@ export function AutomationNodeConfig({
       message: 'WhatsApp delivery',
     },
   }[sendDeliveryTarget];
-  const [whatsAppCatalogConnectionId, setWhatsAppCatalogConnectionId] = useState<string>();
   const effectiveWhatsAppCatalogConnectionId = activeWhatsAppChannels.some(
-    (channel) => channel.id === whatsAppCatalogConnectionId,
+    (channel) => channel.id === whatsappConnectionId,
   )
-    ? whatsAppCatalogConnectionId
+    ? whatsappConnectionId
     : activeWhatsAppChannels[0]?.id;
   const whatsAppTemplates = useWhatsAppTemplates(projectId, effectiveWhatsAppCatalogConnectionId);
+
+  useEffect(() => {
+    const hasWhatsAppTemplate =
+      nodeType === 'SEND_TEMPLATE' &&
+      Boolean(config.whatsAppTemplate) &&
+      typeof config.whatsAppTemplate === 'object' &&
+      !Array.isArray(config.whatsAppTemplate);
+    if (
+      hasWhatsAppTemplate &&
+      effectiveWhatsAppCatalogConnectionId &&
+      whatsappConnectionId !== effectiveWhatsAppCatalogConnectionId
+    )
+      onChange({
+        ...config,
+        whatsappConnectionId: effectiveWhatsAppCatalogConnectionId,
+      });
+  }, [config, effectiveWhatsAppCatalogConnectionId, nodeType, onChange, whatsappConnectionId]);
 
   if (nodeType === 'INCOMING_MESSAGE') {
     const startPayload =
@@ -350,10 +364,7 @@ export function AutomationNodeConfig({
               <Input
                 maxLength={64}
                 onChange={(event) =>
-                  set(
-                    'sourceKey',
-                    event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
-                  )
+                  set('sourceKey', event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''))
                 }
                 value={sourceKey}
               />
@@ -381,7 +392,9 @@ export function AutomationNodeConfig({
               </Space>
             ) : (
               <Typography.Text type="secondary">
-                {leadCapture.isError ? 'Webhook configuration could not be loaded.' : 'Loading webhook configuration...'}
+                {leadCapture.isError
+                  ? 'Webhook configuration could not be loaded.'
+                  : 'Loading webhook configuration...'}
               </Typography.Text>
             )}
           </>
@@ -446,11 +459,17 @@ export function AutomationNodeConfig({
     const telegramButtons = Array.isArray(config.telegramButtons)
       ? (config.telegramButtons as Array<{ text?: string; url?: string }>)
       : [];
+    const whatsAppButtons = Array.isArray(config.whatsappButtons)
+      ? (config.whatsappButtons as Array<{ id?: string; title?: string }>)
+      : [];
+    const mediaAssetId = typeof config.mediaAssetId === 'string' ? config.mediaAssetId : undefined;
     const messageTextField = (
       <Form.Item label="Message text" style={{ marginBottom: 0 }}>
         <div style={{ marginTop: 6 }}>
           <Input.TextArea
-            maxLength={4096}
+            maxLength={
+              sendDeliveryTarget === 'WHATSAPP' && whatsAppButtons.length > 0 ? 1024 : 4096
+            }
             onChange={(event) => set('text', event.target.value)}
             rows={6}
             value={text}
@@ -489,10 +508,13 @@ export function AutomationNodeConfig({
                   ? {
                       telegramButtons: undefined,
                       telegramConnectionId: undefined,
+                      whatsappButtons: undefined,
                       whatsappConnectionId: undefined,
                     }
                   : {}),
-                ...(value === 'TELEGRAM' ? { whatsappConnectionId: undefined } : {}),
+                ...(value === 'TELEGRAM'
+                  ? { whatsappButtons: undefined, whatsappConnectionId: undefined }
+                  : {}),
                 ...(value === 'WHATSAPP'
                   ? { telegramButtons: undefined, telegramConnectionId: undefined }
                   : {}),
@@ -591,6 +613,7 @@ export function AutomationNodeConfig({
           <Space direction="vertical" size={8} style={{ width: '100%' }}>
             <Select
               allowClear
+              disabled={sendDeliveryTarget === 'WHATSAPP' && whatsAppButtons.length > 0}
               onChange={(value?: string) => set('mediaAssetId', value)}
               options={(assets.data ?? [])
                 .filter((asset) => {
@@ -600,14 +623,18 @@ export function AutomationNodeConfig({
                       : sendDeliveryTarget === 'WHATSAPP'
                         ? 'whatsapp'
                         : undefined;
-                  return !targetChannel || !asset.validationChannel || asset.validationChannel === targetChannel;
+                  return (
+                    !targetChannel ||
+                    !asset.validationChannel ||
+                    asset.validationChannel === targetChannel
+                  );
                 })
                 .map((asset) => ({
                   label: `${asset.originalFilename ?? asset.id.slice(0, 8)} · ${asset.kind.replaceAll('_', ' ').toLowerCase()}`,
                   value: asset.id,
                 }))}
               placeholder="Select an uploaded file"
-              value={typeof config.mediaAssetId === 'string' ? config.mediaAssetId : null}
+              value={mediaAssetId ?? null}
             />
             {sendDeliveryTarget === 'INCOMING_CONVERSATION' ? (
               <Typography.Text type="secondary">
@@ -642,12 +669,16 @@ export function AutomationNodeConfig({
                       .catch(() => void message.error('Attachment could not be uploaded'));
                     return Upload.LIST_IGNORE;
                   }}
-                  disabled={mediaMutations.upload.isPending}
+                  disabled={
+                    mediaMutations.upload.isPending ||
+                    (sendDeliveryTarget === 'WHATSAPP' && whatsAppButtons.length > 0)
+                  }
                   maxCount={1}
                   showUploadList={false}
                 >
                   <Button
                     className="automation-attachment-upload-button"
+                    disabled={sendDeliveryTarget === 'WHATSAPP' && whatsAppButtons.length > 0}
                     loading={mediaMutations.upload.isPending}
                   >
                     Upload file
@@ -655,6 +686,11 @@ export function AutomationNodeConfig({
                 </Upload>
               </div>
             )}
+            {sendDeliveryTarget === 'WHATSAPP' && whatsAppButtons.length > 0 ? (
+              <Typography.Text type="secondary">
+                Remove the reply buttons before attaching a file to this message.
+              </Typography.Text>
+            ) : null}
           </Space>
         </Form.Item>
 
@@ -724,9 +760,78 @@ export function AutomationNodeConfig({
         ) : null}
 
         {sendDeliveryTarget === 'WHATSAPP' ? (
-          <Typography.Text type="secondary">
-            WhatsApp buttons are available through approved templates in the Send template step.
-          </Typography.Text>
+          <Space
+            className="automation-url-buttons"
+            direction="vertical"
+            size={10}
+            style={{ width: '100%' }}
+          >
+            <Typography.Text strong>WhatsApp reply buttons</Typography.Text>
+            <Typography.Text type="secondary">
+              Add up to 3 quick replies. They require an open customer-service window. Match the
+              reply value in a Wait for reply callback condition.
+            </Typography.Text>
+            {whatsAppButtons.map((button, index) => (
+              <div className="automation-url-button-card" key={index}>
+                <div className="automation-url-button-header">
+                  <Typography.Text strong>Button {index + 1}</Typography.Text>
+                  <Button
+                    danger
+                    onClick={() =>
+                      set(
+                        'whatsappButtons',
+                        whatsAppButtons.filter((_, buttonIndex) => buttonIndex !== index),
+                      )
+                    }
+                    size="small"
+                    type="text"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <label className="automation-url-button-field">
+                  <span>Button text</span>
+                  <Input
+                    maxLength={20}
+                    onChange={(event) => {
+                      const next = [...whatsAppButtons];
+                      next[index] = { ...button, title: event.target.value };
+                      set('whatsappButtons', next);
+                    }}
+                    placeholder="I'm interested"
+                    value={button.title}
+                  />
+                </label>
+                <label className="automation-url-button-field">
+                  <span>Reply value</span>
+                  <Input
+                    maxLength={256}
+                    onChange={(event) => {
+                      const next = [...whatsAppButtons];
+                      next[index] = { ...button, id: event.target.value };
+                      set('whatsappButtons', next);
+                    }}
+                    placeholder="interest:yes"
+                    value={button.id}
+                  />
+                </label>
+              </div>
+            ))}
+            <Button
+              block
+              className="automation-url-button-add"
+              disabled={whatsAppButtons.length >= 3 || Boolean(mediaAssetId)}
+              onClick={() => set('whatsappButtons', [...whatsAppButtons, { id: '', title: '' }])}
+              type="dashed"
+            >
+              Add reply button
+            </Button>
+            {mediaAssetId ? (
+              <Typography.Text type="secondary">
+                Remove the attachment before adding WhatsApp reply buttons.
+              </Typography.Text>
+            ) : null}
+          </Space>
         ) : null}
 
         <Checkbox
@@ -776,7 +881,7 @@ export function AutomationNodeConfig({
     const updateWhatsAppParameters = (values: Record<string, string>) => {
       if (!selectedWhatsAppTemplate) return;
       const components = whatsAppTemplateComponents(parameterSlots, values);
-      onChange({
+      updateConfig({
         whatsAppTemplate: {
           languageCode: selectedWhatsAppTemplate.languageCode,
           name: selectedWhatsAppTemplate.name,
@@ -788,7 +893,7 @@ export function AutomationNodeConfig({
       <Space direction="vertical" style={{ width: '100%' }}>
         <Alert
           className="automation-channel-note"
-          description="WhatsApp resolves the approved template by name and language on the conversation that starts the run. The scenario is not tied to one phone number. Telegram uses an immutable Omnicus template version."
+          description="WhatsApp sends through the saved Business number. Website leads are resolved from their normalized phone and require granted marketing consent; existing conversations keep their current identity. Telegram uses an immutable Omnicus template version."
           message="Channel-compatible template required"
           showIcon
           type="info"
@@ -798,7 +903,10 @@ export function AutomationNodeConfig({
           block
           onChange={(value) =>
             value === 'WHATSAPP'
-              ? onChange({ whatsAppTemplate: { languageCode: '', name: '' } })
+              ? onChange({
+                  whatsAppTemplate: { languageCode: '', name: '' },
+                  whatsappConnectionId: activeWhatsAppChannels[0]?.id,
+                })
               : onChange({ templateId: '', templateVersionId: '' })
           }
           options={[
@@ -827,11 +935,16 @@ export function AutomationNodeConfig({
               />
             ) : null}
             <Form.Item
-              extra="This number is used only to browse its synced Meta catalog. It is not saved in the scenario."
+              extra="This number is saved in the scenario and is used for website leads that do not have an existing WhatsApp conversation."
               label="Template source"
             >
               <Select
-                onChange={setWhatsAppCatalogConnectionId}
+                onChange={(value: string) =>
+                  updateConfig({
+                    whatsappConnectionId: value,
+                    whatsAppTemplate: { languageCode: '', name: '' },
+                  })
+                }
                 options={activeWhatsAppChannels.map((channel) => ({
                   label: `${channel.name} — ${channelAccountLabel(channel)}`,
                   value: channel.id,
@@ -864,7 +977,7 @@ export function AutomationNodeConfig({
                     (candidate) => candidate.id === templateId,
                   );
                   if (!template) return;
-                  onChange({
+                  updateConfig({
                     whatsAppTemplate: {
                       languageCode: template.languageCode,
                       name: template.name,

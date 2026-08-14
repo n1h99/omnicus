@@ -333,6 +333,7 @@ export class BroadcastPreparationService implements OnApplicationBootstrap, OnAp
     channelType: 'TELEGRAM' | 'WHATSAPP',
   ) {
     const contact: Prisma.ContactWhereInput = { projectId, status: 'ACTIVE' };
+    if (channelType === 'WHATSAPP') contact.whatsAppConsentStatus = 'GRANTED';
     if (audience.mode === 'CONTACTS') contact.id = { in: audience.contactIds ?? [] };
     if (audience.mode === 'SEGMENT') {
       const segment = await this.database.client.segment.findFirst({
@@ -358,6 +359,7 @@ export class BroadcastPreparationService implements OnApplicationBootstrap, OnAp
         connectionId,
         channel: channelType,
         status: 'ACTIVE',
+        ...(channelType === 'WHATSAPP' ? { whatsAppReachability: 'AVAILABLE' } : {}),
         contact: { is: contact },
       },
       select: {

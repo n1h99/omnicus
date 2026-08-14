@@ -36,6 +36,10 @@ const contactSelect = {
   status: true,
   updatedAt: true,
   username: true,
+  whatsAppConsentAt: true,
+  whatsAppConsentSource: true,
+  whatsAppConsentStatus: true,
+  whatsAppOptOutAt: true,
 } as const;
 
 @Injectable()
@@ -142,9 +146,7 @@ export class ContactsService {
           ...(input.phone === undefined
             ? {}
             : {
-                normalizedPhone: input.phone?.trim()
-                  ? input.phone.replace(/\D/g, '')
-                  : null,
+                normalizedPhone: input.phone?.trim() ? input.phone.replace(/\D/g, '') : null,
                 phone: input.phone,
               }),
           ...(input.status === undefined
@@ -153,6 +155,27 @@ export class ContactsService {
                 archivedAt: input.status === 'ARCHIVED' ? new Date() : null,
                 status: input.status,
               }),
+          ...(input.whatsAppConsentStatus === undefined
+            ? {}
+            : input.whatsAppConsentStatus === 'GRANTED'
+              ? {
+                  whatsAppConsentAt: new Date(),
+                  whatsAppConsentSource: 'manual_contact_update',
+                  whatsAppConsentStatus: 'GRANTED',
+                  whatsAppOptOutAt: null,
+                }
+              : input.whatsAppConsentStatus === 'REVOKED'
+                ? {
+                    whatsAppConsentSource: 'manual_contact_update',
+                    whatsAppConsentStatus: 'REVOKED',
+                    whatsAppOptOutAt: new Date(),
+                  }
+                : {
+                    whatsAppConsentAt: null,
+                    whatsAppConsentSource: null,
+                    whatsAppConsentStatus: 'UNKNOWN',
+                    whatsAppOptOutAt: null,
+                  }),
           ...(input.username === undefined ? {} : { username: input.username }),
         },
         select: contactSelect,
@@ -740,6 +763,30 @@ export class ContactsService {
       });
       for (const { duplicate, survivor } of duplicateIdentities)
         await Promise.all([
+          transaction.channelIdentity.update({
+            data: {
+              whatsAppLastErrorCode:
+                survivor.whatsAppReachability === 'AVAILABLE'
+                  ? null
+                  : (survivor.whatsAppLastErrorCode ?? duplicate.whatsAppLastErrorCode),
+              whatsAppReachability:
+                survivor.whatsAppReachability === 'AVAILABLE' ||
+                duplicate.whatsAppReachability === 'AVAILABLE'
+                  ? 'AVAILABLE'
+                  : (survivor.whatsAppReachability ?? duplicate.whatsAppReachability),
+              whatsAppReachabilityCheckedAt:
+                survivor.whatsAppReachabilityCheckedAt && duplicate.whatsAppReachabilityCheckedAt
+                  ? new Date(
+                      Math.max(
+                        survivor.whatsAppReachabilityCheckedAt.getTime(),
+                        duplicate.whatsAppReachabilityCheckedAt.getTime(),
+                      ),
+                    )
+                  : (survivor.whatsAppReachabilityCheckedAt ??
+                    duplicate.whatsAppReachabilityCheckedAt),
+            },
+            where: { projectId_id: { id: survivor.id, projectId } },
+          }),
           transaction.broadcastRecipient.updateMany({
             data: { channelIdentityId: survivor.id, contactId: primary.id },
             where: { channelIdentityId: duplicate.id, projectId },
@@ -806,6 +853,15 @@ export class ContactsService {
         ...this.jsonObject(secondary.customFields),
         ...this.jsonObject(primary.customFields),
       };
+      const whatsAppConsentStatus =
+        primary.whatsAppConsentStatus === 'REVOKED' || secondary.whatsAppConsentStatus === 'REVOKED'
+          ? 'REVOKED'
+          : primary.whatsAppConsentStatus === 'GRANTED' ||
+              secondary.whatsAppConsentStatus === 'GRANTED'
+            ? 'GRANTED'
+            : 'UNKNOWN';
+      const consentSourceContact =
+        primary.whatsAppConsentStatus === whatsAppConsentStatus ? primary : secondary;
       await transaction.contact.update({
         data: {
           crmContactId: primary.crmContactId ?? secondary.crmContactId,
@@ -836,6 +892,24 @@ export class ContactsService {
           lastName: primary.lastName ?? secondary.lastName,
           phone: primary.phone ?? secondary.phone,
           username: primary.username ?? secondary.username,
+          whatsAppConsentAt:
+            whatsAppConsentStatus === 'GRANTED'
+              ? (consentSourceContact.whatsAppConsentAt ??
+                primary.whatsAppConsentAt ??
+                secondary.whatsAppConsentAt)
+              : null,
+          whatsAppConsentSource:
+            whatsAppConsentStatus === 'UNKNOWN'
+              ? null
+              : (consentSourceContact.whatsAppConsentSource ?? 'contact_merge'),
+          whatsAppConsentStatus,
+          whatsAppOptOutAt:
+            whatsAppConsentStatus === 'REVOKED'
+              ? (consentSourceContact.whatsAppOptOutAt ??
+                primary.whatsAppOptOutAt ??
+                secondary.whatsAppOptOutAt ??
+                new Date())
+              : null,
         },
         where: { projectId_id: { id: primary.id, projectId } },
       });

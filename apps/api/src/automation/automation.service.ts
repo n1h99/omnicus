@@ -540,6 +540,10 @@ export class AutomationService {
   private async assertPinnedTemplates(projectId: string, graph: unknown): Promise<void> {
     const parsed = scenarioGraphSchema.safeParse(graph);
     if (!parsed.success) return;
+    const startsFromWebsite = parsed.data.nodes.some(
+      (node) =>
+        node.type === 'INCOMING_MESSAGE' && node.config.triggerType === 'WEBSITE_REGISTRATION',
+    );
     for (const node of parsed.data.nodes.filter(
       (candidate) => candidate.type === 'SEND_TEMPLATE',
     )) {
@@ -547,8 +551,20 @@ export class AutomationService {
         node.config.whatsAppTemplate,
       );
       if (whatsAppTemplate.success) {
+        const whatsappConnectionId = node.config.whatsappConnectionId;
+        if (
+          startsFromWebsite &&
+          (typeof whatsappConnectionId !== 'string' || !whatsappConnectionId.trim())
+        )
+          throw new BadRequestException({
+            code: 'SCENARIO_WHATSAPP_CONNECTION_REQUIRED',
+            message: 'WhatsApp template steps must select an active WhatsApp connection',
+          });
         const candidates = await this.database.client.whatsAppMessageTemplate.findMany({
           where: {
+            ...(typeof whatsappConnectionId === 'string' && whatsappConnectionId.trim()
+              ? { connectionId: whatsappConnectionId }
+              : {}),
             languageCode: whatsAppTemplate.data.languageCode,
             name: whatsAppTemplate.data.name,
             projectId,

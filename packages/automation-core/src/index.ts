@@ -468,13 +468,71 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
           }
         }
       }
+      const whatsAppButtons = Array.isArray(node.config.whatsappButtons)
+        ? node.config.whatsappButtons
+        : [];
+      if (
+        node.config.whatsappButtons !== undefined &&
+        !Array.isArray(node.config.whatsappButtons)
+      ) {
+        errors.push(`Send Message node ${node.id} has invalid WhatsApp reply buttons`);
+      }
+      if (deliveryTarget !== 'WHATSAPP' && whatsAppButtons.length > 0) {
+        errors.push(
+          `Send Message node ${node.id} can use WhatsApp reply buttons only with WhatsApp`,
+        );
+      }
+      if (whatsAppButtons.length > 3) {
+        errors.push(`Send Message node ${node.id} can use at most 3 WhatsApp reply buttons`);
+      }
+      if (whatsAppButtons.length > 0) {
+        if (isNonEmptyString(node.config.mediaAssetId)) {
+          errors.push(
+            `Send Message node ${node.id} cannot combine an attachment with WhatsApp reply buttons`,
+          );
+        }
+        if (!isNonEmptyString(node.config.text)) {
+          errors.push(
+            `Send Message node ${node.id} requires message text with WhatsApp reply buttons`,
+          );
+        } else if ((node.config.text as string).length > 1_024) {
+          errors.push(
+            `Send Message node ${node.id} text cannot exceed 1024 characters with WhatsApp reply buttons`,
+          );
+        }
+        const buttonIds = new Set<string>();
+        for (const button of whatsAppButtons) {
+          const value =
+            button && typeof button === 'object' ? (button as Record<string, unknown>) : undefined;
+          const id = value?.id;
+          const title = value?.title;
+          if (
+            typeof id !== 'string' ||
+            id.length < 1 ||
+            id.length > 256 ||
+            id.trim() !== id ||
+            typeof title !== 'string' ||
+            title.length < 1 ||
+            title.length > 20 ||
+            title.trim() !== title
+          ) {
+            errors.push(`Send Message node ${node.id} has an incomplete WhatsApp reply button`);
+            break;
+          }
+          if (buttonIds.has(id)) {
+            errors.push(`Send Message node ${node.id} has duplicate WhatsApp reply values`);
+            break;
+          }
+          buttonIds.add(id);
+        }
+      }
     }
     if (node.type === 'INCOMING_MESSAGE') {
       const triggerType =
-        typeof node.config.triggerType === 'string'
-          ? node.config.triggerType
-          : 'INCOMING_MESSAGE';
-      if (!['INCOMING_MESSAGE', 'WEBSITE_REGISTRATION', 'TELEGRAM_DEEP_LINK'].includes(triggerType)) {
+        typeof node.config.triggerType === 'string' ? node.config.triggerType : 'INCOMING_MESSAGE';
+      if (
+        !['INCOMING_MESSAGE', 'WEBSITE_REGISTRATION', 'TELEGRAM_DEEP_LINK'].includes(triggerType)
+      ) {
         errors.push(`Incoming Message node ${node.id} has an unsupported trigger type`);
       }
       if (
@@ -490,7 +548,9 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
           !isNonEmptyString(node.config.startPayload) ||
           !/^[A-Za-z0-9_-]{1,64}$/.test(node.config.startPayload as string))
       ) {
-        errors.push(`Incoming Message node ${node.id} requires a Telegram connection and start payload`);
+        errors.push(
+          `Incoming Message node ${node.id} requires a Telegram connection and start payload`,
+        );
       }
     }
     if (node.type === 'EXTERNAL_HTTP_REQUEST') {

@@ -408,7 +408,12 @@ describe('WhatsApp outbound terminal semantics', () => {
 
     await instance.process({ outboxRecordId: 'outbox-a' });
 
-    expect(fail).toHaveBeenCalledWith(claim(), 'whatsapp_outbound_rejected', 'message-a');
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_PROVIDER_REJECTED',
+    );
     expect(retry).not.toHaveBeenCalled();
     expect(unknown).not.toHaveBeenCalled();
 
@@ -436,7 +441,12 @@ describe('WhatsApp outbound terminal semantics', () => {
 
     await instance.process({ outboxRecordId: 'outbox-a' });
 
-    expect(fail).toHaveBeenCalledWith(claim(), 'whatsapp_outbound_rejected', 'message-a');
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_UNAUTHORIZED',
+    );
     expect(fail).toHaveBeenCalledTimes(1);
     expect(retry).not.toHaveBeenCalled();
     expect(unknown).not.toHaveBeenCalled();
@@ -457,7 +467,12 @@ describe('WhatsApp outbound terminal semantics', () => {
 
     await instance.process({ outboxRecordId: 'outbox-a' });
 
-    expect(fail).toHaveBeenCalledWith(claim(), 'whatsapp_outbound_rejected', 'message-a');
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_PERMISSION_DENIED',
+    );
     expect(fail).toHaveBeenCalledTimes(1);
     expect(retry).not.toHaveBeenCalled();
     expect(unknown).not.toHaveBeenCalled();
@@ -555,7 +570,12 @@ describe('WhatsApp outbound terminal semantics', () => {
     await instance.process({ outboxRecordId: 'outbox-a' });
 
     expect(sendMessage).toHaveBeenCalled();
-    expect(fail).toHaveBeenCalledWith(claim(), 'whatsapp_outbound_rejected', 'message-a');
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_UNAUTHORIZED',
+    );
     expect(retry).not.toHaveBeenCalled();
     expect(unknown).not.toHaveBeenCalled();
 
@@ -575,6 +595,7 @@ describe('WhatsApp outbound terminal semantics', () => {
     const outboxUpdate = vi.fn().mockResolvedValue({ count: 1 });
     const messageUpdate = vi.fn().mockResolvedValue({ count: 1 });
     const recipientUpdate = vi.fn().mockResolvedValue({ count: 0 });
+    const identityUpdate = vi.fn().mockResolvedValue({ count: 1 });
     const scheduledUpdate = vi.fn().mockResolvedValue({ count: 0 });
     const transaction = {
       broadcastRecipient: {
@@ -582,6 +603,7 @@ describe('WhatsApp outbound terminal semantics', () => {
         updateMany: recipientUpdate,
       },
       crmProjectConfig: { findUnique: vi.fn().mockResolvedValue(null) },
+      channelIdentity: { updateMany: identityUpdate },
       message: {
         findUnique: vi.fn().mockResolvedValue(null),
         updateMany: messageUpdate,
@@ -618,6 +640,11 @@ describe('WhatsApp outbound terminal semantics', () => {
     );
     expect(recipientUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'SENT' }) }),
+    );
+    expect(identityUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ whatsAppReachability: 'PENDING' }),
+      }),
     );
     expect(scheduledUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: 'SENT' }) }),

@@ -172,6 +172,20 @@ enum ChannelIdentityStatus {
   BLOCKED
 }
 
+enum MarketingConsentStatus {
+  UNKNOWN
+  GRANTED
+  REVOKED
+}
+
+enum WhatsAppReachabilityStatus {
+  UNKNOWN
+  PENDING
+  AVAILABLE
+  UNAVAILABLE
+  BLOCKED
+}
+
 enum MessageDirection {
   INBOUND
   OUTBOUND
@@ -667,6 +681,10 @@ model Contact {
   email               String?
   normalizedPhone     String?
   normalizedEmail     String?
+  whatsAppConsentStatus MarketingConsentStatus @default(UNKNOWN)
+  whatsAppConsentSource String?
+  whatsAppConsentAt     DateTime?               @db.Timestamptz(3)
+  whatsAppOptOutAt      DateTime?               @db.Timestamptz(3)
   status              ContactStatus             @default(ACTIVE)
   automationMode      AutomationMode            @default(ENABLED)
   crmLeadId           String?
@@ -701,6 +719,7 @@ model Contact {
   @@index([projectId, mergedIntoContactId])
   @@index([projectId, normalizedPhone])
   @@index([projectId, normalizedEmail])
+  @@index([projectId, whatsAppConsentStatus])
   @@map("contacts")
 }
 
@@ -715,6 +734,9 @@ model ChannelIdentity {
   displayName         String?
   languageCode        String?
   status              ChannelIdentityStatus @default(ACTIVE)
+  whatsAppReachability WhatsAppReachabilityStatus?
+  whatsAppReachabilityCheckedAt DateTime?    @db.Timestamptz(3)
+  whatsAppLastErrorCode String?
   metadata            Json?
   createdAt           DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
@@ -727,6 +749,7 @@ model ChannelIdentity {
   @@unique([projectId, id])
   @@unique([projectId, connectionId, externalUserId])
   @@index([projectId, contactId])
+  @@index([projectId, channel, whatsAppReachability])
   @@map("channel_identities")
 }
 

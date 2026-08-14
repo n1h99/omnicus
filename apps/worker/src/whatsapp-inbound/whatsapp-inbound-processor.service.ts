@@ -391,7 +391,14 @@ export class WhatsAppInboundProcessorService
     await this.database.client.$transaction(async (transaction) => {
       await this.assertConnection(transaction, claimed);
       const target = await transaction.message.findFirst({
-        select: { contactId: true, content: true, id: true, metadata: true, status: true },
+        select: {
+          contactId: true,
+          content: true,
+          conversation: { select: { externalChatId: true } },
+          id: true,
+          metadata: true,
+          status: true,
+        },
         where: {
           connectionId: claimed.connectionId,
           direction: 'OUTBOUND',
@@ -473,6 +480,39 @@ export class WhatsAppInboundProcessorService
           },
           where: { messageId: target.id, projectId: claimed.projectId },
         });
+      const reachesRecipient = mapped === 'DELIVERED' || mapped === 'READ';
+      const isUndeliverable = mapped === 'FAILED' && errorCode === '131026';
+      await transaction.channelIdentity.updateMany({
+        data: {
+          ...(reachesRecipient
+            ? {
+                whatsAppLastErrorCode: null,
+                whatsAppReachability: 'AVAILABLE' as const,
+              }
+            : isUndeliverable
+              ? { whatsAppLastErrorCode: errorCode, whatsAppReachability: 'UNAVAILABLE' as const }
+              : errorCode
+                ? { whatsAppLastErrorCode: errorCode }
+                : {}),
+          whatsAppReachabilityCheckedAt: eventAt,
+        },
+        where: {
+          channel: 'WHATSAPP',
+          connectionId: claimed.connectionId,
+          contactId: target.contactId,
+          externalUserId: target.conversation.externalChatId,
+          projectId: claimed.projectId,
+        },
+      });
+      await this.queueCrmOperation(
+        transaction,
+        claimed,
+        `crm-whatsapp-eligibility-${normalized.id}`,
+        'CREATE_OR_UPDATE_LEAD',
+        { connectionId: claimed.connectionId, source: 'whatsapp_delivery_status' },
+        target.contactId,
+        normalized.id,
+      );
       await this.complete(transaction, claimed);
     });
   }
@@ -827,7 +867,13 @@ export class WhatsAppInboundProcessorService
     const displayName = profileName?.trim() || senderId;
     if (identity) {
       await transaction.channelIdentity.update({
-        data: { displayName, status: 'ACTIVE' },
+        data: {
+          displayName,
+          status: 'ACTIVE',
+          whatsAppLastErrorCode: null,
+          whatsAppReachability: 'AVAILABLE',
+          whatsAppReachabilityCheckedAt: eventAt,
+        },
         where: {
           projectId_connectionId_externalUserId: {
             connectionId: claimed.connectionId,
@@ -837,7 +883,7 @@ export class WhatsAppInboundProcessorService
         },
       });
       await transaction.contact.updateMany({
-        data: { lastInteractionAt: eventAt, phone: senderId },
+        data: { lastInteractionAt: eventAt, normalizedPhone: senderId, phone: senderId },
         where: {
           id: identity.contactId,
           projectId: claimed.projectId,
@@ -851,6 +897,7 @@ export class WhatsAppInboundProcessorService
         displayName,
         firstInteractionAt: eventAt,
         lastInteractionAt: eventAt,
+        normalizedPhone: senderId,
         phone: senderId,
         projectId: claimed.projectId,
       },
@@ -864,6 +911,8 @@ export class WhatsAppInboundProcessorService
         externalUserId: senderId,
         metadata: { source: 'whatsapp_inbound' },
         projectId: claimed.projectId,
+        whatsAppReachability: 'AVAILABLE',
+        whatsAppReachabilityCheckedAt: eventAt,
       },
     });
     return { crmLeadId: contact.crmLeadId, id: contact.id };

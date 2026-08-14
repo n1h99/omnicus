@@ -97,6 +97,10 @@ export class UpdateContactDto {
   automationMode?: 'ENABLED' | 'DISABLED';
 
   @IsOptional()
+  @IsIn(['UNKNOWN', 'GRANTED', 'REVOKED'])
+  whatsAppConsentStatus?: 'UNKNOWN' | 'GRANTED' | 'REVOKED';
+
+  @IsOptional()
   @IsObject()
   customFields?: Record<string, unknown>;
 }

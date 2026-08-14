@@ -1391,6 +1391,20 @@ export class WhatsAppOutboundProcessorService
         },
         where: { messageId, projectId: claimed.projectId },
       });
+      const channelIdentityId = string(object(claimed.payload)?.channelIdentityId);
+      if (channelIdentityId)
+        await transaction.channelIdentity.updateMany({
+          data: {
+            whatsAppLastErrorCode: null,
+            whatsAppReachability: 'PENDING',
+            whatsAppReachabilityCheckedAt: new Date(),
+          },
+          where: {
+            id: channelIdentityId,
+            projectId: claimed.projectId,
+            whatsAppReachability: { in: ['UNKNOWN', 'PENDING', 'UNAVAILABLE'] },
+          },
+        });
       await transaction.scheduledMessage.updateMany({
         data: { completedAt: new Date(), status: 'SENT' },
         where: {
@@ -1568,7 +1582,7 @@ export class WhatsAppOutboundProcessorService
     const analysis = this.classifySendFailure(error, context);
     if (analysis.mode === 'FAIL') {
       if (context) await this.logOutboundSendRejection(claimed, messageId, analysis, context);
-      await this.fail(claimed, 'whatsapp_outbound_rejected', messageId);
+      await this.fail(claimed, 'whatsapp_outbound_rejected', messageId, analysis.safeReason);
       return;
     }
     if (analysis.mode === 'RETRY') {
@@ -1660,6 +1674,7 @@ export class WhatsAppOutboundProcessorService
     claimed: ClaimedOutboxRecord,
     code: string,
     messageId?: string,
+    reachabilityErrorCode?: SendFailureSafeReason,
   ): Promise<void> {
     await this.database.client.$transaction(async (transaction) => {
       const updated = await transaction.outboxRecord.updateMany({
@@ -1685,13 +1700,40 @@ export class WhatsAppOutboundProcessorService
         data: { failedAt: new Date(), status: 'FAILED' },
         where: { id: resolvedMessageId, projectId: claimed.projectId },
       });
+      const channelIdentityId = string(object(claimed.payload)?.channelIdentityId);
+      const channelIdentity = channelIdentityId
+        ? await transaction.channelIdentity.findUnique({
+            select: { contactId: true },
+            where: { projectId_id: { id: channelIdentityId, projectId: claimed.projectId } },
+          })
+        : null;
+      if (channelIdentityId && reachabilityErrorCode)
+        await transaction.channelIdentity.updateMany({
+          data: {
+            whatsAppLastErrorCode: reachabilityErrorCode,
+            ...(reachabilityErrorCode === 'GRAPH_API_INVALID_RECIPIENT'
+              ? { whatsAppReachability: 'UNAVAILABLE' as const }
+              : {}),
+            whatsAppReachabilityCheckedAt: new Date(),
+          },
+          where: { id: channelIdentityId, projectId: claimed.projectId },
+        });
+      if (channelIdentity && reachabilityErrorCode)
+        await this.queueCrmEligibilitySync(
+          transaction,
+          claimed.projectId,
+          channelIdentity.contactId,
+          claimed.connectionId,
+          resolvedMessageId,
+          reachabilityErrorCode,
+        );
       await this.queueCrmMessageStatus(
         transaction,
         claimed.projectId,
         resolvedMessageId,
         'FAILED',
         undefined,
-        code.toUpperCase().slice(0, 80),
+        (reachabilityErrorCode ?? code.toUpperCase()).slice(0, 80),
       );
       await transaction.broadcastRecipient.updateMany({
         data: { completedAt: new Date(), lastError: code, status: 'FAILED' },
@@ -1738,6 +1780,44 @@ export class WhatsAppOutboundProcessorService
       },
     });
     if (updated.count !== 1) throw new WhatsAppOutboundLeaseConflictError();
+  }
+
+  private async queueCrmEligibilitySync(
+    transaction: Prisma.TransactionClient,
+    projectId: string,
+    contactId: string,
+    connectionId: string,
+    messageId: string,
+    errorCode: string,
+  ): Promise<void> {
+    const crm = await transaction.crmProjectConfig.findUnique({
+      select: { enabled: true, status: true },
+      where: { projectId },
+    });
+    if (!crm?.enabled || crm.status !== 'ACTIVE') return;
+    const idempotencyKey = `crm-whatsapp-eligibility-${messageId}-${errorCode}`;
+    await transaction.outboxRecord.createMany({
+      data: [{ idempotencyKey, kind: 'CRM', payload: {}, projectId }],
+      skipDuplicates: true,
+    });
+    const outbox = await transaction.outboxRecord.findUnique({
+      include: { crmOperation: { select: { id: true } } },
+      where: { projectId_idempotencyKey: { idempotencyKey, projectId } },
+    });
+    if (!outbox || outbox.crmOperation) return;
+    const operation = await transaction.crmOperation.create({
+      data: {
+        contactId,
+        inputSafe: { connectionId, errorCode, source: 'whatsapp_recipient_failure' },
+        outboxRecordId: outbox.id,
+        projectId,
+        type: 'CREATE_OR_UPDATE_LEAD',
+      },
+    });
+    await transaction.outboxRecord.update({
+      data: { payload: { crmOperationId: operation.id } },
+      where: { projectId_id: { id: outbox.id, projectId } },
+    });
   }
 
   private async unknown(

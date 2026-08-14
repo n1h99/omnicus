@@ -4461,7 +4461,7 @@ button:disabled,
 
 .automation-copy-field.ant-input-affix-wrapper .ant-input {
   background: transparent;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
   font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;

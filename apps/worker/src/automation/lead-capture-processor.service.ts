@@ -1,4 +1,5 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { DatabaseService } from '../database/database.service';
 import { AutomationRuntimeService } from './automation-runtime.service';
@@ -8,6 +9,7 @@ export class LeadCaptureProcessorService implements OnModuleInit, OnModuleDestro
   private readonly logger = new Logger(LeadCaptureProcessorService.name);
   private timer?: NodeJS.Timeout;
   private draining = false;
+  private lastDrainFailureLogAt = 0;
   private readonly workerId = `lead-capture:${process.pid}`;
 
   constructor(
@@ -43,6 +45,22 @@ export class LeadCaptureProcessorService implements OnModuleInit, OnModuleDestro
         },
       });
       for (const event of events) await this.process(event.id);
+    } catch (error) {
+      const now = Date.now();
+      if (now - this.lastDrainFailureLogAt >= 30_000) {
+        this.lastDrainFailureLogAt = now;
+        const candidate =
+          error && typeof error === 'object' ? (error as Record<string, unknown>).code : undefined;
+        this.logger.warn({
+          errorCode:
+            typeof candidate === 'string'
+              ? candidate
+              : error instanceof Error
+                ? error.name
+                : 'unknown_error',
+          message: 'lead_capture_poll_failed',
+        });
+      }
     } finally {
       this.draining = false;
     }
@@ -51,7 +69,12 @@ export class LeadCaptureProcessorService implements OnModuleInit, OnModuleDestro
   private async process(eventId: string): Promise<void> {
     const stale = new Date(Date.now() - 5 * 60 * 1_000);
     const claimed = await this.database.client.leadCaptureEvent.updateMany({
-      data: { attempts: { increment: 1 }, lockedAt: new Date(), lockedBy: this.workerId, status: 'PROCESSING' },
+      data: {
+        attempts: { increment: 1 },
+        lockedAt: new Date(),
+        lockedBy: this.workerId,
+        status: 'PROCESSING',
+      },
       where: {
         id: eventId,
         OR: [
@@ -64,15 +87,20 @@ export class LeadCaptureProcessorService implements OnModuleInit, OnModuleDestro
     try {
       await this.runtime.triggerLeadCapture(eventId);
     } catch (error) {
-      const current = await this.database.client.leadCaptureEvent.findUnique({ where: { id: eventId } });
+      const current = await this.database.client.leadCaptureEvent.findUnique({
+        where: { id: eventId },
+      });
       if (!current) return;
       const exhausted = current.attempts >= current.maxAttempts;
       await this.database.client.leadCaptureEvent.update({
         data: {
-          lastError: error instanceof Error ? error.message.slice(0, 200) : 'lead_capture_processing_failed',
+          lastError:
+            error instanceof Error ? error.message.slice(0, 200) : 'lead_capture_processing_failed',
           lockedAt: null,
           lockedBy: null,
-          nextAttemptAt: new Date(Date.now() + Math.min(300_000, 1_000 * 2 ** Math.min(current.attempts, 8))),
+          nextAttemptAt: new Date(
+            Date.now() + Math.min(300_000, 1_000 * 2 ** Math.min(current.attempts, 8)),
+          ),
           status: exhausted ? 'FAILED' : 'RETRY',
         },
         where: { id: eventId },

@@ -236,8 +236,7 @@ export class AutomationActivityService {
               status: 'COMPLETED' as const,
             })),
           ].sort(
-            (left, right) =>
-              (left.startedAt?.getTime() ?? 0) - (right.startedAt?.getTime() ?? 0),
+            (left, right) => (left.startedAt?.getTime() ?? 0) - (right.startedAt?.getTime() ?? 0),
           ),
           updatedAt: execution.updatedAt,
         };

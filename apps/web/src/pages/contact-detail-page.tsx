@@ -37,11 +37,18 @@ interface Contact {
   crmLeadId: string | null;
   crmContactId: string | null;
   customFields: Record<string, unknown>;
+  whatsAppConsentAt: string | null;
+  whatsAppConsentSource: string | null;
+  whatsAppConsentStatus: 'UNKNOWN' | 'GRANTED' | 'REVOKED';
+  whatsAppOptOutAt: string | null;
   channelIdentities: {
     id: string;
     channel: string;
     externalUserId: string;
     username: string | null;
+    whatsAppLastErrorCode: string | null;
+    whatsAppReachability: 'UNKNOWN' | 'PENDING' | 'AVAILABLE' | 'UNAVAILABLE' | 'BLOCKED' | null;
+    whatsAppReachabilityCheckedAt: string | null;
   }[];
   tags: { tag: { id: string; name: string; color: string | null } }[];
 }
@@ -126,6 +133,9 @@ export function ContactDetailPage() {
   const whatsappIdentity = value.channelIdentities.find(
     (identity) => identity.channel.toLowerCase() === 'whatsapp',
   );
+  const whatsAppReachability = whatsappIdentity?.whatsAppReachability ?? 'UNKNOWN';
+  const whatsAppMailingEligible =
+    value.whatsAppConsentStatus === 'GRANTED' && whatsAppReachability === 'AVAILABLE';
   const deleteContact = async () => {
     try {
       await apiRequest(
@@ -170,7 +180,22 @@ export function ContactDetailPage() {
                 <div className="contact-summary-row">
                   <div className="contact-summary-label">WhatsApp:</div>
                   <div className="contact-summary-value">
-                    {whatsappIdentity ? 'Connected' : '\u2014'}
+                    {whatsappIdentity
+                      ? whatsAppReachability.charAt(0) + whatsAppReachability.slice(1).toLowerCase()
+                      : 'Unknown'}
+                  </div>
+                </div>
+                <div className="contact-summary-row">
+                  <div className="contact-summary-label">WA consent:</div>
+                  <div className="contact-summary-value">
+                    {value.whatsAppConsentStatus.charAt(0) +
+                      value.whatsAppConsentStatus.slice(1).toLowerCase()}
+                  </div>
+                </div>
+                <div className="contact-summary-row">
+                  <div className="contact-summary-label">WA mailing:</div>
+                  <div className="contact-summary-value">
+                    {whatsAppMailingEligible ? 'Active' : 'Not eligible'}
                   </div>
                 </div>
                 <div className="contact-summary-row">
@@ -321,6 +346,21 @@ export function ContactDetailPage() {
                       options={[
                         { label: 'Enabled', value: 'ENABLED' },
                         { label: 'Disabled', value: 'DISABLED' },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col md={12} xs={24}>
+                  <Form.Item
+                    extra="Marketing broadcasts require Granted consent and an Available WhatsApp recipient."
+                    label="WhatsApp marketing consent"
+                    name="whatsAppConsentStatus"
+                  >
+                    <Select
+                      options={[
+                        { label: 'Unknown', value: 'UNKNOWN' },
+                        { label: 'Granted', value: 'GRANTED' },
+                        { label: 'Revoked', value: 'REVOKED' },
                       ]}
                     />
                   </Form.Item>

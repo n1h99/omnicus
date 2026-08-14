@@ -65,6 +65,11 @@ export class CaptureLeadDto {
   consents?: LeadCaptureConsentsDto;
 
   @IsOptional()
+  @IsString()
+  @Length(1, 160)
+  consentSource?: string;
+
+  @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
 }

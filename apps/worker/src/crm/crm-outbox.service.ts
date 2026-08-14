@@ -256,6 +256,28 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           channelIdentityId: 'contact-merge',
           connectionId: 'contact-merge',
         };
+    const whatsAppIdentity = operation.contact.channelIdentities.find(
+      (candidate) =>
+        candidate.channel === 'WHATSAPP' &&
+        (!connectionId || candidate.connectionId === connectionId),
+    );
+    const whatsAppReachability = whatsAppIdentity?.whatsAppReachability ?? 'UNKNOWN';
+    const whatsAppEligibility = {
+      activeForMailing:
+        operation.contact.whatsAppConsentStatus === 'GRANTED' &&
+        whatsAppReachability === 'AVAILABLE',
+      ...(operation.contact.whatsAppConsentSource
+        ? { consentSource: operation.contact.whatsAppConsentSource }
+        : {}),
+      consentStatus: operation.contact.whatsAppConsentStatus,
+      ...(whatsAppIdentity?.whatsAppReachabilityCheckedAt
+        ? { lastCheckedAt: whatsAppIdentity.whatsAppReachabilityCheckedAt.toISOString() }
+        : {}),
+      ...(whatsAppIdentity?.whatsAppLastErrorCode
+        ? { lastErrorCode: whatsAppIdentity.whatsAppLastErrorCode }
+        : {}),
+      reachability: whatsAppReachability,
+    };
     const context = {
       correlationId:
         operation.normalizedEvent?.inboxRecord.rawWebhookEvent.correlationId ??
@@ -336,6 +358,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           ...(operation.contact.phone ? { phone: operation.contact.phone } : {}),
           tags: operation.contact.tags.map(({ tag }) => tag),
           ...(operation.contact.username ? { username: operation.contact.username } : {}),
+          whatsApp: whatsAppEligibility,
         });
       else if (operation.type === 'FORWARD_INBOUND_MESSAGE')
         result = await this.client.forwardInboundMessage(context, {

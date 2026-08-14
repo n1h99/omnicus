@@ -175,9 +175,13 @@ describe('workspace lifecycle UI contracts', () => {
     expect(composer).toContain("image: 'PHOTO'");
     expect(broadcasts).toContain('whatsAppTemplateComposerIssue');
     expect(automation).toContain('whatsAppTemplate');
-    expect(automation).not.toContain('whatsAppConnectionId');
+    expect(automation).toContain('whatsappConnectionId');
+    expect(automation).toContain('whatsappButtons');
+    expect(automation).toContain('Add reply button');
     expect(automation).not.toContain('whatsAppTemplateId');
-    expect(automation).toContain('It is not saved in the scenario');
+    expect(automation).toContain(
+      'Free-form WhatsApp messages require an open customer-service window',
+    );
     expect(templates).toContain('Sync from Meta');
   });
 

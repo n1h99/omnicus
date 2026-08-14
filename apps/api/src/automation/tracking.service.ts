@@ -1,5 +1,5 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@omnicus/database';
+import type { Prisma } from '@omnicus/database';
 import { createHash } from 'node:crypto';
 
 import { DatabaseService } from '../database/database.service';
@@ -33,9 +33,7 @@ export class TrackingService {
       await transaction.trackedLinkClick.create({
         data: {
           contactId: link.contactId,
-          ...(input.ip
-            ? { ipHash: createHash('sha256').update(input.ip).digest('hex') }
-            : {}),
+          ...(input.ip ? { ipHash: createHash('sha256').update(input.ip).digest('hex') } : {}),
           isLikelyBot,
           projectId: link.projectId,
           ...(input.referrer ? { referrer: input.referrer.slice(0, 2_000) } : {}),
@@ -107,12 +105,18 @@ export class TrackingService {
   }
 
   private likelyBot(userAgent: string | undefined): boolean {
-    return !userAgent || /bot|crawler|spider|preview|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot/i.test(userAgent);
+    return (
+      !userAgent ||
+      /bot|crawler|spider|preview|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot/i.test(
+        userAgent,
+      )
+    );
   }
 
   private safeTarget(value: string): string {
     const target = new URL(value);
-    if (!['http:', 'https:'].includes(target.protocol)) throw new NotFoundException('tracked_link_invalid');
+    if (!['http:', 'https:'].includes(target.protocol))
+      throw new NotFoundException('tracked_link_invalid');
     return target.toString();
   }
 }
