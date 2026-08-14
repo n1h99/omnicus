@@ -461,7 +461,7 @@ function CampaignEditor({
       open
       placement="right"
       title={<span className="email-editor-title"><MailOutlined /> {campaign.name}</span>}
-      width="calc(100vw - 42px)"
+      width="100vw"
     >
       {!editable ? <Alert className="email-editor-alert" message={`This campaign is ${titleCase(campaign.status)}. Its recipient and content snapshot can no longer be edited.`} type="info" /> : null}
       <div className="email-campaign-settings">

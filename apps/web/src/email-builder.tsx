@@ -291,7 +291,10 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
         </div>
         <Divider />
         <Typography.Text className="email-builder-kicker">STYLE</Typography.Text>
-        <label className="email-field-label">Email width</label>
+        <div className="email-field-heading">
+          <label className="email-field-label">Email width</label>
+          <span>{document.settings.width}px</span>
+        </div>
         <Slider
           disabled={disabled}
           max={720}
@@ -369,10 +372,11 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
             >
               {document.blocks.map((block) => (
                 <div
-                  className={`email-canvas-block${block.id === selectedId ? ' is-selected' : ''}`}
+                  className={`email-canvas-block${block.id === selectedId ? ' is-selected' : ''}${block.id === draggedId ? ' is-dragging' : ''}`}
                   draggable={!disabled}
                   key={block.id}
                   onClick={() => setSelectedId(block.id)}
+                  onDragEnd={() => setDraggedId(undefined)}
                   onDragOver={(event) => event.preventDefault()}
                   onDragStart={() => setDraggedId(block.id)}
                   onDrop={() => drop(block.id)}
@@ -381,10 +385,25 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
                   <BlockVisual block={block} imageUrl={block.type === 'IMAGE' ? previewUrls[block.assetId] : undefined} />
                   <div className="email-canvas-block-actions">
                     <Tooltip title="Duplicate">
-                      <Button icon={<CopyOutlined />} onClick={() => duplicate(block)} size="small" />
+                      <Button
+                        icon={<CopyOutlined />}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          duplicate(block);
+                        }}
+                        size="small"
+                      />
                     </Tooltip>
                     <Tooltip title="Delete">
-                      <Button danger icon={<DeleteOutlined />} onClick={() => remove(block.id)} size="small" />
+                      <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          remove(block.id);
+                        }}
+                        size="small"
+                      />
                     </Tooltip>
                   </div>
                 </div>
