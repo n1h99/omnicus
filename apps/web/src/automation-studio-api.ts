@@ -34,6 +34,34 @@ export interface ExternalHttpTestResult {
   statusCode: number;
 }
 
+export interface LeadCaptureConfiguration {
+  bodyExample: Record<string, unknown>;
+  endpointUrl: string;
+  headers: {
+    'Idempotency-Key': string;
+    'X-Omnicus-Ingest-Key': string;
+  };
+  sourceKey: string;
+}
+
+export function useLeadCaptureConfiguration(
+  projectId: string | undefined,
+  sourceKey: string,
+  enabled: boolean,
+) {
+  const { accessToken } = useAuth();
+  return useQuery({
+    enabled: Boolean(projectId && sourceKey && enabled),
+    queryFn: () =>
+      apiRequest<LeadCaptureConfiguration>(
+        `/api/v1/projects/${projectId}/lead-capture/${encodeURIComponent(sourceKey)}`,
+        {},
+        accessToken,
+      ),
+    queryKey: ['lead-capture-configuration', projectId, sourceKey, accessToken],
+  });
+}
+
 export function useAutomationTags(projectId?: string) {
   const { accessToken } = useAuth();
   return useQuery({

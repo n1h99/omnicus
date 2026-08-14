@@ -429,7 +429,8 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
     }
     if (
       node.type === 'SEND_MESSAGE' &&
-      (typeof node.config.text !== 'string' || node.config.text.trim().length === 0)
+      (typeof node.config.text !== 'string' || node.config.text.trim().length === 0) &&
+      !isNonEmptyString(node.config.mediaAssetId)
     ) {
       errors.push(`Send Message node ${node.id} requires message text`);
     }
@@ -446,6 +447,50 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
       }
       if (deliveryTarget === 'WHATSAPP' && !isNonEmptyString(node.config.whatsappConnectionId)) {
         errors.push(`Send Message node ${node.id} requires a WhatsApp connection`);
+      }
+      if (
+        deliveryTarget !== 'TELEGRAM' &&
+        Array.isArray(node.config.telegramButtons) &&
+        node.config.telegramButtons.length > 0
+      ) {
+        errors.push(`Send Message node ${node.id} can use URL buttons only with Telegram`);
+      }
+      if (Array.isArray(node.config.telegramButtons)) {
+        for (const button of node.config.telegramButtons) {
+          if (
+            !button ||
+            typeof button !== 'object' ||
+            !isNonEmptyString((button as Record<string, unknown>).text) ||
+            !isNonEmptyString((button as Record<string, unknown>).url)
+          ) {
+            errors.push(`Send Message node ${node.id} has an incomplete Telegram URL button`);
+            break;
+          }
+        }
+      }
+    }
+    if (node.type === 'INCOMING_MESSAGE') {
+      const triggerType =
+        typeof node.config.triggerType === 'string'
+          ? node.config.triggerType
+          : 'INCOMING_MESSAGE';
+      if (!['INCOMING_MESSAGE', 'WEBSITE_REGISTRATION', 'TELEGRAM_DEEP_LINK'].includes(triggerType)) {
+        errors.push(`Incoming Message node ${node.id} has an unsupported trigger type`);
+      }
+      if (
+        triggerType === 'WEBSITE_REGISTRATION' &&
+        (!isNonEmptyString(node.config.sourceKey) ||
+          !/^[a-z0-9][a-z0-9_-]{1,63}$/.test(node.config.sourceKey as string))
+      ) {
+        errors.push(`Incoming Message node ${node.id} requires a valid website source key`);
+      }
+      if (
+        triggerType === 'TELEGRAM_DEEP_LINK' &&
+        (!isNonEmptyString(node.config.connectionId) ||
+          !isNonEmptyString(node.config.startPayload) ||
+          !/^[A-Za-z0-9_-]{1,64}$/.test(node.config.startPayload as string))
+      ) {
+        errors.push(`Incoming Message node ${node.id} requires a Telegram connection and start payload`);
       }
     }
     if (node.type === 'EXTERNAL_HTTP_REQUEST') {

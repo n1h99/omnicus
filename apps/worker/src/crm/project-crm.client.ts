@@ -18,6 +18,7 @@ import {
   type ForwardContactShareInput,
   type ForwardAutomationStateInput,
   type ForwardMessageStatusInput,
+  type ForwardTrackedLinkClickInput,
 } from '@omnicus/crm-core';
 import { DatabaseService } from '../database/database.service';
 
@@ -104,6 +105,16 @@ export class ProjectCrmClient implements CrmClient {
     if (!client.forwardMessageStatus)
       throw new CrmClientError('PERMANENT_FAILURE', 'crm_message_status_unsupported');
     return client.forwardMessageStatus(context, input);
+  }
+
+  async forwardTrackedLinkClick(
+    context: CrmCallContext,
+    input: ForwardTrackedLinkClickInput,
+  ): Promise<CrmResult> {
+    const client = await this.resolve(context);
+    if (!client.forwardTrackedLinkClick)
+      throw new CrmClientError('PERMANENT_FAILURE', 'crm_tracked_link_unsupported');
+    return client.forwardTrackedLinkClick(context, input);
   }
 
   async reconcile(context: CrmCallContext): Promise<CrmReconciliationResult> {

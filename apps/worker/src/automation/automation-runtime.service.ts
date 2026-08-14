@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 
 import { Inject, Injectable } from '@nestjs/common';
 import {
@@ -60,6 +60,90 @@ export class AutomationRuntimeService {
     await this.database.client.$transaction((transaction) =>
       this.triggerInTransaction(transaction, input),
     );
+  }
+
+  async triggerLeadCapture(eventId: string): Promise<void> {
+    await this.database.client.$transaction(async (transaction) => {
+      const event = await transaction.leadCaptureEvent.findUnique({ where: { id: eventId } });
+      if (!event || event.status === 'COMPLETED') return;
+      const [contact, scenarios] = await Promise.all([
+        transaction.contact.findUnique({
+          select: {
+            automationMode: true,
+            customFields: true,
+            displayName: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            phone: true,
+            username: true,
+          },
+          where: { projectId_id: { id: event.contactId, projectId: event.projectId } },
+        }),
+        transaction.scenario.findMany({
+          include: { activeVersion: { select: { compiledDefinition: true, id: true } } },
+          where: { projectId: event.projectId, status: 'PUBLISHED' },
+        }),
+      ]);
+      if (!contact || contact.automationMode !== 'ENABLED') {
+        await transaction.leadCaptureEvent.update({
+          data: { processedAt: new Date(), status: 'COMPLETED' },
+          where: { id: event.id },
+        });
+        return;
+      }
+      const context: RuntimeContext = {
+        connectionId: '',
+        contactId: event.contactId,
+        contactVariables: this.contactVariables(contact),
+        conversationId: '',
+        customFields: contact.customFields,
+        eventPayload: event.payload,
+        normalizedEventId: '',
+        projectId: event.projectId,
+        subflowDepth: 0,
+        variables: {},
+      };
+      for (const scenario of scenarios) {
+        const version = scenario.activeVersion;
+        if (!version?.compiledDefinition) continue;
+        const graph = scenarioGraphSchema.safeParse(version.compiledDefinition);
+        if (!graph.success || !this.matchesWebsiteTrigger(graph.data, event.sourceKey)) continue;
+        const triggerKey = `lead-capture:${event.id}`;
+        const execution = await transaction.scenarioExecution.upsert({
+          create: {
+            contactId: event.contactId,
+            conversationId: null,
+            conversationSequence: null,
+            correlationId: triggerKey,
+            projectId: event.projectId,
+            scenarioId: scenario.id,
+            scenarioVersionId: version.id,
+            startedAt: new Date(),
+            status: 'RUNNING',
+            triggerEventId: null,
+            triggerKey,
+            triggerPayload: event.payload as Prisma.InputJsonValue,
+            triggerType: 'WEBSITE_REGISTRATION',
+          },
+          update: {},
+          where: {
+            projectId_scenarioId_triggerKey: {
+              projectId: event.projectId,
+              scenarioId: scenario.id,
+              triggerKey,
+            },
+          },
+        });
+        if (!['COMPLETED', 'CANCELLED', 'FAILED'].includes(execution.status)) {
+          await this.executeGraph(transaction, graph.data, execution.id, context);
+        }
+      }
+      await transaction.leadCaptureEvent.update({
+        data: { lastError: null, lockedAt: null, lockedBy: null, processedAt: new Date(), status: 'COMPLETED' },
+        where: { id: event.id },
+      });
+    });
   }
 
   /** Resolves durable waits before normal scenario triggering for the same inbound event. */
@@ -166,6 +250,7 @@ export class AutomationRuntimeService {
       if (!version?.compiledDefinition) continue;
       const graph = scenarioGraphSchema.safeParse(version.compiledDefinition);
       if (!graph.success) continue;
+      if (!this.matchesInboundTrigger(graph.data, event.payload, input.connectionId)) continue;
       const execution = await transaction.scenarioExecution.upsert({
         create: {
           contactId: input.contactId,
@@ -179,6 +264,8 @@ export class AutomationRuntimeService {
           status: 'RUNNING',
           triggerEventId: input.normalizedEventId,
           triggerKey: input.normalizedEventId,
+          triggerPayload: event.payload as Prisma.InputJsonValue,
+          triggerType: 'INCOMING_MESSAGE',
         },
         update: {},
         where: {
@@ -268,20 +355,24 @@ export class AutomationRuntimeService {
       return;
     const graph = scenarioGraphSchema.safeParse(execution.scenarioVersion.compiledDefinition);
     if (!graph.success) throw new Error('automation_graph_invalid');
-    const [contact, event] = await Promise.all([
+    const eventId = eventOverride?.normalizedEventId ?? execution.triggerEventId;
+    const [contact, event, conversation] = await Promise.all([
       transaction.contact.findUnique({
         where: { projectId_id: { id: execution.contactId, projectId } },
       }),
-      transaction.normalizedEvent.findUnique({
-        where: {
-          projectId_id: {
-            id: eventOverride?.normalizedEventId ?? execution.triggerEventId,
-            projectId,
-          },
-        },
-      }),
+      eventId
+        ? transaction.normalizedEvent.findUnique({
+            where: { projectId_id: { id: eventId, projectId } },
+          })
+        : Promise.resolve(null),
+      execution.conversationId
+        ? transaction.conversation.findUnique({
+            where: { projectId_id: { id: execution.conversationId, projectId } },
+          })
+        : Promise.resolve(null),
     ]);
-    if (!contact || !event) throw new Error('automation_execution_context_missing');
+    if (!contact || (!event && execution.triggerPayload === null))
+      throw new Error('automation_execution_context_missing');
     await transaction.scenarioExecution.update({
       data: { currentNodeId: startNodeId ?? null, status: 'RUNNING' },
       where: { projectId_id: { id: executionId, projectId } },
@@ -291,19 +382,13 @@ export class AutomationRuntimeService {
       graph.data,
       executionId,
       {
-        connectionId:
-          eventOverride?.connectionId ??
-          (
-            await transaction.conversation.findUniqueOrThrow({
-              where: { projectId_id: { id: execution.conversationId, projectId } },
-            })
-          ).connectionId,
+        connectionId: eventOverride?.connectionId ?? conversation?.connectionId ?? '',
         contactId: execution.contactId,
         contactVariables: this.contactVariables(contact),
-        conversationId: execution.conversationId,
+        conversationId: execution.conversationId ?? '',
         customFields: contact.customFields,
-        eventPayload: event.payload,
-        normalizedEventId: eventOverride?.normalizedEventId ?? execution.triggerEventId,
+        eventPayload: event?.payload ?? execution.triggerPayload ?? {},
+        normalizedEventId: eventId ?? '',
         projectId,
         subflowDepth: 0,
         variables: execution.variables,
@@ -530,7 +615,8 @@ export class AutomationRuntimeService {
           scenarioVersionId: targetVersion.id,
           startedAt: new Date(),
           status: 'RUNNING',
-          triggerEventId: context.normalizedEventId,
+          triggerEventId: context.normalizedEventId || null,
+          triggerPayload: context.eventPayload as Prisma.InputJsonValue,
           triggerKey: `subflow:${executionId}:${node.id}`,
         },
         update: {},
@@ -791,7 +877,7 @@ export class AutomationRuntimeService {
       (await transaction.crmOperation.findFirst({
         select: { id: true },
         where: {
-          normalizedEventId: context.normalizedEventId,
+          ...(context.normalizedEventId ? { normalizedEventId: context.normalizedEventId } : {}),
           projectId: context.projectId,
           type: 'FORWARD_INBOUND_MESSAGE',
         },
@@ -899,7 +985,39 @@ export class AutomationRuntimeService {
             : typeof node.config.text === 'string'
               ? node.config.text
               : undefined;
-    if (!whatsAppTemplate.success && (sourceText === undefined || sourceText.trim().length === 0))
+    const configuredMediaAssetId =
+      node.type === 'SEND_MESSAGE' && typeof nodeConfig.mediaAssetId === 'string'
+        ? nodeConfig.mediaAssetId
+        : undefined;
+    const configuredMediaAsset = configuredMediaAssetId
+      ? await transaction.mediaAsset.findFirst({
+          where: { id: configuredMediaAssetId, projectId: context.projectId, status: 'AVAILABLE' },
+        })
+      : undefined;
+    if (configuredMediaAssetId && !configuredMediaAsset)
+      throw new Error('automation_media_asset_unavailable');
+    const configuredMediaValidationChannel = configuredMediaAsset
+      ? this.object(configuredMediaAsset.providerMetadata)?.validationChannel
+      : undefined;
+    const configuredMediaChannel =
+      configuredMediaValidationChannel === 'telegram'
+        ? 'TELEGRAM'
+        : configuredMediaValidationChannel === 'whatsapp'
+          ? 'WHATSAPP'
+          : configuredMediaAsset?.source === 'TELEGRAM' ||
+              configuredMediaAsset?.source === 'WHATSAPP'
+            ? configuredMediaAsset.source
+            : undefined;
+    if (
+      configuredMediaChannel &&
+      configuredMediaChannel !== channelType
+    )
+      throw new Error('automation_media_channel_mismatch');
+    if (
+      !whatsAppTemplate.success &&
+      !configuredMediaAsset &&
+      (sourceText === undefined || sourceText.trim().length === 0)
+    )
       throw new Error('automation_message_content_missing');
     const variables = {
       ...this.object(context.variables),
@@ -910,6 +1028,17 @@ export class AutomationRuntimeService {
     };
     const rendered = sourceText === undefined ? undefined : renderTemplate(sourceText, variables);
     if (rendered?.missing.length) throw new Error('automation_template_variable_missing');
+    const renderedText =
+      rendered && nodeConfig.trackLinks === true
+        ? await this.rewriteTrackedLinks(
+            transaction,
+            rendered.output,
+            context,
+            executionId,
+            node.id,
+            typeof nodeConfig.trackingBaseUrl === 'string' ? nodeConfig.trackingBaseUrl : '',
+          )
+        : rendered?.output;
     let renderedWhatsAppTemplate: Prisma.InputJsonObject | undefined;
     if (whatsAppTemplate.success) {
       const components = whatsAppTemplate.data.components?.map((component) => ({
@@ -959,6 +1088,8 @@ export class AutomationRuntimeService {
     });
     if (!identity) throw new Error('automation_channel_identity_unavailable');
     if (channelType === 'WHATSAPP' && !renderedWhatsAppTemplate) {
+      if (Array.isArray(nodeConfig.telegramButtons) && nodeConfig.telegramButtons.length)
+        throw new Error('automation_whatsapp_buttons_require_template');
       const conversation = await transaction.conversation.findUnique({
         select: { serviceWindowExpiresAt: true },
         where: {
@@ -971,6 +1102,16 @@ export class AutomationRuntimeService {
       )
         throw new Error('automation_whatsapp_service_window_closed');
     }
+    const telegramButtons =
+      channelType === 'TELEGRAM'
+        ? await this.telegramButtons(
+            transaction,
+            nodeConfig,
+            context,
+            executionId,
+            node.id,
+          )
+        : undefined;
     const idempotencyKey = `automation-${executionId}-${node.id}`;
     const existing = await transaction.outboxRecord.findUnique({
       where: { projectId_idempotencyKey: { idempotencyKey, projectId: context.projectId } },
@@ -990,17 +1131,20 @@ export class AutomationRuntimeService {
         content: renderedWhatsAppTemplate
           ? { whatsAppTemplate: renderedWhatsAppTemplate }
           : templateVersion && templateVersion.kind !== 'TEXT'
-            ? { caption: rendered!.output }
-            : { text: rendered!.output },
+            ? { caption: renderedText ?? '' }
+            : configuredMediaAsset
+              ? { caption: renderedText ?? '' }
+              : { text: renderedText! },
         conversationId: context.conversationId,
         direction: 'OUTBOUND',
-        mediaAssetId: templateVersion?.mediaAssetId ?? null,
+        mediaAssetId: templateVersion?.mediaAssetId ?? configuredMediaAsset?.id ?? null,
         metadata: {
           source: 'automation',
           scenarioExecutionId: executionId,
           ...(templateContent?.inlineKeyboard
             ? { inlineKeyboard: templateContent.inlineKeyboard }
             : {}),
+          ...(telegramButtons?.length ? { inlineKeyboard: telegramButtons } : {}),
           ...(templateVersion
             ? {
                 templateId: templateVersion.templateId,
@@ -1010,7 +1154,9 @@ export class AutomationRuntimeService {
         },
         projectId: context.projectId,
         status: 'QUEUED',
-        type: renderedWhatsAppTemplate ? 'TEXT' : (templateVersion?.kind ?? 'TEXT'),
+        type: renderedWhatsAppTemplate
+          ? 'TEXT'
+          : (templateVersion?.kind ?? configuredMediaAsset?.kind ?? 'TEXT'),
       },
     });
     const outbox = await transaction.outboxRecord.create({
@@ -1028,6 +1174,108 @@ export class AutomationRuntimeService {
       messageId: message.id,
       outboxRecordId: outbox.id,
     };
+  }
+
+  private matchesWebsiteTrigger(graph: ScenarioGraph, sourceKey: string): boolean {
+    const trigger = graph.nodes.find((node) => node.type === 'INCOMING_MESSAGE');
+    const config = this.object(trigger?.config);
+    return (
+      config.triggerType === 'WEBSITE_REGISTRATION' &&
+      typeof config.sourceKey === 'string' &&
+      config.sourceKey.trim().toLowerCase() === sourceKey
+    );
+  }
+
+  private matchesInboundTrigger(
+    graph: ScenarioGraph,
+    payload: Prisma.JsonValue,
+    connectionId: string,
+  ): boolean {
+    const trigger = graph.nodes.find((node) => node.type === 'INCOMING_MESSAGE');
+    const config = this.object(trigger?.config);
+    const triggerType =
+      typeof config.triggerType === 'string' ? config.triggerType : 'INCOMING_MESSAGE';
+    if (triggerType === 'WEBSITE_REGISTRATION') return false;
+    const event = this.object(payload);
+    const content = this.object(event.content);
+    const args = Array.isArray(content.arguments) ? content.arguments : [];
+    if (triggerType !== 'TELEGRAM_DEEP_LINK') {
+      return !(content.command === 'start' && args.length > 0);
+    }
+    if (typeof config.connectionId === 'string' && config.connectionId !== connectionId)
+      return false;
+    return (
+      content.command === 'start' &&
+      typeof config.startPayload === 'string' &&
+      args[0] === config.startPayload
+    );
+  }
+
+  private async rewriteTrackedLinks(
+    transaction: RuntimeTransaction,
+    text: string,
+    context: RuntimeContext,
+    executionId: string,
+    nodeId: string,
+    baseUrl: string,
+  ): Promise<string> {
+    if (!baseUrl) throw new Error('automation_tracking_base_url_missing');
+    const normalizedBaseUrl = new URL(baseUrl).toString().replace(/\/$/, '');
+    const matches = [...new Set(text.match(/https?:\/\/[^\s<>"']+/g) ?? [])];
+    let output = text;
+    for (const rawTarget of matches) {
+      const punctuation = rawTarget.match(/[),.!?;:]+$/)?.[0] ?? '';
+      const targetUrl = punctuation ? rawTarget.slice(0, -punctuation.length) : rawTarget;
+      const existing = await transaction.trackedLink.findFirst({
+        where: { nodeId, projectId: context.projectId, scenarioExecutionId: executionId, targetUrl },
+      });
+      const link =
+        existing ??
+        (await transaction.trackedLink.create({
+          data: {
+            contactId: context.contactId,
+            nodeId,
+            projectId: context.projectId,
+            scenarioExecutionId: executionId,
+            targetUrl,
+            token: randomBytes(18).toString('base64url'),
+          },
+        }));
+      output = output.split(rawTarget).join(`${normalizedBaseUrl}/r/${link.token}${punctuation}`);
+    }
+    return output;
+  }
+
+  private async telegramButtons(
+    transaction: RuntimeTransaction,
+    config: Record<string, Prisma.JsonValue>,
+    context: RuntimeContext,
+    executionId: string,
+    nodeId: string,
+  ): Promise<Array<Array<{ text: string; url: string }>> | undefined> {
+    if (!Array.isArray(config.telegramButtons)) return undefined;
+    const rows: Array<Array<{ text: string; url: string }>> = [];
+    for (const rawButton of config.telegramButtons.slice(0, 8)) {
+      const button = this.object(rawButton);
+      if (typeof button.text !== 'string' || typeof button.url !== 'string')
+        throw new Error('automation_telegram_button_invalid');
+      const url = new URL(button.url);
+      if (!['http:', 'https:'].includes(url.protocol))
+        throw new Error('automation_telegram_button_invalid');
+      const renderedUrl =
+        config.trackLinks === true
+          ? await this.rewriteTrackedLinks(
+              transaction,
+              url.toString(),
+              context,
+              executionId,
+              nodeId,
+              typeof config.trackingBaseUrl === 'string' ? config.trackingBaseUrl : '',
+            )
+          : url.toString();
+      rows.push([{ text: button.text.slice(0, 64), url: renderedUrl }]);
+    }
+    return rows;
   }
 
   private resolveSendMessageDeliveryTarget(

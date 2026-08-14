@@ -133,7 +133,7 @@ describe('HttpCrmClient', () => {
 
     await client.forwardInboundMessage(context, {
       contactId: 'contact-a',
-      identity: leadInput.identity,
+      identity: leadInput.identity!,
       interactive: {
         callbackQueryId: 'callback-a',
         data: 'budget:1000',
@@ -194,7 +194,7 @@ describe('HttpCrmClient', () => {
     await client.forwardOutboundMessage(context, {
       contactId: 'contact-a',
       deliveryStatus: 'SENT',
-      identity: leadInput.identity,
+      identity: leadInput.identity!,
       inlineKeyboard: [[{ callbackData: 'budget:1000', text: 'Under 1000' }]],
       entities: [{ length: 4, offset: 0, type: 'bold' }],
       hasSpoiler: true,
@@ -262,7 +262,7 @@ describe('HttpCrmClient', () => {
           type: 'user',
         },
         contactId: 'contact-a',
-        identity: leadInput.identity,
+        identity: leadInput.identity!,
         messageId: '11111111-1111-4111-8111-111111111111',
         newReactions: [{ emoji: '👍', type: 'emoji' }],
         normalizedEventId: '22222222-2222-4222-8222-222222222222',
@@ -304,7 +304,7 @@ describe('HttpCrmClient', () => {
       client.forwardReactionEvent(context, {
         actor: { displayName: 'Test', externalUserId: '123', type: 'user' },
         contactId: 'contact-a',
-        identity: leadInput.identity,
+        identity: leadInput.identity!,
         messageId: '11111111-1111-4111-8111-111111111111',
         newReactions: [{ emoji: '👍', type: 'emoji' }],
         normalizedEventId: '22222222-2222-4222-8222-222222222222',
@@ -345,7 +345,7 @@ describe('HttpCrmClient', () => {
       client.forwardReactionEvent(context, {
         actor: { displayName: 'Test', externalUserId: '123', type: 'user' },
         contactId: 'contact-a',
-        identity: leadInput.identity,
+        identity: leadInput.identity!,
         messageId: '11111111-1111-4111-8111-111111111111',
         newReactions: [{ emoji: '👍', type: 'emoji' }],
         normalizedEventId: '22222222-2222-4222-8222-222222222222',

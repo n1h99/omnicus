@@ -67,6 +67,7 @@ describe('AutomationActivityService', () => {
           findMany: vi.fn().mockResolvedValue([{ id: 'scenario-a', name: 'Welcome journey' }]),
         },
         scenarioExecution,
+        trackedLink: { findMany: vi.fn().mockResolvedValue([]) },
       },
     } as never);
 

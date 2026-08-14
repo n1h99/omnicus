@@ -962,6 +962,7 @@ export function ScenarioEditorPage() {
                           setConfigs((current) => ({ ...current, [selected.id]: config }));
                         }}
                         projectId={projectId}
+                        scenarioId={scenarioId}
                         scenarios={(scenarios.data ?? []).filter(
                           (candidate) => candidate.id !== scenarioId,
                         )}

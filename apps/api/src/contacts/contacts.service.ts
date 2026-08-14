@@ -131,10 +131,22 @@ export class ContactsService {
             ? {}
             : { customFields: nextCustomFields as Prisma.InputJsonValue }),
           ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
-          ...(input.email === undefined ? {} : { email: input.email }),
+          ...(input.email === undefined
+            ? {}
+            : {
+                email: input.email,
+                normalizedEmail: input.email?.trim().toLowerCase() || null,
+              }),
           ...(input.firstName === undefined ? {} : { firstName: input.firstName }),
           ...(input.lastName === undefined ? {} : { lastName: input.lastName }),
-          ...(input.phone === undefined ? {} : { phone: input.phone }),
+          ...(input.phone === undefined
+            ? {}
+            : {
+                normalizedPhone: input.phone?.trim()
+                  ? input.phone.replace(/\D/g, '')
+                  : null,
+                phone: input.phone,
+              }),
           ...(input.status === undefined
             ? {}
             : {

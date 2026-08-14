@@ -357,7 +357,11 @@ export class ExternalHttpOutboxService implements OnApplicationBootstrap, OnAppl
   private variables(
     operation: NonNullable<Awaited<ReturnType<ExternalHttpOutboxService['load']>>>,
   ): Record<string, unknown> {
-    const event = this.record(operation.execution.triggerEvent.payload);
+    const triggerEvent = operation.execution.triggerEvent;
+    const conversation = operation.execution.conversation;
+    if (!triggerEvent || !conversation)
+      throw new ExternalHttpError('PERMANENT_FAILURE', 'external_http_context_unavailable');
+    const event = this.record(triggerEvent.payload);
     const content = this.record(event.content);
     const executionVariables = this.record(operation.execution.variables);
     return {
@@ -372,7 +376,7 @@ export class ExternalHttpOutboxService implements OnApplicationBootstrap, OnAppl
         phone: operation.execution.contact.phone,
         username: operation.execution.contact.username,
       },
-      conversation: { id: operation.execution.conversation.id },
+      conversation: { id: conversation.id },
       message: {
         id: operation.execution.triggerEventId,
         text: content.text,
@@ -380,7 +384,7 @@ export class ExternalHttpOutboxService implements OnApplicationBootstrap, OnAppl
       },
       nodes: this.record(executionVariables.nodes),
       project: operation.execution.project,
-      trigger: { occurredAt: operation.execution.triggerEvent.createdAt, type: event.type },
+      trigger: { occurredAt: triggerEvent.createdAt, type: event.type },
       variables: executionVariables,
     };
   }

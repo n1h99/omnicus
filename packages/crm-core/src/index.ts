@@ -116,10 +116,20 @@ export interface CreateOrUpdateLeadInput {
   customFields: Record<string, unknown>;
   displayName?: string;
   email?: string;
-  identity: CrmIdentityInput;
+  identity?: CrmIdentityInput;
   phone?: string;
   tags: CrmTagInput[];
   username?: string;
+}
+
+export interface ForwardTrackedLinkClickInput {
+  clickedAt: string;
+  contactId: string;
+  nodeId: string;
+  scenarioExecutionId: string;
+  targetUrl: string;
+  trackedLinkId: string;
+  userAgent?: string;
 }
 
 export interface MergeContactsInput {
@@ -275,6 +285,10 @@ export interface CrmClient {
   forwardMessageStatus?(
     context: CrmCallContext,
     input: ForwardMessageStatusInput,
+  ): Promise<CrmResult>;
+  forwardTrackedLinkClick(
+    context: CrmCallContext,
+    input: ForwardTrackedLinkClickInput,
   ): Promise<CrmResult>;
   reconcile(context: CrmCallContext): Promise<CrmReconciliationResult>;
 }
@@ -620,6 +634,33 @@ export class HttpCrmClient implements CrmClient {
     };
   }
 
+  async forwardTrackedLinkClick(
+    context: CrmCallContext,
+    input: ForwardTrackedLinkClickInput,
+  ): Promise<CrmResult> {
+    const result = await this.postAndReconcile(
+      '/integrations/v1/omnicus/tracking/clicked',
+      context,
+      {
+        clickedAt: input.clickedAt,
+        crmProjectId: context.crmProjectId,
+        nodeId: input.nodeId,
+        omnicusContactId: input.contactId,
+        omnicusProjectId: context.projectId,
+        scenarioExecutionId: input.scenarioExecutionId,
+        targetUrl: input.targetUrl,
+        trackedLinkId: input.trackedLinkId,
+        ...(input.userAgent ? { userAgent: input.userAgent } : {}),
+      },
+      leadResultSchema,
+    );
+    return {
+      mode: result.mode,
+      operationId: result.operationId,
+      providerReference: result.crmLeadId,
+    };
+  }
+
   async reconcile(context: CrmCallContext): Promise<CrmReconciliationResult> {
     const url = new URL('/integrations/v1/omnicus/operations', `${this.baseUrl}/`);
     url.searchParams.set('crmProjectId', context.crmProjectId);
@@ -806,6 +847,13 @@ export class MockCrmClient implements CrmClient {
     _input: ForwardMessageStatusInput,
   ): Promise<CrmResult> {
     return this.perform(context, 'message');
+  }
+
+  async forwardTrackedLinkClick(
+    context: CrmCallContext,
+    _input: ForwardTrackedLinkClickInput,
+  ): Promise<CrmResult> {
+    return this.perform(context, 'lead');
   }
 
   async reconcile(context: CrmCallContext): Promise<CrmReconciliationResult> {

@@ -207,7 +207,7 @@ export class AutomationService {
         username: execution.contact.username,
       },
       customFields: this.record(execution.contact.customFields),
-      event: this.record(execution.triggerEvent.payload),
+      event: this.record(execution.triggerEvent?.payload ?? execution.triggerPayload ?? {}),
     });
     await this.audit.record({
       action: 'scenario.execution_test_replayed',
@@ -366,7 +366,7 @@ export class AutomationService {
         });
       await transaction.scenarioVersion.update({
         data: {
-          compiledDefinition: this.toJson(draftVersion.graph),
+          compiledDefinition: this.compiledDefinition(draftVersion.graph),
           publishedAt: new Date(),
           status: 'PUBLISHED',
           validation: this.toJson(validation),
@@ -744,6 +744,21 @@ export class AutomationService {
 
   private toJson(value: unknown): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+  }
+
+  private compiledDefinition(value: unknown): Prisma.InputJsonValue {
+    const graph = JSON.parse(JSON.stringify(value)) as {
+      nodes?: Array<{ config?: Record<string, unknown>; type?: string }>;
+    };
+    const publicUrl = process.env.API_PUBLIC_URL?.trim().replace(/\/$/, '');
+    if (publicUrl) {
+      for (const node of graph.nodes ?? []) {
+        if (node.type === 'SEND_MESSAGE' && node.config?.trackLinks === true) {
+          node.config.trackingBaseUrl = publicUrl;
+        }
+      }
+    }
+    return graph as Prisma.InputJsonValue;
   }
 
   private record(value: Prisma.JsonValue): Record<string, unknown> {

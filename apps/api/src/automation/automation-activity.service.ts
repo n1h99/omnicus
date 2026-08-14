@@ -148,6 +148,27 @@ export class AutomationActivityService {
       : [];
     const scenarioNames = new Map(scenarios.map((scenario) => [scenario.id, scenario.name]));
     const summary = this.summary(statuses);
+    const trackedLinks = items.length
+      ? await this.database.client.trackedLink.findMany({
+          orderBy: { createdAt: 'asc' },
+          select: {
+            firstClickedAt: true,
+            nodeId: true,
+            scenarioExecutionId: true,
+            targetUrl: true,
+          },
+          where: {
+            firstClickedAt: { not: null },
+            scenarioExecutionId: { in: items.map((execution) => execution.id) },
+          },
+        })
+      : [];
+    const trackedLinksByExecution = new Map<string, typeof trackedLinks>();
+    for (const link of trackedLinks) {
+      const links = trackedLinksByExecution.get(link.scenarioExecutionId) ?? [];
+      links.push(link);
+      trackedLinksByExecution.set(link.scenarioExecutionId, links);
+    }
 
     return {
       breakdown: {
@@ -197,14 +218,27 @@ export class AutomationActivityService {
           startedAt: execution.startedAt,
           status: execution.status,
           statusLabel: statusLabels[execution.status],
-          timeline: execution.nodeExecutions.map((node) => ({
-            completedAt: node.completedAt,
-            label: this.nodeLabel(node.nodeType),
-            nodeId: node.nodeId,
-            reason: node.status === 'FAILED' ? this.errorLabel(node.errorSafe) : null,
-            startedAt: node.startedAt,
-            status: node.status,
-          })),
+          timeline: [
+            ...execution.nodeExecutions.map((node) => ({
+              completedAt: node.completedAt,
+              label: this.nodeLabel(node.nodeType),
+              nodeId: node.nodeId,
+              reason: node.status === 'FAILED' ? this.errorLabel(node.errorSafe) : null,
+              startedAt: node.startedAt,
+              status: node.status,
+            })),
+            ...(trackedLinksByExecution.get(execution.id) ?? []).map((link) => ({
+              completedAt: link.firstClickedAt,
+              label: 'Tracked link opened',
+              nodeId: link.nodeId,
+              reason: link.targetUrl,
+              startedAt: link.firstClickedAt,
+              status: 'COMPLETED' as const,
+            })),
+          ].sort(
+            (left, right) =>
+              (left.startedAt?.getTime() ?? 0) - (right.startedAt?.getTime() ?? 0),
+          ),
           updatedAt: execution.updatedAt,
         };
       }),

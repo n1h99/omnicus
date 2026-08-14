@@ -119,6 +119,7 @@ enum CrmOperationType {
   FORWARD_CONTACT_SHARE
   FORWARD_AUTOMATION_STATE
   FORWARD_MESSAGE_STATUS
+  FORWARD_TRACKED_LINK_CLICK
 }
 
 enum CrmProvider {
@@ -664,6 +665,8 @@ model Contact {
   username            String?
   phone               String?
   email               String?
+  normalizedPhone     String?
+  normalizedEmail     String?
   status              ContactStatus             @default(ACTIVE)
   automationMode      AutomationMode            @default(ENABLED)
   crmLeadId           String?
@@ -696,6 +699,8 @@ model Contact {
   @@index([projectId, displayName])
   @@index([projectId, crmLeadId])
   @@index([projectId, mergedIntoContactId])
+  @@index([projectId, normalizedPhone])
+  @@index([projectId, normalizedEmail])
   @@map("contacts")
 }
 
@@ -896,10 +901,12 @@ model ScenarioExecution {
   scenarioId              String
   scenarioVersionId       String
   contactId               String
-  conversationId          String
-  triggerEventId          String
+  conversationId          String?
+  triggerEventId          String?
   triggerKey              String
-  conversationSequence    BigInt
+  conversationSequence    BigInt?
+  triggerType             String                  @default("INCOMING_MESSAGE")
+  triggerPayload          Json?
   parentExecutionId       String?
   resumeNodeId            String?
   status                  ScenarioExecutionStatus @default(QUEUED)
@@ -917,8 +924,8 @@ model ScenarioExecution {
   scenario                Scenario                @relation(fields: [projectId, scenarioId], references: [projectId, id], onDelete: Restrict)
   scenarioVersion         ScenarioVersion         @relation(fields: [projectId, scenarioId, scenarioVersionId], references: [projectId, scenarioId, id], onDelete: Restrict)
   contact                 Contact                 @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
-  conversation            Conversation            @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
-  triggerEvent            NormalizedEvent         @relation(fields: [projectId, triggerEventId], references: [projectId, id], onDelete: Restrict)
+  conversation            Conversation?           @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
+  triggerEvent            NormalizedEvent?        @relation(fields: [projectId, triggerEventId], references: [projectId, id], onDelete: Restrict)
   nodeExecutions          NodeExecution[]
   waitStates              WaitState[]
   delayedActions          DelayedAction[]
@@ -933,6 +940,67 @@ model ScenarioExecution {
   @@index([projectId, triggerEventId])
   @@index([projectId, parentExecutionId, status])
   @@map("scenario_executions")
+}
+
+model LeadCaptureEvent {
+  id             String   @id @default(uuid())
+  projectId      String
+  contactId      String
+  sourceKey      String
+  idempotencyKey String
+  requestHash    String
+  payload        Json
+  status         String   @default("PENDING")
+  attempts       Int      @default(0)
+  maxAttempts    Int      @default(12)
+  nextAttemptAt  DateTime @default(now()) @db.Timestamptz(3)
+  lockedAt       DateTime? @db.Timestamptz(3)
+  lockedBy       String?
+  lastError      String?
+  processedAt    DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, sourceKey, idempotencyKey], map: "lead_capture_events_project_source_idempotency_key")
+  @@index([status, nextAttemptAt], map: "lead_capture_events_status_next_idx")
+  @@index([projectId, contactId, createdAt], map: "lead_capture_events_project_contact_created_idx")
+  @@map("lead_capture_events")
+}
+
+model TrackedLink {
+  id                  String   @id @default(uuid())
+  token               String   @unique(map: "tracked_links_token_key")
+  projectId           String
+  contactId           String
+  scenarioExecutionId String
+  nodeId              String
+  targetUrl           String
+  clickCount          Int      @default(0)
+  firstClickedAt      DateTime? @db.Timestamptz(3)
+  lastClickedAt       DateTime? @db.Timestamptz(3)
+  createdAt           DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+
+  @@unique([projectId, scenarioExecutionId, nodeId, targetUrl], map: "tracked_links_execution_node_target_key")
+  @@index([scenarioExecutionId, createdAt], map: "tracked_links_execution_created_idx")
+  @@index([projectId, contactId, createdAt], map: "tracked_links_project_contact_created_idx")
+  @@map("tracked_links")
+}
+
+model TrackedLinkClick {
+  id            String   @id @default(uuid())
+  projectId     String
+  trackedLinkId String
+  contactId     String
+  occurredAt    DateTime @default(now()) @db.Timestamptz(3)
+  userAgent     String?
+  referrer      String?
+  ipHash        String?
+  isLikelyBot   Boolean  @default(false)
+
+  @@index([trackedLinkId, occurredAt], map: "tracked_link_clicks_link_occurred_idx")
+  @@index([projectId, contactId, occurredAt], map: "tracked_link_clicks_project_contact_occurred_idx")
+  @@map("tracked_link_clicks")
 }
 
 model NodeExecution {

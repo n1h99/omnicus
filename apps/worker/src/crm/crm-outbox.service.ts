@@ -229,7 +229,12 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
       : operation.type === 'CREATE_OR_UPDATE_LEAD'
         ? operation.contact.channelIdentities[0]
         : undefined;
-    if (!identityRow && operation.type !== 'MERGE_CONTACTS') {
+    if (
+      !identityRow &&
+      operation.type !== 'MERGE_CONTACTS' &&
+      operation.type !== 'CREATE_OR_UPDATE_LEAD' &&
+      operation.type !== 'FORWARD_TRACKED_LINK_CLICK'
+    ) {
       await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_channel_identity_missing');
       return;
     }
@@ -299,6 +304,27 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           secondaryContactId,
           ...(secondaryCrmLeadId ? { secondaryCrmLeadId } : {}),
         });
+      } else if (operation.type === 'FORWARD_TRACKED_LINK_CLICK') {
+        const trackedLinkId = this.stringProperty(operation.inputSafe, 'trackedLinkId');
+        const targetUrl = this.stringProperty(operation.inputSafe, 'targetUrl');
+        const clickedAt = this.stringProperty(operation.inputSafe, 'clickedAt');
+        const nodeId = this.stringProperty(operation.inputSafe, 'nodeId');
+        const scenarioExecutionId = this.stringProperty(operation.inputSafe, 'scenarioExecutionId');
+        if (!trackedLinkId || !targetUrl || !clickedAt || !nodeId || !scenarioExecutionId) {
+          await this.finish(outboxRecordId, leaseToken, 'FAILED', 'crm_tracked_link_invalid');
+          return;
+        }
+        result = await this.client.forwardTrackedLinkClick(context, {
+          clickedAt,
+          contactId: operation.contact.id,
+          nodeId,
+          scenarioExecutionId,
+          targetUrl,
+          trackedLinkId,
+          ...(this.stringProperty(operation.inputSafe, 'userAgent')
+            ? { userAgent: this.stringProperty(operation.inputSafe, 'userAgent')! }
+            : {}),
+        });
       } else if (operation.type === 'CREATE_OR_UPDATE_LEAD')
         result = await this.client.createOrUpdateLead(context, {
           contactId: operation.contact.id,
@@ -306,7 +332,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           customFields: this.customFields(operation.contact),
           displayName: operation.contact.displayName,
           ...(operation.contact.email ? { email: operation.contact.email } : {}),
-          identity,
+          ...(identityRow ? { identity } : {}),
           ...(operation.contact.phone ? { phone: operation.contact.phone } : {}),
           tags: operation.contact.tags.map(({ tag }) => tag),
           ...(operation.contact.username ? { username: operation.contact.username } : {}),
@@ -564,6 +590,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
         | 'FORWARD_MESSAGE_EDIT'
         | 'FORWARD_CONTACT_SHARE'
         | 'FORWARD_AUTOMATION_STATE'
+        | 'FORWARD_TRACKED_LINK_CLICK'
         | 'FORWARD_MESSAGE_STATUS';
     },
     outboxRecordId: string,

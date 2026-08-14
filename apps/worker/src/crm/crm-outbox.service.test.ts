@@ -212,6 +212,7 @@ describe('CrmOutboxService', () => {
       forwardInboundMessage: vi.fn(),
       forwardOutboundMessage: vi.fn(),
       forwardReactionEvent: vi.fn(),
+      forwardTrackedLinkClick: vi.fn(),
       mergeContacts: vi.fn(),
       reconcile: vi.fn(),
     };
@@ -260,6 +261,7 @@ describe('CrmOutboxService', () => {
       forwardInboundMessage: vi.fn(),
       forwardOutboundMessage: vi.fn(),
       forwardReactionEvent: vi.fn(),
+      forwardTrackedLinkClick: vi.fn(),
       mergeContacts: vi.fn(),
       reconcile: vi.fn(),
     };
@@ -316,6 +318,7 @@ describe('CrmOutboxService', () => {
       }),
       forwardOutboundMessage: vi.fn(),
       forwardReactionEvent: vi.fn(),
+      forwardTrackedLinkClick: vi.fn(),
       mergeContacts: vi.fn(),
       reconcile: vi.fn(),
     };
@@ -388,6 +391,7 @@ describe('CrmOutboxService', () => {
         providerReference: 'crm-message-a',
       }),
       forwardReactionEvent: vi.fn(),
+      forwardTrackedLinkClick: vi.fn(),
       mergeContacts: vi.fn(),
       reconcile: vi.fn(),
     };
@@ -458,6 +462,7 @@ describe('CrmOutboxService', () => {
         operationId: 'provider-reaction-operation-a',
         providerReference: 'crm-reaction-a',
       }),
+      forwardTrackedLinkClick: vi.fn(),
       mergeContacts: vi.fn(),
       reconcile: vi.fn(),
     };

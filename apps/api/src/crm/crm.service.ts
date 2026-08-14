@@ -34,6 +34,7 @@ type SafeCrmOperation = {
     | 'FORWARD_MESSAGE_EDIT'
     | 'FORWARD_CONTACT_SHARE'
     | 'FORWARD_AUTOMATION_STATE'
+    | 'FORWARD_TRACKED_LINK_CLICK'
     | 'FORWARD_MESSAGE_STATUS';
   updatedAt: Date;
 };
@@ -466,6 +467,7 @@ export class CrmService {
       | 'FORWARD_MESSAGE_EDIT'
       | 'FORWARD_CONTACT_SHARE'
       | 'FORWARD_AUTOMATION_STATE'
+      | 'FORWARD_TRACKED_LINK_CLICK'
       | 'FORWARD_MESSAGE_STATUS';
     updatedAt: Date;
     outbox: {

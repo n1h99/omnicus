@@ -16,19 +16,26 @@ import {
   Space,
   Tabs,
   Typography,
+  Upload,
+  message,
 } from 'antd';
 import { useEffect, useState } from 'react';
 
 import { ApiError, getUserErrorMessage } from './api';
 import type { ScenarioSummary } from './automation-api';
 import { channelAccountLabel } from './channel-provider';
-import { useChannels } from './channels-api';
-import { useMediaAssets } from './media-api';
-import type {
-  AutomationCustomField,
-  AutomationSecret,
-  AutomationTag,
-  ExternalHttpTestResult,
+import { useChannels, type TelegramChannel } from './channels-api';
+import {
+  useMediaAssets,
+  useMediaMutations,
+  type MediaKind,
+} from './media-api';
+import {
+  type AutomationCustomField,
+  type AutomationSecret,
+  type AutomationTag,
+  type ExternalHttpTestResult,
+  useLeadCaptureConfiguration,
 } from './automation-studio-api';
 import {
   conditionFieldType,
@@ -60,6 +67,7 @@ interface Props {
   onCreateSecret(name: string, value: string): Promise<string>;
   onChange(config: Record<string, unknown>): void;
   projectId: string | undefined;
+  scenarioId: string | undefined;
   scenarios: ScenarioSummary[];
   secrets: AutomationSecret[];
   tags: AutomationTag[];
@@ -113,6 +121,17 @@ const mediaTypeLabels: Record<(typeof waitReplyMediaTypes)[number], string> = {
   VOICE: 'Voice message',
 };
 
+const mediaAccept: Record<MediaKind, string> = {
+  ANIMATION: 'image/gif,video/mp4',
+  AUDIO: 'audio/*',
+  DOCUMENT: '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,application/octet-stream',
+  PHOTO: 'image/jpeg,image/png,image/webp',
+  STICKER: 'image/webp',
+  VIDEO: 'video/*',
+  VIDEO_NOTE: 'video/mp4,video/webm',
+  VOICE: 'audio/ogg,audio/opus,audio/webm',
+};
+
 export function AutomationNodeConfig({
   config,
   customFields,
@@ -120,6 +139,7 @@ export function AutomationNodeConfig({
   onCreateSecret,
   onChange,
   projectId,
+  scenarioId,
   scenarios,
   secrets,
   tags,
@@ -132,9 +152,26 @@ export function AutomationNodeConfig({
     projectId,
     nodeType === 'SEND_TEMPLATE' || nodeType === 'SEND_MESSAGE',
   );
-  const assets = useMediaAssets(projectId, nodeType === 'SEND_TEMPLATE');
+  const assets = useMediaAssets(
+    projectId,
+    nodeType === 'SEND_TEMPLATE' || nodeType === 'SEND_MESSAGE',
+  );
+  const mediaMutations = useMediaMutations(projectId);
+  const [uploadKind, setUploadKind] = useState<MediaKind>('DOCUMENT');
+  const triggerType =
+    typeof config.triggerType === 'string' ? config.triggerType : 'INCOMING_MESSAGE';
+  const sourceKey =
+    typeof config.sourceKey === 'string' && config.sourceKey
+      ? config.sourceKey
+      : `scenario-${scenarioId ?? 'new'}`;
+  const leadCapture = useLeadCaptureConfiguration(
+    projectId,
+    sourceKey,
+    nodeType === 'INCOMING_MESSAGE' && triggerType === 'WEBSITE_REGISTRATION',
+  );
   const activeTelegramChannels = (channels.data ?? []).filter(
-    (channel) => channel.type === 'TELEGRAM' && channel.status === 'ACTIVE',
+    (channel): channel is TelegramChannel =>
+      channel.type === 'TELEGRAM' && channel.status === 'ACTIVE',
   );
   const activeWhatsAppChannels = (channels.data ?? []).filter(
     (channel) => channel.type === 'WHATSAPP' && channel.status === 'ACTIVE',
@@ -215,9 +252,156 @@ export function AutomationNodeConfig({
     : activeWhatsAppChannels[0]?.id;
   const whatsAppTemplates = useWhatsAppTemplates(projectId, effectiveWhatsAppCatalogConnectionId);
 
+  if (nodeType === 'INCOMING_MESSAGE') {
+    const startPayload =
+      typeof config.startPayload === 'string' && config.startPayload
+        ? config.startPayload
+        : `flow_${(scenarioId ?? 'new').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 48)}`;
+    const telegramConnectionId =
+      typeof config.connectionId === 'string' ? config.connectionId : undefined;
+    const telegramConnection = activeTelegramChannels.find(
+      (channel) => channel.id === telegramConnectionId,
+    );
+    const deepLink = telegramConnection?.botUsername
+      ? `https://t.me/${telegramConnection.botUsername.replace(/^@/, '')}?start=${encodeURIComponent(startPayload)}`
+      : undefined;
+    return (
+      <Space direction="vertical" size={16} style={{ width: '100%' }}>
+        <Form.Item label="Starts when" style={{ marginBottom: 0 }}>
+          <Segmented
+            block
+            onChange={(value) => {
+              if (value === 'WEBSITE_REGISTRATION') {
+                updateConfig({
+                  connectionId: undefined,
+                  sourceKey,
+                  startPayload: undefined,
+                  triggerType: value,
+                });
+              } else if (value === 'TELEGRAM_DEEP_LINK') {
+                updateConfig({
+                  connectionId: activeTelegramChannels[0]?.id,
+                  sourceKey: undefined,
+                  startPayload,
+                  triggerType: value,
+                });
+              } else {
+                updateConfig({
+                  connectionId: undefined,
+                  sourceKey: undefined,
+                  startPayload: undefined,
+                  triggerType: value,
+                });
+              }
+            }}
+            options={[
+              { label: 'Incoming message', value: 'INCOMING_MESSAGE' },
+              { label: 'Website registration', value: 'WEBSITE_REGISTRATION' },
+              { label: 'Telegram link', value: 'TELEGRAM_DEEP_LINK' },
+            ]}
+            value={triggerType}
+          />
+        </Form.Item>
+
+        {triggerType === 'WEBSITE_REGISTRATION' ? (
+          <>
+            <Form.Item label="Source key" style={{ marginBottom: 0 }}>
+              <Input
+                maxLength={64}
+                onChange={(event) =>
+                  set(
+                    'sourceKey',
+                    event.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ''),
+                  )
+                }
+                value={sourceKey}
+              />
+            </Form.Item>
+            {leadCapture.data ? (
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                <Typography.Text strong>Webhook URL</Typography.Text>
+                <Typography.Paragraph code copyable={{ text: leadCapture.data.endpointUrl }}>
+                  {leadCapture.data.endpointUrl}
+                </Typography.Paragraph>
+                <Typography.Text strong>Authentication header</Typography.Text>
+                <Typography.Paragraph
+                  code
+                  copyable={{
+                    text: `X-Omnicus-Ingest-Key: ${leadCapture.data.headers['X-Omnicus-Ingest-Key']}`,
+                  }}
+                >
+                  X-Omnicus-Ingest-Key: {leadCapture.data.headers['X-Omnicus-Ingest-Key']}
+                </Typography.Paragraph>
+                <Alert
+                  description="Send a unique Idempotency-Key for every website registration. The body may contain firstName, lastName, phone, email, consents and metadata."
+                  message="Ready for website forms"
+                  showIcon
+                  type="success"
+                />
+              </Space>
+            ) : (
+              <Typography.Text type="secondary">
+                {leadCapture.isError ? 'Webhook configuration could not be loaded.' : 'Loading webhook configuration...'}
+              </Typography.Text>
+            )}
+          </>
+        ) : null}
+
+        {triggerType === 'TELEGRAM_DEEP_LINK' ? (
+          <>
+            <Form.Item label="Telegram connection" style={{ marginBottom: 0 }}>
+              <Select
+                onChange={(value: string) => set('connectionId', value)}
+                options={activeTelegramChannels.map((channel) => ({
+                  label: `${channel.name} - ${channelAccountLabel(channel)}`,
+                  value: channel.id,
+                }))}
+                placeholder="Choose an active Telegram bot"
+                value={telegramConnectionId ?? null}
+              />
+            </Form.Item>
+            <Form.Item label="Start payload" style={{ marginBottom: 0 }}>
+              <Input
+                maxLength={64}
+                onChange={(event) =>
+                  set('startPayload', event.target.value.replace(/[^A-Za-z0-9_-]/g, ''))
+                }
+                value={startPayload}
+              />
+            </Form.Item>
+            {deepLink ? (
+              <Typography.Paragraph code copyable={{ text: deepLink }}>
+                {deepLink}
+              </Typography.Paragraph>
+            ) : (
+              <Alert
+                description="Choose an active Telegram connection with a bot username."
+                message="Telegram link is not ready"
+                showIcon
+                type="warning"
+              />
+            )}
+          </>
+        ) : null}
+
+        {triggerType === 'INCOMING_MESSAGE' ? (
+          <Alert
+            description="The published automation starts for every new Telegram or WhatsApp inbound event that is not consumed by a wait step."
+            message="Standard incoming trigger"
+            showIcon
+            type="info"
+          />
+        ) : null}
+      </Space>
+    );
+  }
+
   if (nodeType === 'SEND_MESSAGE') {
     const text = typeof config.text === 'string' ? config.text : '';
     const preview = previewAutomationText(text, customFields);
+    const telegramButtons = Array.isArray(config.telegramButtons)
+      ? (config.telegramButtons as Array<{ text?: string; url?: string }>)
+      : [];
     const messageTextField = (
       <Form.Item label="Message text" style={{ marginBottom: 0 }}>
         <div style={{ marginTop: 6 }}>
@@ -256,11 +440,18 @@ export function AutomationNodeConfig({
             onChange={(value) => {
               updateConfig({
                 deliveryTarget: value,
+                ...(value === sendDeliveryTarget ? {} : { mediaAssetId: undefined }),
                 ...(value === 'INCOMING_CONVERSATION'
-                  ? { telegramConnectionId: undefined, whatsappConnectionId: undefined }
+                  ? {
+                      telegramButtons: undefined,
+                      telegramConnectionId: undefined,
+                      whatsappConnectionId: undefined,
+                    }
                   : {}),
                 ...(value === 'TELEGRAM' ? { whatsappConnectionId: undefined } : {}),
-                ...(value === 'WHATSAPP' ? { telegramConnectionId: undefined } : {}),
+                ...(value === 'WHATSAPP'
+                  ? { telegramButtons: undefined, telegramConnectionId: undefined }
+                  : {}),
               });
             }}
             options={[
@@ -351,6 +542,126 @@ export function AutomationNodeConfig({
             {insertVariableField}
           </Space>
         ) : null}
+
+        <Form.Item label="Attachment" style={{ marginBottom: 0 }}>
+          <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Select
+              allowClear
+              onChange={(value?: string) => set('mediaAssetId', value)}
+              options={(assets.data ?? [])
+                .filter((asset) => {
+                  const targetChannel =
+                    sendDeliveryTarget === 'TELEGRAM'
+                      ? 'telegram'
+                      : sendDeliveryTarget === 'WHATSAPP'
+                        ? 'whatsapp'
+                        : undefined;
+                  return !targetChannel || !asset.validationChannel || asset.validationChannel === targetChannel;
+                })
+                .map((asset) => ({
+                  label: `${asset.kind} - ${asset.originalFilename ?? asset.id.slice(0, 8)}`,
+                  value: asset.id,
+                }))}
+              placeholder="Optional uploaded file"
+              value={typeof config.mediaAssetId === 'string' ? config.mediaAssetId : null}
+            />
+            {sendDeliveryTarget === 'INCOMING_CONVERSATION' ? (
+              <Typography.Text type="secondary">
+                Choose Telegram only or WhatsApp only before uploading a channel-validated file.
+              </Typography.Text>
+            ) : (
+              <Space wrap>
+                <Select<MediaKind>
+                  onChange={setUploadKind}
+                  options={Object.keys(mediaAccept).map((kind) => ({ label: kind.replaceAll('_', ' '), value: kind as MediaKind }))}
+                  style={{ width: 170 }}
+                  value={uploadKind}
+                />
+                <Upload
+                  accept={mediaAccept[uploadKind]}
+                  beforeUpload={(file) => {
+                    void mediaMutations.upload
+                      .mutateAsync({
+                        channel: sendDeliveryTarget === 'WHATSAPP' ? 'WHATSAPP' : 'TELEGRAM',
+                        file,
+                        kind: uploadKind,
+                      })
+                      .then((asset) => {
+                        set('mediaAssetId', asset.id);
+                        void message.success('Attachment uploaded');
+                      })
+                      .catch(() => void message.error('Attachment could not be uploaded'));
+                    return Upload.LIST_IGNORE;
+                  }}
+                  disabled={mediaMutations.upload.isPending}
+                  maxCount={1}
+                  showUploadList={false}
+                >
+                  <Button loading={mediaMutations.upload.isPending}>Upload file</Button>
+                </Upload>
+              </Space>
+            )}
+          </Space>
+        </Form.Item>
+
+        {sendDeliveryTarget === 'TELEGRAM' ? (
+          <Space direction="vertical" size={10} style={{ width: '100%' }}>
+            <Typography.Text strong>URL buttons</Typography.Text>
+            {telegramButtons.map((button, index) => (
+              <Space key={index} align="start" style={{ width: '100%' }}>
+                <Input
+                  maxLength={64}
+                  onChange={(event) => {
+                    const next = [...telegramButtons];
+                    next[index] = { ...button, text: event.target.value };
+                    set('telegramButtons', next);
+                  }}
+                  placeholder="Button label"
+                  value={button.text}
+                />
+                <Input
+                  onChange={(event) => {
+                    const next = [...telegramButtons];
+                    next[index] = { ...button, url: event.target.value };
+                    set('telegramButtons', next);
+                  }}
+                  placeholder="https://example.com"
+                  value={button.url}
+                />
+                <Button
+                  danger
+                  onClick={() =>
+                    set(
+                      'telegramButtons',
+                      telegramButtons.filter((_, buttonIndex) => buttonIndex !== index),
+                    )
+                  }
+                >
+                  Remove
+                </Button>
+              </Space>
+            ))}
+            <Button
+              disabled={telegramButtons.length >= 8}
+              onClick={() => set('telegramButtons', [...telegramButtons, { text: '', url: '' }])}
+            >
+              Add URL button
+            </Button>
+          </Space>
+        ) : null}
+
+        {sendDeliveryTarget === 'WHATSAPP' ? (
+          <Typography.Text type="secondary">
+            WhatsApp buttons are available through approved templates in the Send template step.
+          </Typography.Text>
+        ) : null}
+
+        <Checkbox
+          checked={config.trackLinks === true}
+          onChange={(event) => set('trackLinks', event.target.checked)}
+        >
+          Track link clicks per contact
+        </Checkbox>
 
         <div className="automation-message-preview">
           <Typography.Text strong>Preview</Typography.Text>
