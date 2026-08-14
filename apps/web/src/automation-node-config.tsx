@@ -603,10 +603,10 @@ export function AutomationNodeConfig({
                   return !targetChannel || !asset.validationChannel || asset.validationChannel === targetChannel;
                 })
                 .map((asset) => ({
-                  label: `${asset.kind} - ${asset.originalFilename ?? asset.id.slice(0, 8)}`,
+                  label: `${asset.originalFilename ?? asset.id.slice(0, 8)} · ${asset.kind.replaceAll('_', ' ').toLowerCase()}`,
                   value: asset.id,
                 }))}
-              placeholder="Optional uploaded file"
+              placeholder="Select an uploaded file"
               value={typeof config.mediaAssetId === 'string' ? config.mediaAssetId : null}
             />
             {sendDeliveryTarget === 'INCOMING_CONVERSATION' ? (
@@ -614,13 +614,18 @@ export function AutomationNodeConfig({
                 Choose Telegram only or WhatsApp only before uploading a channel-validated file.
               </Typography.Text>
             ) : (
-              <Space wrap>
-                <Select<MediaKind>
-                  onChange={setUploadKind}
-                  options={Object.keys(mediaAccept).map((kind) => ({ label: kind.replaceAll('_', ' '), value: kind as MediaKind }))}
-                  style={{ width: 170 }}
-                  value={uploadKind}
-                />
+              <div className="automation-attachment-upload-grid">
+                <div className="automation-attachment-kind-field">
+                  <Typography.Text type="secondary">Upload as</Typography.Text>
+                  <Select<MediaKind>
+                    onChange={setUploadKind}
+                    options={Object.keys(mediaAccept).map((kind) => ({
+                      label: kind.replaceAll('_', ' ').toLowerCase(),
+                      value: kind as MediaKind,
+                    }))}
+                    value={uploadKind}
+                  />
+                </div>
                 <Upload
                   accept={mediaAccept[uploadKind]}
                   beforeUpload={(file) => {
@@ -641,53 +646,77 @@ export function AutomationNodeConfig({
                   maxCount={1}
                   showUploadList={false}
                 >
-                  <Button loading={mediaMutations.upload.isPending}>Upload file</Button>
+                  <Button
+                    className="automation-attachment-upload-button"
+                    loading={mediaMutations.upload.isPending}
+                  >
+                    Upload file
+                  </Button>
                 </Upload>
-              </Space>
+              </div>
             )}
           </Space>
         </Form.Item>
 
         {sendDeliveryTarget === 'TELEGRAM' ? (
-          <Space direction="vertical" size={10} style={{ width: '100%' }}>
+          <Space
+            className="automation-url-buttons"
+            direction="vertical"
+            size={10}
+            style={{ width: '100%' }}
+          >
             <Typography.Text strong>URL buttons</Typography.Text>
             {telegramButtons.map((button, index) => (
-              <Space key={index} align="start" style={{ width: '100%' }}>
-                <Input
-                  maxLength={64}
-                  onChange={(event) => {
-                    const next = [...telegramButtons];
-                    next[index] = { ...button, text: event.target.value };
-                    set('telegramButtons', next);
-                  }}
-                  placeholder="Button label"
-                  value={button.text}
-                />
-                <Input
-                  onChange={(event) => {
-                    const next = [...telegramButtons];
-                    next[index] = { ...button, url: event.target.value };
-                    set('telegramButtons', next);
-                  }}
-                  placeholder="https://example.com"
-                  value={button.url}
-                />
-                <Button
-                  danger
-                  onClick={() =>
-                    set(
-                      'telegramButtons',
-                      telegramButtons.filter((_, buttonIndex) => buttonIndex !== index),
-                    )
-                  }
-                >
-                  Remove
-                </Button>
-              </Space>
+              <div className="automation-url-button-card" key={index}>
+                <div className="automation-url-button-header">
+                  <Typography.Text strong>Button {index + 1}</Typography.Text>
+                  <Button
+                    danger
+                    onClick={() =>
+                      set(
+                        'telegramButtons',
+                        telegramButtons.filter((_, buttonIndex) => buttonIndex !== index),
+                      )
+                    }
+                    size="small"
+                    type="text"
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <label className="automation-url-button-field">
+                  <span>Button text</span>
+                  <Input
+                    maxLength={64}
+                    onChange={(event) => {
+                      const next = [...telegramButtons];
+                      next[index] = { ...button, text: event.target.value };
+                      set('telegramButtons', next);
+                    }}
+                    placeholder="Open test page"
+                    value={button.text}
+                  />
+                </label>
+                <label className="automation-url-button-field">
+                  <span>Destination URL</span>
+                  <Input
+                    onChange={(event) => {
+                      const next = [...telegramButtons];
+                      next[index] = { ...button, url: event.target.value };
+                      set('telegramButtons', next);
+                    }}
+                    placeholder="https://example.com"
+                    value={button.url}
+                  />
+                </label>
+              </div>
             ))}
             <Button
+              block
+              className="automation-url-button-add"
               disabled={telegramButtons.length >= 8}
               onClick={() => set('telegramButtons', [...telegramButtons, { text: '', url: '' }])}
+              type="dashed"
             >
               Add URL button
             </Button>

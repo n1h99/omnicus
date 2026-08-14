@@ -4540,6 +4540,72 @@ button:disabled,
   color: #a3342e;
 }
 
+.automation-attachment-upload-grid {
+  align-items: end;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  width: 100%;
+}
+
+.automation-attachment-kind-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.automation-attachment-kind-field > .ant-typography,
+.automation-url-button-field > span {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.automation-attachment-upload-grid .ant-upload-wrapper,
+.automation-attachment-upload-grid .ant-upload-select {
+  display: block;
+}
+
+.automation-attachment-upload-button.ant-btn {
+  height: 40px;
+  padding-inline: 14px;
+}
+
+.automation-url-button-card {
+  background: var(--surface-muted);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: grid;
+  gap: 9px;
+  padding: 10px;
+  width: 100%;
+}
+
+.automation-url-button-header {
+  align-items: center;
+  display: flex;
+  justify-content: space-between;
+}
+
+.automation-url-button-header .ant-btn {
+  height: 26px;
+  padding-inline: 7px;
+}
+
+.automation-url-button-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.automation-url-button-field .ant-input {
+  background: var(--surface);
+}
+
+.automation-url-button-add.ant-btn {
+  height: 38px;
+}
+
 .contact-custom-fields-textarea.ant-input {
   height: 168px;
   max-height: 168px;
