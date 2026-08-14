@@ -17,7 +17,7 @@ import { PermissionGuard } from '../access/permission.guard';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import { firstHeaderValue, type AuthenticatedRequest } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import type {
+import {
   CreateEmailCampaignDto,
   CreateEmailSuppressionDto,
   CreateEmailTemplateDto,
