@@ -1463,6 +1463,15 @@
   margin: 16px 0 20px;
 }
 
+.email-campaign-icon-action.ant-btn {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding-inline: 0;
+  align-items: center;
+  justify-content: center;
+}
+
 .email-launch-summary > div {
   display: flex;
   min-height: 58px;

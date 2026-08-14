@@ -507,10 +507,10 @@ function CampaignTable({
             <Space>
               <Button icon={<EditOutlined />} onClick={() => onEdit(record)} size="small">Open</Button>
               {record.status === 'DRAFT' ? <Button danger icon={<DeleteOutlined />} onClick={() => setDeleteTarget(record)} size="small">Delete</Button> : null}
-              {record.status === 'RUNNING' ? <Button icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
-              {record.status === 'PAUSED' ? <Button icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
+              {record.status === 'RUNNING' ? <Button className="email-campaign-icon-action" icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
+              {record.status === 'PAUSED' ? <Button className="email-campaign-icon-action" icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
               {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small">Retry</Button> : null}
-              {['SCHEDULED', 'PREPARING', 'RUNNING', 'PAUSED'].includes(record.status) ? <Button danger icon={<StopOutlined />} onClick={() => setCancelTarget(record)} size="small" /> : null}
+              {['SCHEDULED', 'PREPARING', 'RUNNING', 'PAUSED'].includes(record.status) ? <Button className="email-campaign-icon-action" danger icon={<StopOutlined />} onClick={() => setCancelTarget(record)} size="small" /> : null}
             </Space>
           ),
           title: '',
