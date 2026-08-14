@@ -1456,6 +1456,37 @@
   vertical-align: middle;
 }
 
+.email-launch-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 16px 0 20px;
+}
+
+.email-launch-summary > div {
+  display: flex;
+  min-height: 58px;
+  padding: 10px 12px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--email-line);
+  border-radius: 10px;
+  background: var(--email-soft);
+}
+
+.email-launch-summary span {
+  color: var(--email-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.email-launch-summary strong {
+  color: var(--email-ink);
+  font-size: 20px;
+  line-height: 1;
+}
+
 @media (max-width: 720px) {
   .email-variable-picker__heading {
     align-items: flex-start;
@@ -1464,6 +1495,10 @@
   }
 
   .email-variable-picker__controls {
+    grid-template-columns: 1fr;
+  }
+
+  .email-launch-summary {
     grid-template-columns: 1fr;
   }
 }

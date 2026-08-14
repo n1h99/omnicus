@@ -28,7 +28,6 @@ import {
   Button,
   Card,
   DatePicker,
-  Descriptions,
   Drawer,
   Empty,
   Form,
@@ -510,7 +509,7 @@ function CampaignTable({
               {record.status === 'DRAFT' ? <Button danger icon={<DeleteOutlined />} onClick={() => setDeleteTarget(record)} size="small">Delete</Button> : null}
               {record.status === 'RUNNING' ? <Button icon={<PauseOutlined />} onClick={() => void run(() => mutations.pauseCampaign.mutateAsync(record.id), 'Campaign paused.')} size="small" /> : null}
               {record.status === 'PAUSED' ? <Button icon={<PlayCircleOutlined />} onClick={() => void run(() => mutations.resumeCampaign.mutateAsync(record.id), 'Campaign resumed.')} size="small" /> : null}
-              {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small" /> : null}
+              {record.status === 'FAILED' || (record.status === 'COMPLETED' && Boolean(record.errorCode)) ? <Button icon={<ReloadOutlined />} onClick={() => void run(() => mutations.retryCampaign.mutateAsync(record.id), 'Failed deliveries queued again.')} size="small">Retry</Button> : null}
               {['SCHEDULED', 'PREPARING', 'RUNNING', 'PAUSED'].includes(record.status) ? <Button danger icon={<StopOutlined />} onClick={() => setCancelTarget(record)} size="small" /> : null}
             </Space>
           ),
@@ -578,6 +577,12 @@ function CampaignEditor({
 }) {
   const mutations = useEmailMutations(projectId);
   const [draft, setDraft] = useState<EmailCampaignInput>();
+  const [launchEstimate, setLaunchEstimate] = useState<{
+    duplicateAddresses: number;
+    eligibleRecipients: number;
+    excludedSuppressed: number;
+    totalMatched: number;
+  }>();
   const [saveState, setSaveState] = useState<'saved' | 'saving' | 'unsaved'>('saved');
   const [testOpen, setTestOpen] = useState(false);
   const [testEmail, setTestEmail] = useState('');
@@ -651,23 +656,7 @@ function CampaignEditor({
     if (!saved) return;
     try {
       const estimate = await mutations.estimateCampaign.mutateAsync(campaign.id);
-      Modal.confirm({
-        content: (
-          <Descriptions column={1} size="small">
-            <Descriptions.Item label="Matched">{estimate.totalMatched}</Descriptions.Item>
-            <Descriptions.Item label="Eligible">{estimate.eligibleRecipients}</Descriptions.Item>
-            <Descriptions.Item label="Suppressed">{estimate.excludedSuppressed}</Descriptions.Item>
-            <Descriptions.Item label="Duplicate addresses">{estimate.duplicateAddresses}</Descriptions.Item>
-          </Descriptions>
-        ),
-        okText: saved.scheduledAt ? 'Schedule campaign' : 'Start campaign',
-        onOk: async () => {
-          const launched = await mutations.launchCampaign.mutateAsync(campaign.id);
-          onUpdated(launched);
-          void message.success(saved.scheduledAt ? 'Campaign scheduled.' : 'Campaign started.');
-        },
-        title: `Send to ${estimate.eligibleRecipients} eligible contacts?`,
-      });
+      setLaunchEstimate(estimate);
     } catch (error) {
       void message.error(getUserErrorMessage(error, 'Audience could not be estimated.'));
     }
@@ -725,6 +714,48 @@ function CampaignEditor({
       }} okButtonProps={{ disabled: !templateName.trim(), loading: mutations.createTemplate.isPending }} open={templateOpen} title="Save as template">
         <Input onChange={(event) => setTemplateName(event.target.value)} placeholder="Template name" value={templateName} />
       </Modal>
+      <Modal
+        className="account-confirm-modal email-launch-confirm-modal"
+        closable={!mutations.launchCampaign.isPending}
+        footer={null}
+        keyboard={!mutations.launchCampaign.isPending}
+        maskClosable={!mutations.launchCampaign.isPending}
+        onCancel={() => setLaunchEstimate(undefined)}
+        open={Boolean(launchEstimate)}
+        title={draft.scheduledAt ? 'Schedule this email campaign?' : 'Start this email campaign?'}
+        width={500}
+      >
+        <Typography.Paragraph type="secondary">
+          {launchEstimate
+            ? `${launchEstimate.eligibleRecipients} eligible contacts will receive this campaign.`
+            : ''}
+        </Typography.Paragraph>
+        <div className="email-launch-summary">
+          <div><span>Matched contacts</span><strong>{launchEstimate?.totalMatched ?? 0}</strong></div>
+          <div><span>Eligible recipients</span><strong>{launchEstimate?.eligibleRecipients ?? 0}</strong></div>
+          <div><span>Suppressed addresses</span><strong>{launchEstimate?.excludedSuppressed ?? 0}</strong></div>
+          <div><span>Duplicate addresses</span><strong>{launchEstimate?.duplicateAddresses ?? 0}</strong></div>
+        </div>
+        <div className="modal-form-actions">
+          <Button disabled={mutations.launchCampaign.isPending} onClick={() => setLaunchEstimate(undefined)}>Cancel</Button>
+          <Button
+            loading={mutations.launchCampaign.isPending}
+            onClick={async () => {
+              try {
+                const launched = await mutations.launchCampaign.mutateAsync(campaign.id);
+                setLaunchEstimate(undefined);
+                onUpdated(launched);
+                void message.success(draft.scheduledAt ? 'Campaign scheduled.' : 'Campaign started.');
+              } catch (error) {
+                void message.error(getUserErrorMessage(error, 'Campaign could not be started.'));
+              }
+            }}
+            type="primary"
+          >
+            {draft.scheduledAt ? 'Schedule campaign' : 'Start campaign'}
+          </Button>
+        </div>
+      </Modal>
     </Drawer>
   );
 }
@@ -758,7 +789,7 @@ function TemplateLibrary({ loading, onCreateCampaign, onEdit, templates }: { loa
           <Button icon={<EditOutlined />} key="edit" onClick={() => onEdit(template)} type="text">Edit</Button>,
           <Button disabled={!template.activeVersion} icon={<ArrowRightOutlined />} key="use" onClick={() => template.activeVersion && onCreateCampaign(template.activeVersion)} type="text">Use</Button>,
           <Button icon={<CopyOutlined />} key="copy" loading={mutations.duplicateTemplate.isPending} onClick={() => void mutations.duplicateTemplate.mutateAsync(template.id)} type="text">Duplicate</Button>,
-          <Button danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text" />,
+          <Button danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text">Delete</Button>,
         ]} className="email-template-card" key={template.id}>
           <div className="email-template-card-top"><span className="email-template-icon"><MailOutlined /></span><Tag color={template.activeVersion ? 'success' : 'default'}>{template.activeVersion ? `Published v${template.activeVersion.version}` : 'Draft'}</Tag></div>
           <Typography.Title ellipsis level={4}>{template.name}</Typography.Title>
@@ -809,7 +840,7 @@ function TemplateEditor({ onClose, onUpdated, projectId, template }: { onClose: 
       return updated;
     } catch (error) { void message.error(getUserErrorMessage(error, 'Template could not be saved.')); return undefined; }
   };
-  return <Drawer className="email-editor-drawer" destroyOnClose extra={<Space><Button icon={<SaveOutlined />} onClick={() => void save()}>Save draft</Button><Button icon={<RocketOutlined />} onClick={async () => { const saved = await save(); if (!saved) return; try { const published = await mutations.publishTemplate.mutateAsync(template.id); onUpdated(published); void message.success('Template published and pinned for automations.'); } catch (error) { void message.error(getUserErrorMessage(error, 'Template could not be published.')); } }} type="primary">Publish version</Button></Space>} onClose={onClose} open placement="right" title={`Template · ${template.name}`} width="calc(100vw - 42px)">
+  return <Drawer className="email-editor-drawer" destroyOnClose extra={<Space><Button icon={<SaveOutlined />} onClick={() => void save()}>Save template</Button><Button icon={<RocketOutlined />} onClick={async () => { const saved = await save(); if (!saved) return; try { const published = await mutations.publishTemplate.mutateAsync(template.id); onUpdated(published); void message.success('Template published and pinned for automations.'); } catch (error) { void message.error(getUserErrorMessage(error, 'Template could not be published.')); } }} type="primary">Publish version</Button></Space>} onClose={onClose} open placement="right" title={`Template · ${template.name}`} width="calc(100vw - 42px)">
     <div className="email-template-settings"><label>Subject line<Input onChange={(event) => setSubject(event.target.value)} value={subject} /></label><label>Inbox preview<Input onChange={(event) => setPreheader(event.target.value)} value={preheader} /></label></div>
     <EmailBuilder document={design} onChange={setDesign} projectId={projectId} />
   </Drawer>;
