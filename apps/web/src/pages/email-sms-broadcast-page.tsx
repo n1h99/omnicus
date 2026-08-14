@@ -357,11 +357,12 @@ function EmailAnalytics({ projectId }: { projectId?: string | undefined }) {
             render: (targetUrl: string | null) => targetUrl ? (
               <Typography.Link
                 copyable={{ text: targetUrl }}
-                ellipsis={{ tooltip: targetUrl }}
+                ellipsis
                 href={targetUrl}
                 rel="noreferrer"
                 style={{ maxWidth: 260 }}
                 target="_blank"
+                title={targetUrl}
               >
                 {targetUrl}
               </Typography.Link>
@@ -654,8 +655,8 @@ function AudiencePanel({ audience, disabled, onChange, options }: { audience: Em
         <label>Recipients<Select disabled={disabled} onChange={(mode) => onChange({ ...audience, mode })} options={[{ label: 'All active contacts with email', value: 'ALL_ACTIVE' }, { label: 'Saved segment', value: 'SEGMENT' }, { label: 'Selected contacts', value: 'CONTACTS' }]} value={audience.mode} /></label>
         {audience.mode === 'SEGMENT' ? <label>Segment<Select<string> disabled={disabled} onChange={(segmentId) => onChange({ ...audience, segmentId })} options={(options?.segments ?? []).map((item) => ({ label: item.name, value: item.id }))} value={audience.segmentId ?? null} /></label> : null}
         {audience.mode === 'CONTACTS' ? <label>Contacts<Select<string[]> disabled={disabled} mode="multiple" onChange={(contactIds) => onChange({ ...audience, contactIds })} optionFilterProp="label" options={(options?.contacts ?? []).map((item) => ({ disabled: !item.eligible, label: `${item.displayName} · ${item.email}`, value: item.id }))} value={audience.contactIds ?? []} /></label> : null}
-        <label>Must have tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(includeTagIds) => onChange({ ...audience, includeTagIds, excludeTagIds: (audience.excludeTagIds ?? []).filter((tagId) => !includeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: audience.excludeTagIds?.includes(item.id), label: item.name, value: item.id }))} value={audience.includeTagIds ?? []} /></label>
-        <label>Exclude tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(excludeTagIds) => onChange({ ...audience, excludeTagIds, includeTagIds: (audience.includeTagIds ?? []).filter((tagId) => !excludeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: audience.includeTagIds?.includes(item.id), label: item.name, value: item.id }))} value={audience.excludeTagIds ?? []} /></label>
+        <label>Must have tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(includeTagIds) => onChange({ ...audience, includeTagIds, excludeTagIds: (audience.excludeTagIds ?? []).filter((tagId) => !includeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: Boolean(audience.excludeTagIds?.includes(item.id)), label: item.name, value: item.id }))} value={audience.includeTagIds ?? []} /></label>
+        <label>Exclude tags<Select<string[]> allowClear disabled={disabled} mode="multiple" onChange={(excludeTagIds) => onChange({ ...audience, excludeTagIds, includeTagIds: (audience.includeTagIds ?? []).filter((tagId) => !excludeTagIds.includes(tagId)) })} options={(options?.tags ?? []).map((item) => ({ disabled: Boolean(audience.includeTagIds?.includes(item.id)), label: item.name, value: item.id }))} value={audience.excludeTagIds ?? []} /></label>
       </div>
       <Typography.Text type="secondary">Active contacts with a valid email are included. Unsubscribed, bounced, complained and manually suppressed addresses are removed again immediately before delivery.</Typography.Text>
     </Card>
