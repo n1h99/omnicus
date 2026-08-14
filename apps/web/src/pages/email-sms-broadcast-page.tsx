@@ -176,7 +176,7 @@ export function EmailSmsBroadcastPage() {
       const created = await mutations.createCampaign.mutateAsync({
         audience: { mode: 'ALL_ACTIVE' },
         design: version?.design ?? createDefaultEmailDocument(),
-        name: `Email campaign ${dayjs().format('MMM D, HH:mm:ss')}`,
+        name: `Email campaign ${dayjs().format('MMM D, HH:mm')}`,
         preheader: version?.preheader ?? null,
         sourceTemplateVersionId: version?.id ?? null,
         subject: version?.subject ?? 'A message from Omnicus',
@@ -688,7 +688,7 @@ function CampaignEditor({
         </div>
         <div className="email-settings-secondary">
           <label>Start from template<Select allowClear disabled={!editable} onChange={(value) => value && applyTemplate(value)} options={templates.filter((template) => template.activeVersion).map((template) => ({ label: template.name, value: template.activeVersion!.id }))} placeholder="Choose a published template" /></label>
-          <label>Delivery time<DatePicker disabled={!editable} onChange={(value) => setDraft({ ...draft, scheduledAt: value?.toISOString() ?? null })} placeholder="Send immediately" showTime style={{ width: '100%' }} value={draft.scheduledAt ? dayjs(draft.scheduledAt) : null} /></label>
+          <label>Delivery time<DatePicker disabled={!editable} format="MMM D, YYYY HH:mm" onChange={(value) => setDraft({ ...draft, scheduledAt: value?.toISOString() ?? null })} placeholder="Send immediately" popupClassName="email-delivery-picker-dropdown" showTime={{ format: 'HH:mm', minuteStep: 5, showSecond: false }} style={{ width: '100%' }} value={draft.scheduledAt ? dayjs(draft.scheduledAt) : null} /></label>
           <Button disabled={!editable} icon={<CopyOutlined />} onClick={() => { setTemplateName(`${draft.name} template`); setTemplateOpen(true); }}>Save as reusable template</Button>
         </div>
       </div>
@@ -789,7 +789,7 @@ function TemplateLibrary({ loading, onCreateCampaign, onEdit, templates }: { loa
           <Button icon={<EditOutlined />} key="edit" onClick={() => onEdit(template)} type="text">Edit</Button>,
           <Button disabled={!template.activeVersion} icon={<ArrowRightOutlined />} key="use" onClick={() => template.activeVersion && onCreateCampaign(template.activeVersion)} type="text">Use</Button>,
           <Button icon={<CopyOutlined />} key="copy" loading={mutations.duplicateTemplate.isPending} onClick={() => void mutations.duplicateTemplate.mutateAsync(template.id)} type="text">Duplicate</Button>,
-          <Button danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text">Delete</Button>,
+          <Button className="email-template-delete-action" danger icon={<DeleteOutlined />} key="archive" onClick={() => setArchiveTarget(template)} type="text">Delete</Button>,
         ]} className="email-template-card" key={template.id}>
           <div className="email-template-card-top"><span className="email-template-icon"><MailOutlined /></span><Tag color={template.activeVersion ? 'success' : 'default'}>{template.activeVersion ? `Published v${template.activeVersion.version}` : 'Draft'}</Tag></div>
           <Typography.Title ellipsis level={4}>{template.name}</Typography.Title>

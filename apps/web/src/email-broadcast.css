@@ -975,7 +975,7 @@
 }
 
 .email-design-canvas {
-  height: 100%;
+  height: auto;
   min-height: 0;
   padding: 38px 62px 72px;
 }
@@ -1036,7 +1036,7 @@
 }
 
 .email-preview-frame-shell {
-  height: 100%;
+  height: auto;
   min-height: 0;
   overflow: auto;
   padding: 18px;
@@ -1464,12 +1464,52 @@
 }
 
 .email-campaign-icon-action.ant-btn {
-  width: 36px;
-  min-width: 36px;
-  height: 36px;
-  padding-inline: 0;
+  box-sizing: border-box;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px;
+  flex: 0 0 40px;
+  padding: 0 !important;
   align-items: center;
   justify-content: center;
+}
+
+.email-command-card .ant-table-container {
+  overflow: hidden;
+  border-inline: 0;
+  border-radius: 16px 16px 0 0;
+}
+
+.email-command-card .ant-table-thead > tr:first-child > th:first-child {
+  border-start-start-radius: 16px;
+}
+
+.email-command-card .ant-table-thead > tr:first-child > th:last-child {
+  border-start-end-radius: 16px;
+}
+
+.email-template-delete-action.ant-btn.ant-btn-text,
+.email-template-delete-action.ant-btn.ant-btn-text:hover,
+.email-template-delete-action.ant-btn.ant-btn-text:focus,
+.email-template-delete-action.ant-btn.ant-btn-text:active {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+.email-delivery-picker-dropdown .ant-picker-time-panel-column {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.email-delivery-picker-dropdown .ant-picker-time-panel-column::-webkit-scrollbar {
+  display: none;
+}
+
+.email-delivery-picker-dropdown .ant-picker-time-panel-column::after {
+  display: none;
 }
 
 .email-launch-summary > div {
