@@ -161,4 +161,67 @@ describe('WhatsApp inbound business normalization', () => {
       }),
     );
   });
+
+  it('completes an unmatched provider status after its retry budget is exhausted', async () => {
+    const receivedAt = new Date();
+    const inboxRecordUpdateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const transaction = {
+      channelConnection: {
+        findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE', type: 'WHATSAPP' }),
+      },
+      message: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const database = {
+      client: {
+        $transaction: vi.fn(async (callback: (value: unknown) => Promise<unknown>) =>
+          callback(transaction),
+        ),
+        inboxRecord: {
+          findUnique: vi.fn().mockResolvedValue({
+            attempts: 7,
+            connectionId: 'connection-a',
+            id: 'inbox-a',
+            maxAttempts: 8,
+            projectId: 'project-a',
+            rawWebhookEvent: {
+              externalUpdateId: 'status-a',
+              payload: {
+                entry: [
+                  {
+                    changes: [
+                      {
+                        value: {
+                          statuses: [
+                            {
+                              id: 'wamid.foreign',
+                              status: 'delivered',
+                              timestamp: String(Math.floor(receivedAt.getTime() / 1_000)),
+                            },
+                          ],
+                        },
+                      },
+                    ],
+                  },
+                ],
+              },
+              receivedAt,
+            },
+            status: 'RETRY',
+          }),
+          updateMany: inboxRecordUpdateMany,
+        },
+      },
+    };
+    const service = new WhatsAppInboundProcessorService(
+      { get: vi.fn().mockReturnValue(30_000) } as never,
+      database as never,
+    );
+
+    await expect(service.process({ inboxRecordId: 'inbox-a' })).resolves.toBeUndefined();
+    expect(inboxRecordUpdateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ lastError: null, status: 'COMPLETED' }),
+      }),
+    );
+  });
 });

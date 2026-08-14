@@ -61,7 +61,7 @@ export function BroadcastCreatePage() {
       <Form<BroadcastFormValues>
         className="settings-form surface"
         form={form}
-        initialValues={{ audienceMode: 'ALL_ACTIVE', contentMode: 'TEXT' }}
+        initialValues={{ contentMode: 'TEXT' }}
         layout="vertical"
         onFinish={async (values) => {
           try {
@@ -123,6 +123,7 @@ export function BroadcastCreatePage() {
                 'whatsAppTemplateId',
               ]);
               form.setFieldsValue({
+                audienceMode: 'ALL_ACTIVE',
                 contentMode: channel?.type === 'WHATSAPP' ? 'WHATSAPP_TEMPLATE' : 'TEXT',
               });
             }}
@@ -152,14 +153,26 @@ export function BroadcastCreatePage() {
           />
         ) : null}
 
-        <Form.Item label="Audience" name="audienceMode">
+        <Form.Item
+          label="Audience"
+          name="audienceMode"
+          rules={[{ message: 'Choose a channel first', required: true }]}
+        >
           <Select
-            options={[
-              {
-                label: isWhatsApp ? 'All active WhatsApp contacts' : 'All active Telegram contacts',
-                value: 'ALL_ACTIVE',
-              },
-            ]}
+            disabled={!selectedChannel}
+            options={
+              selectedChannel
+                ? [
+                    {
+                      label: isWhatsApp
+                        ? 'All active WhatsApp contacts'
+                        : 'All active Telegram contacts',
+                      value: 'ALL_ACTIVE',
+                    },
+                  ]
+                : []
+            }
+            placeholder="Choose a channel first"
           />
         </Form.Item>
 

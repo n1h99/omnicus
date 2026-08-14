@@ -159,6 +159,10 @@ export class WhatsAppInboundProcessorService
       else await this.persistMessage(claimed, event.message, event.senderId, event.profileName);
     } catch (error) {
       if (error instanceof WhatsAppInboundLeaseConflictError) throw error;
+      if (error instanceof WhatsAppInboundPendingError && claimed.attempts >= claimed.maxAttempts) {
+        await this.complete(this.database.client, claimed);
+        return;
+      }
       const permanent =
         error instanceof WhatsAppInboundPermanentError ||
         (error instanceof Error &&
@@ -1023,7 +1027,7 @@ export class WhatsAppInboundProcessorService
   }
 
   private async complete(
-    transaction: Prisma.TransactionClient,
+    transaction: Pick<Prisma.TransactionClient, 'inboxRecord'>,
     claimed: ClaimedInboxRecord,
   ): Promise<void> {
     const completed = await transaction.inboxRecord.updateMany({

@@ -434,13 +434,41 @@ export class AutomationRuntimeService {
         'PROCESSING',
         this.safeNodeInput(node, context),
       );
-      const result = await this.applyNode(
-        transaction,
-        node,
-        outgoing.get(node.id) ?? [],
-        context,
-        executionId,
-      );
+      let result: NodeResult;
+      try {
+        result = await this.applyNode(
+          transaction,
+          node,
+          outgoing.get(node.id) ?? [],
+          context,
+          executionId,
+        );
+      } catch (error) {
+        const reasonCode =
+          error instanceof Error &&
+          [
+            'automation_channel_connection_unavailable',
+            'automation_channel_identity_unavailable',
+            'automation_whatsapp_service_window_closed',
+          ].includes(error.message)
+            ? error.message
+            : undefined;
+        if (!reasonCode) throw error;
+        await this.nodeExecution(
+          transaction,
+          executionId,
+          context.projectId,
+          node,
+          'FAILED',
+          undefined,
+          { reasonCode },
+        );
+        await transaction.scenarioExecution.update({
+          data: { completedAt: new Date(), currentNodeId: null, status: 'FAILED' },
+          where: { projectId_id: { id: executionId, projectId: context.projectId } },
+        });
+        return;
+      }
       await this.nodeExecution(
         transaction,
         executionId,
@@ -1526,7 +1554,7 @@ export class AutomationRuntimeService {
     executionId: string,
     projectId: string,
     node: ScenarioGraphNode,
-    status: 'PROCESSING' | 'SUCCEEDED',
+    status: 'FAILED' | 'PROCESSING' | 'SUCCEEDED',
     inputSafe?: Prisma.InputJsonObject,
     outputSafe?: Prisma.InputJsonObject,
   ): Promise<void> {
@@ -1534,7 +1562,7 @@ export class AutomationRuntimeService {
     await transaction.nodeExecution.upsert({
       create: {
         attempt: 1,
-        completedAt: status === 'SUCCEEDED' ? new Date() : null,
+        completedAt: status === 'PROCESSING' ? null : new Date(),
         idempotencyKey,
         inputSafe: inputSafe ?? {},
         nodeId: node.id,
@@ -1543,9 +1571,10 @@ export class AutomationRuntimeService {
         scenarioExecutionId: executionId,
         startedAt: new Date(),
         status,
+        ...(status === 'PROCESSING' ? {} : { outputSafe: outputSafe ?? {} }),
       },
       update:
-        status === 'SUCCEEDED'
+        status !== 'PROCESSING'
           ? { completedAt: new Date(), outputSafe: outputSafe ?? {}, status }
           : {},
       where: { projectId_idempotencyKey: { idempotencyKey, projectId } },

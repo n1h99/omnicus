@@ -565,4 +565,57 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
       data: expect.objectContaining({ kind: 'WHATSAPP' }),
     });
   });
+
+  it('persists a deterministic delivery failure instead of rolling back the execution', async () => {
+    const nodeExecutionUpsert = vi.fn().mockResolvedValue({});
+    const scenarioExecutionUpdate = vi.fn().mockResolvedValue({});
+    const service = new AutomationRuntimeService({} as never) as unknown as {
+      executeGraph(
+        transaction: unknown,
+        graph: unknown,
+        executionId: string,
+        context: unknown,
+      ): Promise<void>;
+    };
+    Object.assign(service, {
+      applyNode: vi.fn().mockRejectedValue(new Error('automation_whatsapp_service_window_closed')),
+    });
+
+    await service.executeGraph(
+      {
+        nodeExecution: { upsert: nodeExecutionUpsert },
+        scenarioExecution: { update: scenarioExecutionUpdate },
+      },
+      {
+        edges: [],
+        nodes: [{ config: {}, id: 'trigger-a', type: 'INCOMING_MESSAGE' }],
+      },
+      'execution-a',
+      {
+        connectionId: '',
+        contactId: 'contact-a',
+        contactVariables: {},
+        conversationId: '',
+        customFields: {},
+        eventPayload: { type: 'LEAD_CAPTURED' },
+        normalizedEventId: '',
+        projectId: 'project-a',
+        subflowDepth: 0,
+        variables: {},
+      },
+    );
+
+    expect(nodeExecutionUpsert).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        update: expect.objectContaining({
+          outputSafe: { reasonCode: 'automation_whatsapp_service_window_closed' },
+          status: 'FAILED',
+        }),
+      }),
+    );
+    expect(scenarioExecutionUpdate).toHaveBeenLastCalledWith({
+      data: { completedAt: expect.any(Date), currentNodeId: null, status: 'FAILED' },
+      where: { projectId_id: { id: 'execution-a', projectId: 'project-a' } },
+    });
+  });
 });
