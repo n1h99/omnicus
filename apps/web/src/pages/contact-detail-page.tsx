@@ -432,7 +432,7 @@ export function ContactDetailPage() {
                 name="values"
                 rules={[{ required: true }]}
               >
-                <Input.TextArea autoSize={{ minRows: 6 }} />
+                <Input.TextArea className="contact-custom-fields-textarea" />
               </Form.Item>
               <Button htmlType="submit">Save custom fields</Button>
             </Form>

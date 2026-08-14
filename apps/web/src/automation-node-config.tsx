@@ -372,9 +372,14 @@ export function AutomationNodeConfig({
               />
             </Form.Item>
             {deepLink ? (
-              <Typography.Paragraph code copyable={{ text: deepLink }}>
+              <Typography.Text
+                className="automation-deep-link-value"
+                code
+                copyable={{ text: deepLink }}
+                title={deepLink}
+              >
                 {deepLink}
-              </Typography.Paragraph>
+              </Typography.Text>
             ) : (
               <Alert
                 description="Choose an active Telegram connection with a bot username."
