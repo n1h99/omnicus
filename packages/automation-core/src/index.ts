@@ -663,19 +663,34 @@ export function matchesWaitForReplyCriteria(
   const criteria = waitForReplyCriteriaSchema.safeParse(criteriaInput ?? {});
   if (!criteria.success) return false;
   const payload = record(payloadInput);
-  const eventType = typeof payload.type === 'string' ? payload.type : undefined;
+  const content = record(payload.content);
+  const whatsAppInteractive = record(payload.interactive);
+  const explicitEventType = typeof payload.type === 'string' ? payload.type : undefined;
+  const eventType =
+    explicitEventType === 'INTERACTIVE' &&
+    ['button_reply', 'list_reply'].includes(String(whatsAppInteractive.type))
+      ? 'CALLBACK_QUERY'
+      : (explicitEventType ??
+        (['button_reply', 'list_reply'].includes(String(whatsAppInteractive.type))
+          ? 'CALLBACK_QUERY'
+          : typeof payload.text === 'string'
+            ? 'MESSAGE'
+            : undefined));
   if (!eventType || !supportedReplyEventTypes.has(eventType)) return false;
   if (criteria.data.kind === 'ANY') return true;
   if (criteria.data.kind === 'MEDIA') return criteria.data.mediaTypes.includes(eventType as never);
-  const content = record(payload.content);
   const actual =
     criteria.data.kind === 'CALLBACK'
       ? typeof content.data === 'string'
         ? content.data
-        : undefined
+        : typeof whatsAppInteractive.id === 'string'
+          ? whatsAppInteractive.id
+          : undefined
       : typeof content.text === 'string'
         ? content.text
-        : undefined;
+        : typeof payload.text === 'string'
+          ? payload.text
+          : undefined;
   if (actual === undefined) return false;
   const expected = criteria.data.value;
   return evaluateCondition(

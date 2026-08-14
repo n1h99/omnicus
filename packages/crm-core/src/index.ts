@@ -55,6 +55,15 @@ export type CrmInteractiveInput =
       type: 'button_reply' | 'list_reply';
     };
 
+export interface CrmWhatsAppInteractiveInput {
+  action: { buttons: Array<{ id: string; title: string }> };
+  body: { text: string };
+  footer?: { text: string };
+  header?:
+    { text: string; type: 'text' } | { mediaAssetId: string; type: 'document' | 'image' | 'video' };
+  type: 'button';
+}
+
 export interface CrmLocationInput {
   address?: string;
   latitude: number;
@@ -169,6 +178,7 @@ export interface ForwardOutboundMessageInput {
   contactId: string;
   deliveryStatus: 'SENT';
   identity: CrmIdentityInput;
+  interactive?: CrmWhatsAppInteractiveInput;
   inlineKeyboard?: CrmInlineKeyboardInput;
   entities?: CrmMessageEntityInput[];
   hasSpoiler?: boolean;
@@ -472,6 +482,7 @@ export class HttpCrmClient implements CrmClient {
       crmProjectId: context.crmProjectId,
       deliveryStatus: input.deliveryStatus,
       identity: input.identity,
+      interactive: input.interactive,
       inlineKeyboard: input.inlineKeyboard,
       entities: input.entities,
       hasSpoiler: input.hasSpoiler,

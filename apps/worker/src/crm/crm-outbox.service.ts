@@ -23,6 +23,7 @@ import {
   type CrmMediaInput,
   type CrmReactionActorInput,
   type CrmReactionInput,
+  type CrmWhatsAppInteractiveInput,
   type ForwardMessageStatusInput,
 } from '@omnicus/crm-core';
 import { Prisma } from '@omnicus/database';
@@ -485,6 +486,10 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
         }
         const metadata = this.jsonRecord(message.metadata);
         const text = this.messageText(message.content);
+        const whatsAppInteractive =
+          identity.channel === 'whatsapp'
+            ? this.whatsAppOutboundInteractive(message.content)
+            : undefined;
         const inlineKeyboard = this.inlineKeyboard(message.content, message.metadata);
         const entities = this.messageEntities(metadata?.entities);
         const linkPreviewOptions = this.linkPreviewOptions(metadata?.linkPreviewOptions);
@@ -498,6 +503,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           contactId: operation.contact.id,
           deliveryStatus: 'SENT',
           identity,
+          ...(whatsAppInteractive ? { interactive: whatsAppInteractive } : {}),
           ...(entities ? { entities } : {}),
           ...(metadata?.hasSpoiler === true ? { hasSpoiler: true } : {}),
           ...(inlineKeyboard ? { inlineKeyboard } : {}),
@@ -528,7 +534,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
           ...(typeof metadata?.broadcastId === 'string'
             ? { broadcastId: metadata.broadcastId }
             : {}),
-          ...(text === undefined ? {} : { text }),
+          ...(text === undefined || whatsAppInteractive ? {} : { text }),
         });
       }
       await this.finishSuccess(
@@ -775,6 +781,54 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
     const record = content as Record<string, unknown>;
     if (typeof record.text === 'string') return record.text;
     return typeof record.caption === 'string' ? record.caption : undefined;
+  }
+
+  private whatsAppOutboundInteractive(
+    content: Prisma.JsonValue | undefined,
+  ): CrmWhatsAppInteractiveInput | undefined {
+    const interactive = this.jsonRecord(
+      this.jsonRecord(content)?.interactive as Prisma.JsonValue | undefined,
+    );
+    const body = this.jsonRecord(interactive?.body as Prisma.JsonValue | undefined);
+    const action = this.jsonRecord(interactive?.action as Prisma.JsonValue | undefined);
+    if (
+      interactive?.type !== 'button' ||
+      typeof body?.text !== 'string' ||
+      !Array.isArray(action?.buttons) ||
+      action.buttons.length === 0
+    )
+      return undefined;
+    const buttons = action.buttons.flatMap((candidate) => {
+      const button = this.jsonRecord(candidate as Prisma.JsonValue);
+      return button && typeof button.id === 'string' && typeof button.title === 'string'
+        ? [{ id: button.id, title: button.title }]
+        : [];
+    });
+    if (buttons.length !== action.buttons.length) return undefined;
+    const footer = this.jsonRecord(interactive.footer as Prisma.JsonValue | undefined);
+    if (footer && typeof footer.text !== 'string') return undefined;
+    const rawHeader = this.jsonRecord(interactive.header as Prisma.JsonValue | undefined);
+    let header: CrmWhatsAppInteractiveInput['header'];
+    if (rawHeader) {
+      if (rawHeader.type === 'text' && typeof rawHeader.text === 'string')
+        header = { text: rawHeader.text, type: 'text' };
+      else if (
+        ['document', 'image', 'video'].includes(String(rawHeader.type)) &&
+        typeof rawHeader.mediaAssetId === 'string'
+      )
+        header = {
+          mediaAssetId: rawHeader.mediaAssetId,
+          type: rawHeader.type as 'document' | 'image' | 'video',
+        };
+      else return undefined;
+    }
+    return {
+      action: { buttons },
+      body: { text: body.text },
+      ...(footer ? { footer: { text: footer.text as string } } : {}),
+      ...(header ? { header } : {}),
+      type: 'button',
+    };
   }
 
   private jsonRecord(

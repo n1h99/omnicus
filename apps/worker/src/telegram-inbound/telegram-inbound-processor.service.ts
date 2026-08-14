@@ -485,20 +485,16 @@ export class TelegramInboundProcessorService
       }
 
       if (contact && conversationId) {
-        await this.automation?.resolveWaitsInTransaction(transaction, {
+        const triggerInput = {
           connectionId: claimed.connectionId,
           contactId: contact.id,
           conversationId,
           normalizedEventId: normalized.id,
           projectId: claimed.projectId,
-        });
-        await this.automation?.triggerInTransaction(transaction, {
-          connectionId: claimed.connectionId,
-          contactId: contact.id,
-          conversationId,
-          normalizedEventId: normalized.id,
-          projectId: claimed.projectId,
-        });
+        };
+        const consumed =
+          (await this.automation?.resolveWaitsInTransaction(transaction, triggerInput)) ?? false;
+        if (!consumed) await this.automation?.triggerInTransaction(transaction, triggerInput);
       }
 
       const completed = await transaction.inboxRecord.updateMany({

@@ -237,6 +237,55 @@ describe('HttpCrmClient', () => {
     });
   });
 
+  it('sends WhatsApp automation buttons as interactive CRM history', async () => {
+    const fetchImplementation = vi.fn().mockResolvedValue(
+      Response.json({
+        crmLeadId: 'crm-lead-a',
+        crmMessageId: 'crm-message-a',
+        mode: 'created',
+        operationId: 'operation-provider-a',
+      }),
+    );
+    const client = new HttpCrmClient({
+      authToken: 'secret-service-token',
+      baseUrl: 'https://crm.example.test',
+      fetchImplementation,
+      timeoutMs: 1_000,
+    });
+
+    await client.forwardOutboundMessage(context, {
+      contactId: 'contact-a',
+      deliveryStatus: 'SENT',
+      identity: {
+        channel: 'whatsapp',
+        channelIdentityId: 'identity-wa',
+        connectionId: 'connection-wa',
+        externalUserId: '15550001',
+      },
+      interactive: {
+        action: { buttons: [{ id: 'webinar_yes', title: 'Yes' }] },
+        body: { text: 'Join the webinar?' },
+        type: 'button',
+      },
+      messageId: '11111111-1111-4111-8111-111111111111',
+      occurredAt: '2026-08-14T07:53:00.000Z',
+      providerMessageId: 'wamid.automation-a',
+      source: 'AUTOMATION',
+    });
+
+    const request = fetchImplementation.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(request.body)) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      interactive: {
+        action: { buttons: [{ id: 'webinar_yes', title: 'Yes' }] },
+        body: { text: 'Join the webinar?' },
+        type: 'button',
+      },
+      omnicusContactId: 'contact-a',
+    });
+    expect(body.text).toBeUndefined();
+  });
+
   it('sends normalized user reaction events to their versioned CRM endpoint', async () => {
     const fetchImplementation = vi.fn().mockResolvedValue(
       Response.json({

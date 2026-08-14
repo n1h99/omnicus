@@ -285,6 +285,27 @@ describe('Wait for Reply criteria', () => {
     expect(matchesWaitForReplyCriteria(criteria, { content: {}, type: 'PHOTO' })).toBe(true);
     expect(matchesWaitForReplyCriteria(criteria, { content: {}, type: 'VOICE' })).toBe(false);
   });
+
+  it('matches WhatsApp button replies by their interactive callback id', () => {
+    const criteria = {
+      caseSensitive: true,
+      kind: 'CALLBACK',
+      operator: 'equals',
+      value: 'webinar_yes',
+    };
+
+    expect(
+      matchesWaitForReplyCriteria(criteria, {
+        interactive: { id: 'webinar_yes', title: 'Yes', type: 'button_reply' },
+        occurredAt: '2026-08-14T07:53:00.000Z',
+      }),
+    ).toBe(true);
+    expect(
+      matchesWaitForReplyCriteria(criteria, {
+        interactive: { id: 'webinar_no', title: 'No', type: 'button_reply' },
+      }),
+    ).toBe(false);
+  });
 });
 
 describe('condition groups and safe simulation', () => {

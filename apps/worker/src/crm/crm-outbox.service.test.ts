@@ -73,6 +73,30 @@ const config = {
 };
 
 describe('CrmOutboxService', () => {
+  it('normalizes WhatsApp automation buttons for CRM outbound history', () => {
+    const service = new CrmOutboxService(
+      config as never,
+      { client: {} } as never,
+      new MockCrmClient(),
+    ) as unknown as {
+      whatsAppOutboundInteractive(content: Record<string, unknown>): unknown;
+    };
+
+    expect(
+      service.whatsAppOutboundInteractive({
+        interactive: {
+          action: { buttons: [{ id: 'webinar_yes', title: 'Yes' }] },
+          body: { text: 'Join the webinar?' },
+          type: 'button',
+        },
+      }),
+    ).toEqual({
+      action: { buttons: [{ id: 'webinar_yes', title: 'Yes' }] },
+      body: { text: 'Join the webinar?' },
+      type: 'button',
+    });
+  });
+
   it('forwards optional sticker emoji and set metadata without provider payloads', async () => {
     const service = new CrmOutboxService(
       config as never,

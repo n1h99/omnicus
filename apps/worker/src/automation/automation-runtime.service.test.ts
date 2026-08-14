@@ -4,7 +4,7 @@ import { AutomationRuntimeService } from './automation-runtime.service';
 
 describe('AutomationRuntimeService Wait for Reply criteria', () => {
   it('resolves only waits whose bounded criteria match the inbound event', async () => {
-    const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
     const transaction = {
       normalizedEvent: {
         findUnique: vi.fn().mockResolvedValue({
@@ -32,8 +32,10 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
       },
     };
     const service = new AutomationRuntimeService({} as never);
+    const resumeExecutionInTransaction = vi.fn().mockResolvedValue(undefined);
+    Object.assign(service, { resumeExecutionInTransaction });
 
-    await service.resolveWaitsInTransaction(transaction as never, {
+    const consumed = await service.resolveWaitsInTransaction(transaction as never, {
       connectionId: 'connection-a',
       contactId: 'contact-a',
       conversationId: 'conversation-a',
@@ -45,6 +47,8 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ id: 'matching' }) }),
     );
+    expect(resumeExecutionInTransaction).toHaveBeenCalledTimes(1);
+    expect(consumed).toBe(true);
   });
 
   it('keeps typed custom-field projections synchronized with the contact JSON', async () => {

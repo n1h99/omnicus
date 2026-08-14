@@ -156,7 +156,7 @@ export class AutomationRuntimeService {
   async resolveWaitsInTransaction(
     transaction: RuntimeTransaction,
     input: AutomationTriggerInput,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const activeWaits = await transaction.waitState.findMany({
       select: {
         criteria: true,
@@ -171,14 +171,15 @@ export class AutomationRuntimeService {
         status: 'ACTIVE',
       },
     });
-    if (!activeWaits.length) return;
+    if (!activeWaits.length) return false;
     const event = await transaction.normalizedEvent.findUnique({
       select: { payload: true },
       where: {
         projectId_id: { id: input.normalizedEventId, projectId: input.projectId },
       },
     });
-    if (!event) return;
+    if (!event) return false;
+    let consumed = false;
     for (const wait of activeWaits) {
       if (!matchesWaitForReplyCriteria(wait.criteria, event.payload)) continue;
       const won = await transaction.waitState.updateMany({
@@ -190,6 +191,7 @@ export class AutomationRuntimeService {
         where: { id: wait.id, projectId: wait.projectId, status: 'ACTIVE' },
       });
       if (won.count === 1) {
+        consumed = true;
         await this.resumeExecutionInTransaction(
           transaction,
           wait.scenarioExecutionId,
@@ -201,6 +203,7 @@ export class AutomationRuntimeService {
         );
       }
     }
+    return consumed;
   }
 
   async triggerInTransaction(

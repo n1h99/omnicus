@@ -355,20 +355,16 @@ export class WhatsAppInboundProcessorService
       });
       await this.queueInboundForCrm(transaction, claimed, normalized.id, contact, message.id);
       if (isWhatsAppAutomationEligibleMessageType(normalizedMessage.messageType)) {
-        await this.automation?.resolveWaitsInTransaction(transaction, {
+        const triggerInput = {
           connectionId: claimed.connectionId,
           contactId: contact.id,
           conversationId: conversation.id,
           normalizedEventId: normalized.id,
           projectId: claimed.projectId,
-        });
-        await this.automation?.triggerInTransaction(transaction, {
-          connectionId: claimed.connectionId,
-          contactId: contact.id,
-          conversationId: conversation.id,
-          normalizedEventId: normalized.id,
-          projectId: claimed.projectId,
-        });
+        };
+        const consumed =
+          (await this.automation?.resolveWaitsInTransaction(transaction, triggerInput)) ?? false;
+        if (!consumed) await this.automation?.triggerInTransaction(transaction, triggerInput);
       }
       void message;
       await this.complete(transaction, claimed);
