@@ -96,6 +96,45 @@ interface ConditionGroupProps {
   }): void;
 }
 
+function AutomationCopyField({
+  copyLabel,
+  successMessage,
+  value,
+}: {
+  copyLabel: string;
+  successMessage: string;
+  value: string;
+}) {
+  return (
+    <Input
+      aria-label={copyLabel}
+      className="automation-copy-field"
+      readOnly
+      suffix={
+        <Button
+          aria-label={`Copy ${copyLabel}`}
+          className="automation-copy-field-button"
+          htmlType="button"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(value);
+              void message.success(successMessage);
+            } catch {
+              void message.error(`${copyLabel} could not be copied.`);
+            }
+          }}
+          size="small"
+          type="text"
+        >
+          Copy
+        </Button>
+      }
+      title={value}
+      value={value}
+    />
+  );
+}
+
 const conditionOperatorLabels: Record<ConditionOperator, string> = {
   contains: 'Contains',
   ends_with: 'Ends with',
@@ -322,18 +361,17 @@ export function AutomationNodeConfig({
             {leadCapture.data ? (
               <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 <Typography.Text strong>Webhook URL</Typography.Text>
-                <Typography.Paragraph code copyable={{ text: leadCapture.data.endpointUrl }}>
-                  {leadCapture.data.endpointUrl}
-                </Typography.Paragraph>
+                <AutomationCopyField
+                  copyLabel="webhook URL"
+                  successMessage="Webhook URL copied."
+                  value={leadCapture.data.endpointUrl}
+                />
                 <Typography.Text strong>Authentication header</Typography.Text>
-                <Typography.Paragraph
-                  code
-                  copyable={{
-                    text: `X-Omnicus-Ingest-Key: ${leadCapture.data.headers['X-Omnicus-Ingest-Key']}`,
-                  }}
-                >
-                  X-Omnicus-Ingest-Key: {leadCapture.data.headers['X-Omnicus-Ingest-Key']}
-                </Typography.Paragraph>
+                <AutomationCopyField
+                  copyLabel="authentication header"
+                  successMessage="Authentication header copied."
+                  value={`X-Omnicus-Ingest-Key: ${leadCapture.data.headers['X-Omnicus-Ingest-Key']}`}
+                />
                 <Alert
                   description="Send a unique Idempotency-Key for every website registration. The body may contain firstName, lastName, phone, email, consents and metadata."
                   message="Ready for website forms"
@@ -372,29 +410,13 @@ export function AutomationNodeConfig({
               />
             </Form.Item>
             {deepLink ? (
-              <div className="automation-deep-link-row">
-                <Typography.Text
-                  className="automation-deep-link-value"
-                  code
-                  title={deepLink}
-                >
-                  {deepLink}
-                </Typography.Text>
-                <Button
-                  className="automation-deep-link-copy"
-                  onClick={async () => {
-                    try {
-                      await navigator.clipboard.writeText(deepLink);
-                      void message.success('Telegram link copied.');
-                    } catch {
-                      void message.error('Telegram link could not be copied.');
-                    }
-                  }}
-                  size="small"
-                >
-                  Copy
-                </Button>
-              </div>
+              <Form.Item label="Telegram launch link" style={{ marginBottom: 0 }}>
+                <AutomationCopyField
+                  copyLabel="Telegram launch link"
+                  successMessage="Telegram link copied."
+                  value={deepLink}
+                />
+              </Form.Item>
             ) : (
               <Alert
                 description="Choose an active Telegram connection with a bot username."

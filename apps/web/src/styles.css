@@ -4453,35 +4453,91 @@ button:disabled,
   width: 100%;
 }
 
-.automation-deep-link-row {
-  align-items: center;
-  display: flex;
-  gap: 8px;
-  min-width: 0;
-  width: 100%;
+.automation-copy-field.ant-input-affix-wrapper {
+  background: var(--surface-muted);
+  border-radius: 10px;
+  padding: 4px 5px 4px 11px;
 }
 
-.automation-deep-link-value.ant-typography {
-  display: block;
-  flex: 1 1 auto;
-  margin: 0;
-  min-width: 0;
-}
-
-.automation-deep-link-value.ant-typography code {
-  display: block;
-  min-width: 0;
+.automation-copy-field.ant-input-affix-wrapper .ant-input {
+  background: transparent;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.automation-deep-link-copy.ant-btn {
-  flex: 0 0 auto;
+.automation-copy-field .ant-input-suffix {
+  margin-inline-start: 8px;
+}
+
+.automation-copy-field-button.ant-btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 650;
+  height: 28px;
+  padding-inline: 10px;
 }
 
 .automation-settings-content .ant-alert-icon {
   display: none;
+}
+
+.automation-settings-content .ant-alert {
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.automation-settings-content .ant-alert-message {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+
+.automation-settings-content .ant-alert-description {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.automation-settings-content .ant-alert-info {
+  background: #edf8fb;
+  border-color: #b9e3ec;
+}
+
+.automation-settings-content .ant-alert-info .ant-alert-message {
+  color: #116278;
+}
+
+.automation-settings-content .ant-alert-success {
+  background: #eef9f3;
+  border-color: #bfe6cf;
+}
+
+.automation-settings-content .ant-alert-success .ant-alert-message {
+  color: #216b43;
+}
+
+.automation-settings-content .ant-alert-warning {
+  background: #fff8e8;
+  border-color: #efd89c;
+}
+
+.automation-settings-content .ant-alert-warning .ant-alert-message {
+  color: #805900;
+}
+
+.automation-settings-content .ant-alert-error {
+  background: #fff1f0;
+  border-color: #efc0bd;
+}
+
+.automation-settings-content .ant-alert-error .ant-alert-message {
+  color: #a3342e;
 }
 
 .contact-custom-fields-textarea.ant-input {
