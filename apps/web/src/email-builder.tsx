@@ -211,6 +211,7 @@ export function EmailBuilder({ disabled = false, document, onChange, projectId }
         alt: file.name.replace(/\.[^.]+$/, ''),
         assetId: asset.id,
         id: id('IMAGE'),
+        objectFit: 'contain',
         type: 'IMAGE',
         widthPercent: 100,
       };
@@ -580,8 +581,20 @@ function BlockProperties({
         <Input disabled={disabled} onChange={(event) => update({ caption: event.target.value || undefined } as never)} value={block.caption ?? ''} />
         <label className="email-field-label">Click-through URL</label>
         <Input disabled={disabled} onChange={(event) => update({ linkUrl: event.target.value || undefined } as never)} value={block.linkUrl ?? ''} />
-        <label className="email-field-label">Width</label>
-        <Slider disabled={disabled} max={100} min={10} onChange={(widthPercent) => update({ widthPercent } as never)} value={block.widthPercent} />
+        <div className="email-two-fields">
+          <label>Width (%)<InputNumber disabled={disabled} max={100} min={10} onChange={(widthPercent) => update({ widthPercent: widthPercent ?? 100 } as never)} value={block.widthPercent} /></label>
+          <label>Height (px)<InputNumber disabled={disabled} max={1200} min={40} onChange={(heightPx) => update({ heightPx: heightPx ?? undefined } as never)} placeholder="Auto" value={block.heightPx ?? null} /></label>
+        </div>
+        <label className="email-field-label">Image fitting</label>
+        <Select
+          disabled={disabled || !block.heightPx}
+          onChange={(objectFit) => update({ objectFit } as never)}
+          options={[
+            { label: 'Fit inside', value: 'contain' },
+            { label: 'Crop to fill', value: 'cover' },
+          ]}
+          value={block.objectFit}
+        />
         <Alignment disabled={disabled} onChange={(align) => update({ align } as never)} value={block.align} />
       </Space>
     );
@@ -718,7 +731,7 @@ function BlockVisual({ block, imageUrl }: { block: EmailBlock; imageUrl?: string
   if (block.type === 'BUTTON')
     return <div style={{ textAlign: block.align }}><span className="email-visual-button" style={{ background: block.backgroundColor, borderRadius: block.borderRadius, color: block.textColor }}>{block.label}</span></div>;
   if (block.type === 'IMAGE')
-    return imageUrl ? <div style={{ textAlign: block.align }}><img alt={block.alt} src={imageUrl} style={{ maxWidth: `${block.widthPercent}%` }} />{block.caption ? <small>{block.caption}</small> : null}</div> : <div className="email-image-placeholder"><PictureOutlined /> Image is loading</div>;
+    return imageUrl ? <div style={{ textAlign: block.align }}><img alt={block.alt} src={imageUrl} style={{ display: 'inline-block', height: block.heightPx ?? 'auto', maxWidth: '100%', objectFit: block.objectFit, width: `${block.widthPercent}%` }} />{block.caption ? <small>{block.caption}</small> : null}</div> : <div className="email-image-placeholder"><PictureOutlined /> Image is loading</div>;
   if (block.type === 'ATTACHMENT')
     return <div className="email-file-reference"><PaperClipOutlined /><span><strong>{block.label}</strong><small>{block.fileName}</small></span></div>;
   if (block.type === 'DIVIDER') return <div style={{ borderTop: `1px solid ${block.color}`, margin: `${block.spacing}px 0` }} />;

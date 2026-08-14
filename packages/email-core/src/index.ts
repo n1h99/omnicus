@@ -43,8 +43,10 @@ const imageBlockSchema = z.object({
   alt: z.string().max(300).default(''),
   assetId: z.string().uuid(),
   caption: z.string().max(500).optional(),
+  heightPx: z.number().int().min(40).max(1200).optional(),
   id: idSchema,
   linkUrl: safeUrlSchema.optional(),
+  objectFit: z.enum(['contain', 'cover']).default('contain'),
   type: z.literal('IMAGE'),
   widthPercent: z.number().int().min(10).max(100).default(100),
 });
@@ -290,8 +292,11 @@ function renderBlock(
   }
   if (block.type === 'IMAGE') {
     const contentId = assetContentIds[block.assetId];
+    const dimensions = block.heightPx
+      ? `width:${block.widthPercent}%;height:${block.heightPx}px;object-fit:${block.objectFit};`
+      : `width:${block.widthPercent}%;height:auto;`;
     const image = contentId
-      ? `<img src="cid:${escapeHtml(contentId)}" alt="${escapeHtml(block.alt)}" style="display:block;width:${block.widthPercent}%;max-width:100%;height:auto;margin:0 auto;border:0" />`
+      ? `<img src="cid:${escapeHtml(contentId)}" alt="${escapeHtml(block.alt)}" style="display:block;${dimensions}max-width:100%;margin:0 auto;border:0" />`
       : `<div style="padding:32px;background:#f1f5f9;color:#64748b;text-align:center">Image unavailable</div>`;
     const linked = block.linkUrl
       ? `<a href="${escapeHtml(block.linkUrl)}" style="text-decoration:none">${image}</a>`
@@ -302,10 +307,7 @@ function renderBlock(
     };
   }
   if (block.type === 'ATTACHMENT')
-    return {
-      html: `<div style="margin:0 0 18px;padding:14px 16px;border:1px solid #dbe4e8;border-radius:12px;background:#f8fafc"><strong style="display:block;color:#172033">${escapeHtml(block.label)}</strong><span style="display:block;padding-top:3px;color:#64748b;font-size:12px">${escapeHtml(block.description ?? block.fileName)}</span></div>`,
-      text: `${block.label} (${block.fileName})`,
-    };
+    return { html: '', text: '' };
   const links = block.links
     .map(
       (link) =>
