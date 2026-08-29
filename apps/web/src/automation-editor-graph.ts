@@ -48,7 +48,7 @@ function compactPreview(value: unknown, maximum = 64): string | undefined {
   return compact.length > maximum ? `${compact.slice(0, maximum - 3)}...` : compact;
 }
 
-function automationNodePreview(type: string, config: Record<string, unknown> | undefined) {
+export function automationNodePreview(type: string, config: Record<string, unknown> | undefined) {
   const value = config ?? {};
   if (type === 'SEND_MESSAGE') {
     const text = compactPreview(value.text, 52);
@@ -95,14 +95,18 @@ export function scenarioGraphToFlow(graph: ScenarioGraph): { edges: Edge[]; node
       source: edge.from,
       target: edge.to,
     })),
-    nodes: graph.nodes.map((node) => ({
-      data: {
-        label: `${node.type}\u0000${automationNodePreview(node.type, node.config) ?? ''}`,
-      },
-      id: node.id,
-      position: node.position ?? { x: 0, y: 0 },
-      type: 'default',
-    })),
+    nodes: graph.nodes.map((node) => {
+      const preview = automationNodePreview(node.type, node.config);
+      return {
+        data: {
+          label: node.type,
+          ...(preview ? { preview } : {}),
+        },
+        id: node.id,
+        position: node.position ?? { x: 0, y: 0 },
+        type: 'default',
+      };
+    }),
   };
 }
 

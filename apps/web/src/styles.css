@@ -2638,14 +2638,14 @@ button:disabled,
 
 .contact-restore-button {
   color: #15803d !important;
-  background: #f0fdf4 !important;
+  background: #ffffff !important;
   border-color: #22c55e !important;
 }
 
 .contact-restore-button:hover,
 .contact-restore-button:focus-visible {
   color: #166534 !important;
-  background: #dcfce7 !important;
+  background: #ffffff !important;
   border-color: #16a34a !important;
 }
 
@@ -3042,6 +3042,16 @@ button:disabled,
   font-size: 12px;
   font-weight: 650;
   line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.automation-flow-node-preview {
+  overflow: hidden;
+  margin-top: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

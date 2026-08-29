@@ -72,6 +72,7 @@ import { AutomationConditionGroupFields, AutomationNodeConfig } from '../automat
 import { AutomationGraphPreview } from '../automation-graph-preview';
 import {
   automationEdgeLabel,
+  automationNodePreview,
   type AutomationEdgeData,
   flowToScenarioGraph,
   scenarioGraphToFlow,
@@ -164,7 +165,7 @@ const paletteLabels = new Map<string, string>(
   ),
 );
 
-type AutomationCanvasNodeDefinition = Node<{ label: string }, 'automation'>;
+type AutomationCanvasNodeDefinition = Node<{ label: string; preview?: string }, 'automation'>;
 
 function automationNodeIcon(rawType: string) {
   const type = rawType.split('\u0000')[0] ?? rawType;
@@ -197,6 +198,7 @@ function automationNodeCategory(type: string) {
 
 function AutomationCanvasNode({ data, selected }: NodeProps<AutomationCanvasNodeDefinition>) {
   const type = String(data.label);
+  const preview = typeof data.preview === 'string' ? data.preview : undefined;
   return (
     <div
       className={`automation-flow-node automation-flow-node--${automationNodeCategory(type).toLowerCase()}${selected ? ' is-selected' : ''}`}
@@ -205,7 +207,8 @@ function AutomationCanvasNode({ data, selected }: NodeProps<AutomationCanvasNode
       <span className="automation-flow-node-icon">{automationNodeIcon(type)}</span>
       <span className="automation-flow-node-copy">
         <small>{automationNodeCategory(type)}</small>
-        <strong>{paletteLabels.get(type) ?? type}</strong>
+        <strong>{paletteLabels.get(type) ?? automationNodeLabel(type)}</strong>
+        {preview ? <span className="automation-flow-node-preview">{preview}</span> : null}
       </span>
       <Handle className="automation-node-handle" position={Position.Bottom} type="source" />
     </div>
@@ -966,6 +969,22 @@ export function ScenarioEditorPage() {
                         onChange={(config) => {
                           captureHistory();
                           setConfigs((current) => ({ ...current, [selected.id]: config }));
+                          setNodes((current) =>
+                            current.map((node) =>
+                              node.id === selected.id
+                                ? {
+                                    ...node,
+                                    data: {
+                                      ...node.data,
+                                      preview: automationNodePreview(
+                                        String(selected.data.label),
+                                        config,
+                                      ),
+                                    },
+                                  }
+                                : node,
+                            ),
+                          );
                         }}
                         projectId={projectId}
                         scenarioId={scenarioId}
