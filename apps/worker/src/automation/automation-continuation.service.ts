@@ -30,6 +30,7 @@ export class AutomationContinuationService
   ) {}
 
   onApplicationBootstrap(): void {
+    void this.scanOnce();
     this.timer = setInterval(
       () => void this.scanOnce(),
       this.config.get('AUTOMATION_CONTINUATION_INTERVAL_MS', { infer: true }),
@@ -61,10 +62,22 @@ export class AutomationContinuationService
           where: { expiresAt: { lte: now }, status: 'ACTIVE' },
         }),
       ]);
-      for (const delay of delays) await this.runtime.resumeDelayedAction(delay.id);
-      for (const wait of waits) await this.runtime.timeoutWait(wait.id);
+      let failures = 0;
+      for (const delay of delays) {
+        const resumed = await this.resumeContinuation('delay', delay.id, () =>
+          this.runtime.resumeDelayedAction(delay.id),
+        );
+        if (!resumed) failures += 1;
+      }
+      for (const wait of waits) {
+        const resumed = await this.resumeContinuation('wait', wait.id, () =>
+          this.runtime.timeoutWait(wait.id),
+        );
+        if (!resumed) failures += 1;
+      }
       this.logger.log({
         delays: delays.length,
+        failures,
         message: 'automation_continuation_scan',
         waits: waits.length,
       });
@@ -72,6 +85,25 @@ export class AutomationContinuationService
       this.logger.warn({ message: 'automation_continuation_scan_failed' });
     } finally {
       this.scanning = false;
+    }
+  }
+
+  private async resumeContinuation(
+    kind: 'delay' | 'wait',
+    continuationId: string,
+    resume: () => Promise<void>,
+  ): Promise<boolean> {
+    try {
+      await resume();
+      return true;
+    } catch (error) {
+      this.logger.warn({
+        continuationId,
+        errorCode: error instanceof Error ? error.message : 'unknown_error',
+        kind,
+        message: 'automation_continuation_resume_failed',
+      });
+      return false;
     }
   }
 }

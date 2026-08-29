@@ -8,7 +8,8 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     const transaction = {
       normalizedEvent: {
         findUnique: vi.fn().mockResolvedValue({
-          payload: { content: { text: 'Yes, continue' }, type: 'MESSAGE' },
+          payload: { content: { text: 'Yes, continue' } },
+          type: 'MESSAGE',
         }),
       },
       waitState: {

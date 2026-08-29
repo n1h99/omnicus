@@ -174,7 +174,7 @@ export class AutomationRuntimeService {
     });
     if (!activeWaits.length) return false;
     const event = await transaction.normalizedEvent.findUnique({
-      select: { payload: true },
+      select: { payload: true, type: true },
       where: {
         projectId_id: { id: input.normalizedEventId, projectId: input.projectId },
       },
@@ -182,7 +182,13 @@ export class AutomationRuntimeService {
     if (!event) return false;
     let consumed = false;
     for (const wait of activeWaits) {
-      if (!matchesWaitForReplyCriteria(wait.criteria, event.payload)) continue;
+      if (
+        !matchesWaitForReplyCriteria(wait.criteria, {
+          ...this.object(event.payload),
+          type: event.type,
+        })
+      )
+        continue;
       const won = await transaction.waitState.updateMany({
         data: {
           resolvedAt: new Date(),

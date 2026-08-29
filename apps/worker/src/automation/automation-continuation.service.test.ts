@@ -28,4 +28,30 @@ describe('AutomationContinuationService', () => {
       }),
     );
   });
+
+  it('continues scanning after one continuation fails', async () => {
+    const resumeDelayedAction = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('automation_delay_resume_failed'))
+      .mockResolvedValueOnce(undefined);
+    const timeoutWait = vi.fn().mockResolvedValue(undefined);
+    const delayedAction = {
+      findMany: vi.fn().mockResolvedValue([{ id: 'delay-bad' }, { id: 'delay-good' }]),
+    };
+    const waitState = { findMany: vi.fn().mockResolvedValue([{ id: 'wait-good' }]) };
+    const service = new AutomationContinuationService(
+      new ConfigService({
+        AUTOMATION_CONTINUATION_BATCH_SIZE: 10,
+        AUTOMATION_CONTINUATION_INTERVAL_MS: 10_000,
+      }) as never,
+      { client: { delayedAction, waitState } } as never,
+      { resumeDelayedAction, timeoutWait } as never,
+    );
+
+    await service.scanOnce(new Date('2026-07-27T00:00:00.000Z'));
+
+    expect(resumeDelayedAction).toHaveBeenNthCalledWith(1, 'delay-bad');
+    expect(resumeDelayedAction).toHaveBeenNthCalledWith(2, 'delay-good');
+    expect(timeoutWait).toHaveBeenCalledWith('wait-good');
+  });
 });

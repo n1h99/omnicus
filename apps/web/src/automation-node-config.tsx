@@ -169,6 +169,18 @@ const mediaAccept: Record<MediaKind, string> = {
   VOICE: 'audio/ogg,audio/opus,audio/webm',
 };
 
+function telegramMediaGroupCompatibilityIssue(kinds: MediaKind[]): string | undefined {
+  if (kinds.length < 2) return undefined;
+  const uniqueKinds = [...new Set(kinds)];
+  const photoOrVideoGroup = uniqueKinds.every((kind) => kind === 'PHOTO' || kind === 'VIDEO');
+  const singleKindGroup =
+    uniqueKinds.length === 1 && ['AUDIO', 'DOCUMENT'].includes(uniqueKinds[0] ?? '');
+  if (photoOrVideoGroup || singleKindGroup) return undefined;
+  return `Selected types: ${uniqueKinds
+    .map((kind) => kind.replaceAll('_', ' ').toLowerCase())
+    .join(', ')}. Telegram can group photos and videos together, documents only with documents, or audio only with audio.`;
+}
+
 export function AutomationNodeConfig({
   config,
   customFields,
@@ -222,6 +234,20 @@ export function AutomationNodeConfig({
       ? target
       : 'INCOMING_CONVERSATION';
   })();
+  const configuredMediaAssetIds = [
+    ...(typeof config.mediaAssetId === 'string' ? [config.mediaAssetId] : []),
+    ...(Array.isArray(config.mediaAssetIds)
+      ? config.mediaAssetIds.filter((value): value is string => typeof value === 'string')
+      : []),
+  ].filter((value, index, values) => values.indexOf(value) === index);
+  const configuredMediaAssets = configuredMediaAssetIds.flatMap((assetId) => {
+    const asset = assets.data?.find((candidate) => candidate.id === assetId);
+    return asset ? [asset] : [];
+  });
+  const telegramMediaGroupIssue =
+    configuredMediaAssets.length === configuredMediaAssetIds.length
+      ? telegramMediaGroupCompatibilityIssue(configuredMediaAssets.map((asset) => asset.kind))
+      : undefined;
   const telegramConnectionId =
     typeof config.telegramConnectionId === 'string' ? config.telegramConnectionId : undefined;
   const whatsappConnectionId =
@@ -270,6 +296,18 @@ export function AutomationNodeConfig({
     config,
     nodeType,
   ]);
+
+  useEffect(() => {
+    if (
+      nodeType !== 'SEND_MESSAGE' ||
+      sendDeliveryTarget !== 'TELEGRAM' ||
+      config.mediaDeliveryMode !== 'GROUP' ||
+      !telegramMediaGroupIssue
+    )
+      return;
+    onChange({ ...config, mediaDeliveryMode: 'SEPARATE' });
+    void message.warning('Incompatible Telegram attachments will be sent as separate messages.');
+  }, [config, nodeType, onChange, sendDeliveryTarget, telegramMediaGroupIssue]);
 
   const sendDeliveryInfo = {
     INCOMING_CONVERSATION: {
@@ -728,7 +766,7 @@ export function AutomationNodeConfig({
               options={(assets.data ?? [])
                 .filter((asset) => asset.id !== config.mediaAssetId)
                 .map((asset) => ({
-                  label: asset.originalFilename ?? `${asset.kind.toLowerCase()} file`,
+                  label: `${asset.originalFilename ?? asset.id.slice(0, 8)} · ${asset.kind.replaceAll('_', ' ').toLowerCase()}`,
                   value: asset.id,
                 }))}
               placeholder="Choose more files from the media library"
@@ -751,11 +789,23 @@ export function AutomationNodeConfig({
                 onChange={(value) => set('mediaDeliveryMode', value)}
                 options={[
                   { label: 'Separate messages', value: 'SEPARATE' },
-                  { label: 'Telegram media group', value: 'GROUP' },
+                  {
+                    disabled: Boolean(telegramMediaGroupIssue),
+                    label: 'Telegram media group',
+                    value: 'GROUP',
+                  },
                 ]}
                 value={config.mediaDeliveryMode === 'GROUP' ? 'GROUP' : 'SEPARATE'}
               />
             </label>
+            {telegramMediaGroupIssue ? (
+              <Alert
+                description={`${telegramMediaGroupIssue} Separate messages is selected automatically.`}
+                message="These attachments cannot be combined into one Telegram media group"
+                showIcon
+                type="warning"
+              />
+            ) : null}
           </Space>
         ) : null}
 
