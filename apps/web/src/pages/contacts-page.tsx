@@ -123,9 +123,14 @@ export function ContactsPage() {
         </div>
       </div>
       <div className="filter-panel surface">
-        <Space align="center" wrap>
+        <Space align="center" className="contacts-toolbar" wrap>
           {hasProjectPermission(access.data, 'contacts:manage') ? (
-            <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} type="primary">
+            <Button
+              className="contacts-toolbar-create"
+              icon={<PlusOutlined />}
+              onClick={() => setCreateOpen(true)}
+              type="primary"
+            >
               Create contact
             </Button>
           ) : null}

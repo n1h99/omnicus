@@ -2632,6 +2632,16 @@ button:disabled,
   width: 100%;
 }
 
+.contacts-toolbar > .ant-space-item {
+  display: flex;
+  align-items: center;
+}
+
+.contacts-toolbar > .ant-space-item:has(.contacts-toolbar-create) {
+  order: 1;
+  margin-inline-start: auto;
+}
+
 .settings-form {
   padding: 22px;
 }
