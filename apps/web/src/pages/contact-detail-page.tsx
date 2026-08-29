@@ -149,6 +149,22 @@ export function ContactDetailPage() {
       void message.error(getUserErrorMessage(error, 'Contact could not be archived.'));
     }
   };
+  const restoreContact = async () => {
+    setDeletingContact(true);
+    try {
+      await apiRequest(
+        `/api/v1/projects/${projectId}/contacts/${contactId}`,
+        { body: JSON.stringify({ status: 'ACTIVE' }), method: 'PATCH' },
+        accessToken,
+      );
+      await reload();
+      void message.success('Contact restored.');
+    } catch (error) {
+      void message.error(getUserErrorMessage(error, 'Contact could not be restored.'));
+    } finally {
+      setDeletingContact(false);
+    }
+  };
 
   return (
     <section>
@@ -517,15 +533,31 @@ export function ContactDetailPage() {
                       Merge contacts
                     </Button>
                   </div>
-                  <div className="contact-settings-action-group">
-                    <Typography.Paragraph className="contact-settings-note" type="secondary">
-                      Archive this contact and remove it from active contact lists. Its history and
-                      CRM links will be preserved.
-                    </Typography.Paragraph>
-                    <Button block danger onClick={() => setDeleteOpen(true)}>
-                      Archive contact
-                    </Button>
-                  </div>
+                  {value.status === 'ACTIVE' ? (
+                    <div className="contact-settings-action-group">
+                      <Typography.Paragraph className="contact-settings-note" type="secondary">
+                        Archive this contact and remove it from active contact lists. Its history
+                        and CRM links will be preserved.
+                      </Typography.Paragraph>
+                      <Button block danger onClick={() => setDeleteOpen(true)}>
+                        Archive contact
+                      </Button>
+                    </div>
+                  ) : value.status === 'ARCHIVED' ? (
+                    <div className="contact-settings-action-group">
+                      <Typography.Paragraph className="contact-settings-note" type="secondary">
+                        Restore this contact to active lists and resume its regular availability.
+                      </Typography.Paragraph>
+                      <Button
+                        block
+                        className="contact-restore-button"
+                        loading={deletingContact}
+                        onClick={() => void restoreContact()}
+                      >
+                        Restore contact
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               </Form>
             </Card>

@@ -2636,6 +2636,19 @@ button:disabled,
   border-top: 0 !important;
 }
 
+.contact-restore-button {
+  color: #15803d !important;
+  background: #f0fdf4 !important;
+  border-color: #22c55e !important;
+}
+
+.contact-restore-button:hover,
+.contact-restore-button:focus-visible {
+  color: #166534 !important;
+  background: #dcfce7 !important;
+  border-color: #16a34a !important;
+}
+
 .contacts-toolbar > .ant-space-item {
   display: flex;
   align-items: center;
