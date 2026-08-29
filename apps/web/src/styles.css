@@ -5562,27 +5562,55 @@ button:disabled,
 
 .automation-flow-node .automation-node-handle,
 .automation-flow-node.is-selected .automation-node-handle {
-  border: 0;
-  background: #5266dc;
-  box-shadow: none;
+  z-index: 6;
+  border: 0 !important;
+  background: #5266dc !important;
+  box-shadow: none !important;
 }
 
 .automation-node-handle-target {
-  top: -7px;
+  top: -27px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
 }
 
 .automation-node-handle-source {
-  right: 18px;
-  bottom: -7px;
-  left: auto;
-  transform: none;
+  right: auto !important;
+  bottom: -27px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+}
+
+.automation-node-handle-target::after,
+.automation-node-handle-source::before {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 15px;
+  transform: translateX(-50%);
+  background: #5266dc;
+  content: '';
+  pointer-events: none;
+}
+
+.automation-node-handle-target::after {
+  top: 100%;
+}
+
+.automation-node-handle-source::before {
+  bottom: 100%;
 }
 
 .automation-flow-node-trigger .automation-node-handle,
 .automation-flow-node-trigger.is-selected .automation-node-handle,
 .automation-flow-node-trigger .automation-node-button-port {
-  background: #18a39a;
+  background: #18a39a !important;
   box-shadow: none;
+}
+
+.automation-flow-node-trigger .automation-node-handle-target::after,
+.automation-flow-node-trigger .automation-node-handle-source::before {
+  background: #18a39a;
 }
 
 .automation-node-button-port {
