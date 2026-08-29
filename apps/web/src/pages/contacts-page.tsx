@@ -121,14 +121,14 @@ export function ContactsPage() {
             Search, filter and manage the people connected to this project.
           </Typography.Text>
         </div>
-        {hasProjectPermission(access.data, 'contacts:manage') ? (
-          <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} type="primary">
-            Create contact
-          </Button>
-        ) : null}
       </div>
       <div className="filter-panel surface">
-        <Space wrap>
+        <Space align="center" wrap>
+          {hasProjectPermission(access.data, 'contacts:manage') ? (
+            <Button icon={<PlusOutlined />} onClick={() => setCreateOpen(true)} type="primary">
+              Create contact
+            </Button>
+          ) : null}
           <Input
             allowClear
             aria-label="Search contacts"

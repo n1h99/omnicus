@@ -121,19 +121,30 @@ export class ContactsService {
           message: 'A contact with this email or phone already exists',
         });
     }
-    const contact = await this.database.client.contact.create({
-      data: {
-        displayName: input.displayName.trim(),
-        email,
-        firstName: input.firstName?.trim() || null,
-        lastName: input.lastName?.trim() || null,
-        normalizedEmail: email,
-        normalizedPhone,
-        phone,
+    const contact = await this.database.client.$transaction(async (transaction) => {
+      const created = await transaction.contact.create({
+        data: {
+          displayName: input.displayName.trim(),
+          email,
+          firstName: input.firstName?.trim() || null,
+          lastName: input.lastName?.trim() || null,
+          normalizedEmail: email,
+          normalizedPhone,
+          phone,
+          projectId,
+          username: input.username?.trim() || null,
+        },
+        select: contactSelect,
+      });
+      await this.queueCrmContactSync(
+        transaction,
         projectId,
-        username: input.username?.trim() || null,
-      },
-      select: contactSelect,
+        created.id,
+        created.updatedAt,
+        context.correlationId,
+        'contact_manual_create',
+      );
+      return created;
     });
     await this.audit.record({
       action: 'contact.created',
@@ -236,35 +247,14 @@ export class ContactsService {
       });
       if (input.customFields)
         await this.syncCustomFieldValues(transaction, projectId, contactId, input.customFields);
-      const crmConfig = updated.crmLeadId
-        ? await transaction.crmProjectConfig.findUnique({
-            select: { enabled: true },
-            where: { projectId },
-          })
-        : null;
-      if (crmConfig?.enabled) {
-        const outbox = await transaction.outboxRecord.create({
-          data: {
-            idempotencyKey: `crm-contact-sync-${contactId}-${updated.updatedAt.toISOString()}`,
-            kind: 'CRM',
-            nextAttemptAt: new Date(),
-            payload: { contactId, operationType: 'CREATE_OR_UPDATE_LEAD' },
-            projectId,
-          },
-        });
-        await transaction.crmOperation.create({
-          data: {
-            contactId,
-            inputSafe: {
-              correlationId: context.correlationId,
-              source: 'contact_manual_update',
-            },
-            outboxRecordId: outbox.id,
-            projectId,
-            type: 'CREATE_OR_UPDATE_LEAD',
-          },
-        });
-      }
+      await this.queueCrmContactSync(
+        transaction,
+        projectId,
+        contactId,
+        updated.updatedAt,
+        context.correlationId,
+        'contact_manual_update',
+      );
       return updated;
     });
     await this.audit.record({
@@ -1028,6 +1018,39 @@ export class ContactsService {
       userAgent: context.userAgent,
     });
     return merged;
+  }
+
+  private async queueCrmContactSync(
+    transaction: Prisma.TransactionClient,
+    projectId: string,
+    contactId: string,
+    updatedAt: Date,
+    correlationId: string,
+    source: 'contact_manual_create' | 'contact_manual_update',
+  ): Promise<void> {
+    const crmConfig = await transaction.crmProjectConfig.findUnique({
+      select: { enabled: true, status: true },
+      where: { projectId },
+    });
+    if (!crmConfig?.enabled || crmConfig.status !== 'ACTIVE') return;
+    const outbox = await transaction.outboxRecord.create({
+      data: {
+        idempotencyKey: `crm-contact-sync-${contactId}-${updatedAt.toISOString()}`,
+        kind: 'CRM',
+        nextAttemptAt: new Date(),
+        payload: { contactId, operationType: 'CREATE_OR_UPDATE_LEAD' },
+        projectId,
+      },
+    });
+    await transaction.crmOperation.create({
+      data: {
+        contactId,
+        inputSafe: { correlationId, source },
+        outboxRecordId: outbox.id,
+        projectId,
+        type: 'CREATE_OR_UPDATE_LEAD',
+      },
+    });
   }
 
   private async assertSegment(projectId: string, segmentId: string) {
