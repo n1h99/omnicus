@@ -446,14 +446,7 @@ export class AutomationRuntimeService {
         );
       } catch (error) {
         const reasonCode =
-          error instanceof Error &&
-          [
-            'automation_channel_connection_unavailable',
-            'automation_channel_identity_unavailable',
-            'automation_email_not_eligible',
-            'automation_email_template_unavailable',
-            'automation_whatsapp_service_window_closed',
-          ].includes(error.message)
+          error instanceof Error && /^automation_[a-z0-9_]+$/.test(error.message)
             ? error.message
             : undefined;
         if (!reasonCode) throw error;

@@ -566,7 +566,7 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     });
   });
 
-  it('persists a deterministic delivery failure instead of rolling back the execution', async () => {
+  it('persists a media delivery failure instead of rolling back the inbound transaction', async () => {
     const nodeExecutionUpsert = vi.fn().mockResolvedValue({});
     const scenarioExecutionUpdate = vi.fn().mockResolvedValue({});
     const service = new AutomationRuntimeService({} as never) as unknown as {
@@ -578,7 +578,7 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
       ): Promise<void>;
     };
     Object.assign(service, {
-      applyNode: vi.fn().mockRejectedValue(new Error('automation_whatsapp_service_window_closed')),
+      applyNode: vi.fn().mockRejectedValue(new Error('automation_telegram_media_group_kind_invalid')),
     });
 
     await service.executeGraph(
@@ -608,7 +608,7 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     expect(nodeExecutionUpsert).toHaveBeenLastCalledWith(
       expect.objectContaining({
         update: expect.objectContaining({
-          outputSafe: { reasonCode: 'automation_whatsapp_service_window_closed' },
+          outputSafe: { reasonCode: 'automation_telegram_media_group_kind_invalid' },
           status: 'FAILED',
         }),
       }),
