@@ -3519,6 +3519,7 @@ button:disabled,
   width: min(100%, var(--preview-width));
   height: var(--preview-height);
   overflow: hidden;
+  isolation: isolate;
   background-color: #f8fafc;
   background-image: radial-gradient(circle, #dbe5ef 1px, transparent 1px);
   background-size: 18px 18px;
@@ -3532,34 +3533,59 @@ button:disabled,
 }
 
 .automation-version-preview svg {
-  position: absolute;
-  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.automation-version-preview line {
+.automation-version-edges path {
+  fill: none;
   stroke: #94a3b8;
-  stroke-width: 2;
+  stroke-width: 1.7;
+  vector-effect: non-scaling-stroke;
 }
 
-.automation-version-node {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  padding: 0 7px;
-  overflow: hidden;
-  color: var(--text-soft);
+.automation-version-preview.is-compact .automation-version-edges path {
+  stroke-width: 1;
+}
+
+.automation-version-node rect {
+  fill: #fff;
+  stroke: #b9c8d8;
+  stroke-width: 1.2;
+  vector-effect: non-scaling-stroke;
+}
+
+.automation-version-node text {
+  fill: var(--text-soft);
   font-size: 10px;
   font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: #fff;
-  border: 1px solid #b9c8d8;
-  border-radius: 9px;
+  letter-spacing: -0.01em;
+  pointer-events: none;
 }
 
-.automation-version-preview.is-compact .automation-version-node {
-  padding: 0;
-  border-radius: 4px;
+.automation-version-node--incoming_message rect {
+  fill: #f0fdfa;
+  stroke: #5fbeb5;
+}
+
+.automation-version-node--condition rect,
+.automation-version-node--delay rect,
+.automation-version-node--wait_for_reply rect {
+  fill: #fffbeb;
+  stroke: #e2ad51;
+}
+
+.automation-version-node--send_email rect,
+.automation-version-node--send_message rect,
+.automation-version-node--send_template rect {
+  fill: #f1f5ff;
+  stroke: #8799e8;
+}
+
+.automation-version-node--stop rect {
+  fill: #fff7ed;
+  stroke: #e2a15c;
 }
 
 .automation-duration-control {

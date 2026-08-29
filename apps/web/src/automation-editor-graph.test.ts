@@ -67,7 +67,7 @@ describe('automation editor graph mapping', () => {
 
     expect(spreadCompactFlowNodes(nodes).map((node) => node.position)).toEqual([
       { x: 100, y: 100 },
-      { x: 110, y: 228 },
+      { x: 110, y: 440 },
       { x: 500, y: 140 },
     ]);
   });
