@@ -363,9 +363,9 @@ function AutomationNodeMediaPreview({
   count,
   projectId,
 }: {
-  asset?: MediaAsset;
+  asset: MediaAsset | undefined;
   count: number;
-  projectId?: string;
+  projectId: string | undefined;
 }) {
   const { mutateAsync: getSignedUrl } = useMediaMutations(projectId).signedUrl;
   const [preview, setPreview] = useState<{ assetId: string; url: string }>();
@@ -385,7 +385,7 @@ function AutomationNodeMediaPreview({
     };
   }, [assetId, getSignedUrl, isPhoto]);
 
-  const previewUrl = preview?.assetId === assetId ? preview.url : undefined;
+  const previewUrl = preview && preview.assetId === assetId ? preview.url : undefined;
   return (
     <div className={`automation-node-media${previewUrl ? ' has-image' : ''}`}>
       {previewUrl ? (
