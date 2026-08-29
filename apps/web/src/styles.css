@@ -2632,6 +2632,10 @@ button:disabled,
   width: 100%;
 }
 
+.contact-archive-modal .modal-form-actions {
+  border-top: 0 !important;
+}
+
 .contacts-toolbar > .ant-space-item {
   display: flex;
   align-items: center;

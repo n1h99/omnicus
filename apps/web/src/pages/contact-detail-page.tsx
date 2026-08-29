@@ -136,17 +136,17 @@ export function ContactDetailPage() {
   const whatsAppReachability = whatsappIdentity?.whatsAppReachability ?? 'UNKNOWN';
   const whatsAppMailingEligible =
     value.whatsAppConsentStatus === 'GRANTED' && whatsAppReachability === 'AVAILABLE';
-  const deleteContact = async () => {
+  const archiveContact = async () => {
     try {
       await apiRequest(
         `/api/v1/projects/${projectId}/contacts/${contactId}`,
         { body: JSON.stringify({ status: 'ARCHIVED' }), method: 'PATCH' },
         accessToken,
       );
-      void message.success('Contact deleted.');
+      void message.success('Contact archived.');
       window.location.assign(`/projects/${projectId}/contacts`);
     } catch (error) {
-      void message.error(getUserErrorMessage(error, 'Contact could not be deleted.'));
+      void message.error(getUserErrorMessage(error, 'Contact could not be archived.'));
     }
   };
 
@@ -519,11 +519,11 @@ export function ContactDetailPage() {
                   </div>
                   <div className="contact-settings-action-group">
                     <Typography.Paragraph className="contact-settings-note" type="secondary">
-                      Delete this contact from the project. This action cannot be undone from the
-                      UI.
+                      Archive this contact and remove it from active contact lists. Its history and
+                      CRM links will be preserved.
                     </Typography.Paragraph>
                     <Button block danger onClick={() => setDeleteOpen(true)}>
-                      Delete contact
+                      Archive contact
                     </Button>
                   </div>
                 </div>
@@ -534,15 +534,16 @@ export function ContactDetailPage() {
       </Row>
 
       <Modal
-        className="account-confirm-modal"
+        className="account-confirm-modal contact-archive-modal"
         footer={null}
         onCancel={() => setDeleteOpen(false)}
         open={deleteOpen}
-        title="Delete this contact?"
+        title="Archive this contact?"
         width={460}
       >
         <Typography.Paragraph type="secondary">
-          This contact will be archived and removed from active contact lists.
+          The contact will disappear from active lists, while its history and CRM links remain
+          intact.
         </Typography.Paragraph>
         <div className="modal-form-actions">
           <Button onClick={() => setDeleteOpen(false)}>Cancel</Button>
@@ -552,14 +553,14 @@ export function ContactDetailPage() {
             onClick={async () => {
               setDeletingContact(true);
               try {
-                await deleteContact();
+                await archiveContact();
                 setDeleteOpen(false);
               } finally {
                 setDeletingContact(false);
               }
             }}
           >
-            Delete contact
+            Archive contact
           </Button>
         </div>
       </Modal>
