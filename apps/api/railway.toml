@@ -1,6 +1,18 @@
 [build]
 builder = "RAILPACK"
 buildCommand = "pnpm versions && pnpm preflight && pnpm build:api"
+watchPatterns = [
+  "/apps/api/**",
+  "/packages/**",
+  "/scripts/**",
+  "/.node-version",
+  "/package.json",
+  "/pnpm-lock.yaml",
+  "/pnpm-workspace.yaml",
+  "/prisma.config.ts",
+  "/tsconfig.json",
+  "/turbo.json",
+]
 
 [deploy]
 startCommand = "node .runtime/api/dist/main.js"
