@@ -291,10 +291,15 @@ const automationNodeLabels: Record<string, string> = {
 };
 
 export function automationNodeLabel(nodeType: string): string {
-  return automationNodeLabels[nodeType] ?? nodeType.toLowerCase().replaceAll('_', ' ');
+  const [parsedType, preview] = nodeType.split('\u0000');
+  const canonicalType = parsedType ?? nodeType;
+  const label =
+    automationNodeLabels[canonicalType] ?? canonicalType.toLowerCase().replaceAll('_', ' ');
+  return preview ? `${label} - ${preview}` : label;
 }
 
 export function automationNodeDescription(nodeType: string): string {
+  nodeType = nodeType.split('\u0000')[0] ?? nodeType;
   const descriptions: Record<string, string> = {
     ADD_TAG: 'Add a project tag to the contact.',
     CLEAR_CUSTOM_FIELD: 'Clear one custom-field value for the current contact.',

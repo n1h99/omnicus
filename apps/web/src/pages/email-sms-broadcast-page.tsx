@@ -881,6 +881,13 @@ function CampaignEditor({
           type="info"
         />
       ) : null}
+      <Alert
+        className="email-editor-alert"
+        description="Clicks appear in Analytics when click tracking is enabled for the sending domain. Tracking is managed centrally and does not require a per-campaign checkbox."
+        message="Link click tracking"
+        showIcon
+        type="info"
+      />
       <div className="email-campaign-settings">
         <div className="email-settings-primary">
           <label>

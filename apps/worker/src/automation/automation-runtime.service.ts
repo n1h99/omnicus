@@ -1115,27 +1115,51 @@ export class AutomationRuntimeService {
       node.type === 'SEND_MESSAGE' && typeof nodeConfig.mediaAssetId === 'string'
         ? nodeConfig.mediaAssetId
         : undefined;
-    const configuredMediaAsset = configuredMediaAssetId
-      ? await transaction.mediaAsset.findFirst({
-          where: { id: configuredMediaAssetId, projectId: context.projectId, status: 'AVAILABLE' },
+    const configuredAdditionalMediaAssetIds =
+      node.type === 'SEND_MESSAGE' && Array.isArray(nodeConfig.mediaAssetIds)
+        ? nodeConfig.mediaAssetIds.filter(
+            (assetId): assetId is string => typeof assetId === 'string' && Boolean(assetId.trim()),
+          )
+        : [];
+    const configuredMediaAssetIds = [
+      ...(configuredMediaAssetId ? [configuredMediaAssetId] : []),
+      ...configuredAdditionalMediaAssetIds,
+    ].filter((assetId, index, values) => values.indexOf(assetId) === index);
+    const availableConfiguredMediaAssets = configuredMediaAssetIds.length
+      ? await transaction.mediaAsset.findMany({
+          where: {
+            id: { in: configuredMediaAssetIds },
+            projectId: context.projectId,
+            status: 'AVAILABLE',
+          },
         })
-      : undefined;
-    if (configuredMediaAssetId && !configuredMediaAsset)
+      : [];
+    const configuredMediaAssetsById = new Map(
+      availableConfiguredMediaAssets.map((asset) => [asset.id, asset]),
+    );
+    const configuredMediaAssets = configuredMediaAssetIds.flatMap((assetId) => {
+      const asset = configuredMediaAssetsById.get(assetId);
+      return asset ? [asset] : [];
+    });
+    if (configuredMediaAssets.length !== configuredMediaAssetIds.length)
       throw new Error('automation_media_asset_unavailable');
-    const configuredMediaValidationChannel = configuredMediaAsset
-      ? this.object(configuredMediaAsset.providerMetadata)?.validationChannel
-      : undefined;
-    const configuredMediaChannel =
-      configuredMediaValidationChannel === 'telegram'
-        ? 'TELEGRAM'
-        : configuredMediaValidationChannel === 'whatsapp'
-          ? 'WHATSAPP'
-          : configuredMediaAsset?.source === 'TELEGRAM' ||
-              configuredMediaAsset?.source === 'WHATSAPP'
-            ? configuredMediaAsset.source
-            : undefined;
-    if (configuredMediaChannel && configuredMediaChannel !== channelType)
+    if (configuredMediaAssets.length > 10) throw new Error('automation_media_asset_limit_exceeded');
+    if (configuredMediaAssets.length > 1 && channelType !== 'TELEGRAM')
       throw new Error('automation_media_channel_mismatch');
+    const configuredMediaAsset = configuredMediaAssets[0];
+    for (const mediaAsset of configuredMediaAssets) {
+      const validationChannel = this.object(mediaAsset.providerMetadata)?.validationChannel;
+      const mediaChannel =
+        validationChannel === 'telegram'
+          ? 'TELEGRAM'
+          : validationChannel === 'whatsapp'
+            ? 'WHATSAPP'
+            : mediaAsset.source === 'TELEGRAM' || mediaAsset.source === 'WHATSAPP'
+              ? mediaAsset.source
+              : undefined;
+      if (mediaChannel && mediaChannel !== channelType)
+        throw new Error('automation_media_channel_mismatch');
+    }
     if (
       !whatsAppTemplate.success &&
       !configuredMediaAsset &&
@@ -1289,70 +1313,164 @@ export class AutomationRuntimeService {
         ? await this.telegramButtons(transaction, nodeConfig, context, executionId, node.id)
         : undefined;
     const idempotencyKey = `automation-${executionId}-${node.id}`;
-    const existing = await transaction.outboxRecord.findUnique({
-      where: { projectId_idempotencyKey: { idempotencyKey, projectId: context.projectId } },
-    });
-    if (existing) {
-      const payload = this.object(existing.payload);
+    const mediaDeliveryMode = nodeConfig.mediaDeliveryMode === 'GROUP' ? 'GROUP' : 'SEPARATE';
+    if (
+      channelType === 'TELEGRAM' &&
+      configuredMediaAssets.length > 1 &&
+      mediaDeliveryMode === 'GROUP'
+    ) {
+      if (telegramButtons?.length || templateContent?.inlineKeyboard)
+        throw new Error('automation_telegram_media_group_buttons_invalid');
+      const kinds = new Set(configuredMediaAssets.map((asset) => asset.kind));
+      if (
+        [...kinds].some((kind) => !['AUDIO', 'DOCUMENT', 'PHOTO', 'VIDEO'].includes(kind)) ||
+        (kinds.has('AUDIO') && kinds.size !== 1) ||
+        (kinds.has('DOCUMENT') && kinds.size !== 1)
+      )
+        throw new Error('automation_telegram_media_group_kind_invalid');
+      const existingGroupOutbox = await transaction.outboxRecord.findUnique({
+        where: { projectId_idempotencyKey: { idempotencyKey, projectId: context.projectId } },
+      });
+      if (existingGroupOutbox) {
+        const payload = this.object(existingGroupOutbox.payload);
+        return {
+          deliveryStatus: 'QUEUED',
+          ...(typeof payload.mediaGroupId === 'string'
+            ? { mediaGroupId: payload.mediaGroupId }
+            : {}),
+          outboxRecordId: existingGroupOutbox.id,
+        };
+      }
+      const outbox = await transaction.outboxRecord.create({
+        data: {
+          connectionId,
+          idempotencyKey,
+          kind: 'TELEGRAM',
+          nextAttemptAt: new Date(),
+          payload: {},
+          projectId: context.projectId,
+        },
+      });
+      const group = await transaction.telegramMediaGroup.create({
+        data: {
+          channelIdentityId: identity.id,
+          connectionId,
+          contactId: context.contactId,
+          items: {
+            create: configuredMediaAssets.map((asset, position) => ({
+              ...(position === 0 && renderedText?.trim() ? { caption: renderedText } : {}),
+              kind: asset.kind as 'AUDIO' | 'DOCUMENT' | 'PHOTO' | 'VIDEO',
+              mediaAsset: {
+                connect: { projectId_id: { id: asset.id, projectId: context.projectId } },
+              },
+              position,
+            })),
+          },
+          outboxRecordId: outbox.id,
+          projectId: context.projectId,
+        },
+      });
+      await transaction.outboxRecord.update({
+        data: {
+          payload: {
+            action: 'SEND_MEDIA_GROUP',
+            channelIdentityId: identity.id,
+            mediaGroupId: group.id,
+          },
+        },
+        where: { projectId_id: { id: outbox.id, projectId: context.projectId } },
+      });
       return {
         deliveryStatus: 'QUEUED',
-        ...(typeof payload.messageId === 'string' ? { messageId: payload.messageId } : {}),
-        outboxRecordId: existing.id,
+        mediaGroupId: group.id,
+        outboxRecordId: outbox.id,
       };
     }
-    const message = await transaction.message.create({
-      data: {
-        connectionId,
-        contactId: context.contactId,
-        content: renderedWhatsAppTemplate
-          ? { whatsAppTemplate: renderedWhatsAppTemplate }
-          : renderedWhatsAppInteractive
-            ? { interactive: renderedWhatsAppInteractive }
-            : templateVersion && templateVersion.kind !== 'TEXT'
-              ? { caption: renderedText ?? '' }
-              : configuredMediaAsset
-                ? { caption: renderedText ?? '' }
-                : { text: renderedText! },
-        conversationId,
-        direction: 'OUTBOUND',
-        mediaAssetId: templateVersion?.mediaAssetId ?? configuredMediaAsset?.id ?? null,
-        metadata: {
-          source: 'automation',
-          scenarioExecutionId: executionId,
-          ...(templateContent?.inlineKeyboard
-            ? { inlineKeyboard: templateContent.inlineKeyboard }
-            : {}),
-          ...(telegramButtons?.length ? { inlineKeyboard: telegramButtons } : {}),
-          ...(templateVersion
-            ? {
-                templateId: templateVersion.templateId,
-                templateVersionId: templateVersion.id,
-              }
-            : {}),
+    const deliveryAssets = configuredMediaAssets.length ? configuredMediaAssets : [undefined];
+    const deliveries: Array<{ messageId: string; outboxRecordId: string }> = [];
+    for (const [position, deliveryMediaAsset] of deliveryAssets.entries()) {
+      const deliveryIdempotencyKey =
+        deliveryAssets.length === 1 ? idempotencyKey : `${idempotencyKey}-${position}`;
+      const existing = await transaction.outboxRecord.findUnique({
+        where: {
+          projectId_idempotencyKey: {
+            idempotencyKey: deliveryIdempotencyKey,
+            projectId: context.projectId,
+          },
         },
-        projectId: context.projectId,
-        status: 'QUEUED',
-        type: renderedWhatsAppTemplate
-          ? 'TEXT'
-          : renderedWhatsAppInteractive
-            ? 'INTERACTIVE'
-            : (templateVersion?.kind ?? configuredMediaAsset?.kind ?? 'TEXT'),
-      },
-    });
-    const outbox = await transaction.outboxRecord.create({
-      data: {
-        connectionId,
-        idempotencyKey,
-        kind: channelType,
-        nextAttemptAt: new Date(),
-        payload: { channelIdentityId: identity.id, messageId: message.id },
-        projectId: context.projectId,
-      },
-    });
+      });
+      if (existing) {
+        const payload = this.object(existing.payload);
+        if (typeof payload.messageId === 'string')
+          deliveries.push({ messageId: payload.messageId, outboxRecordId: existing.id });
+        continue;
+      }
+      const isLastDelivery = position === deliveryAssets.length - 1;
+      const deliveryMessage = await transaction.message.create({
+        data: {
+          connectionId,
+          contactId: context.contactId,
+          content: renderedWhatsAppTemplate
+            ? { whatsAppTemplate: renderedWhatsAppTemplate }
+            : renderedWhatsAppInteractive
+              ? { interactive: renderedWhatsAppInteractive }
+              : templateVersion && templateVersion.kind !== 'TEXT'
+                ? { caption: position === 0 ? (renderedText ?? '') : '' }
+                : deliveryMediaAsset
+                  ? { caption: position === 0 ? (renderedText ?? '') : '' }
+                  : { text: renderedText! },
+          conversationId,
+          direction: 'OUTBOUND',
+          mediaAssetId: templateVersion?.mediaAssetId ?? deliveryMediaAsset?.id ?? null,
+          metadata: {
+            source: 'automation',
+            scenarioExecutionId: executionId,
+            ...(isLastDelivery && templateContent?.inlineKeyboard
+              ? { inlineKeyboard: templateContent.inlineKeyboard }
+              : {}),
+            ...(isLastDelivery && telegramButtons?.length
+              ? { inlineKeyboard: telegramButtons }
+              : {}),
+            ...(templateVersion
+              ? {
+                  templateId: templateVersion.templateId,
+                  templateVersionId: templateVersion.id,
+                }
+              : {}),
+          },
+          projectId: context.projectId,
+          status: 'QUEUED',
+          type: renderedWhatsAppTemplate
+            ? 'TEXT'
+            : renderedWhatsAppInteractive
+              ? 'INTERACTIVE'
+              : (templateVersion?.kind ?? deliveryMediaAsset?.kind ?? 'TEXT'),
+        },
+      });
+      const deliveryOutbox = await transaction.outboxRecord.create({
+        data: {
+          connectionId,
+          idempotencyKey: deliveryIdempotencyKey,
+          kind: channelType,
+          nextAttemptAt: new Date(Date.now() + position),
+          payload: { channelIdentityId: identity.id, messageId: deliveryMessage.id },
+          projectId: context.projectId,
+        },
+      });
+      deliveries.push({ messageId: deliveryMessage.id, outboxRecordId: deliveryOutbox.id });
+    }
+    const firstDelivery = deliveries[0];
+    if (!firstDelivery) throw new Error('automation_message_delivery_missing');
     return {
       deliveryStatus: 'QUEUED',
-      messageId: message.id,
-      outboxRecordId: outbox.id,
+      messageId: firstDelivery.messageId,
+      ...(deliveries.length > 1
+        ? { messageIds: deliveries.map((delivery) => delivery.messageId) }
+        : {}),
+      outboxRecordId: firstDelivery.outboxRecordId,
+      ...(deliveries.length > 1
+        ? { outboxRecordIds: deliveries.map((delivery) => delivery.outboxRecordId) }
+        : {}),
     };
   }
 
@@ -1437,14 +1555,27 @@ export class AutomationRuntimeService {
     context: RuntimeContext,
     executionId: string,
     nodeId: string,
-  ): Promise<Array<Array<{ text: string; url: string }>> | undefined> {
+  ): Promise<Array<Array<{ callbackData?: string; text: string; url?: string }>> | undefined> {
     if (!Array.isArray(config.telegramButtons)) return undefined;
-    const rows: Array<Array<{ text: string; url: string }>> = [];
+    const rows: Array<Array<{ callbackData?: string; text: string; url?: string }>> = [];
     for (const rawButton of config.telegramButtons.slice(0, 8)) {
       const button = this.object(rawButton);
-      if (typeof button.text !== 'string' || typeof button.url !== 'string')
+      const urlValue = typeof button.url === 'string' && button.url.trim() ? button.url : undefined;
+      const callbackData =
+        typeof button.callbackData === 'string' && button.callbackData.trim()
+          ? button.callbackData
+          : undefined;
+      if (
+        typeof button.text !== 'string' ||
+        (urlValue ? 1 : 0) + (callbackData ? 1 : 0) !== 1 ||
+        (callbackData !== undefined && callbackData.length > 64)
+      )
         throw new Error('automation_telegram_button_invalid');
-      const url = new URL(button.url);
+      if (callbackData) {
+        rows.push([{ callbackData, text: button.text.slice(0, 64) }]);
+        continue;
+      }
+      const url = new URL(urlValue!);
       if (!['http:', 'https:'].includes(url.protocol))
         throw new Error('automation_telegram_button_invalid');
       const renderedUrl =

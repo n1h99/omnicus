@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
+  IsEmail,
   IsIn,
   IsObject,
   IsOptional,
@@ -55,6 +56,37 @@ export class ContactsQueryDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortDirection: 'asc' | 'desc' = 'desc';
+}
+
+export class CreateContactDto {
+  @IsString()
+  @Length(1, 200)
+  displayName!: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  firstName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 100)
+  username?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(1, 50)
+  phone?: string;
+
+  @IsOptional()
+  @IsEmail()
+  @Length(3, 320)
+  email?: string;
 }
 
 export class UpdateContactDto {

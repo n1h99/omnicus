@@ -27,6 +27,7 @@ import {
   MergeContactsDto,
   AddTagDto,
   BulkTagsDto,
+  CreateContactDto,
   UpdateContactDto,
   UpdateCustomFieldDto,
   UpdateSegmentDto,
@@ -46,6 +47,20 @@ export class ContactsController {
   @ApiQuery({ type: ContactsQueryDto })
   async list(@Param('projectId') projectId: string, @Query() query: ContactsQueryDto) {
     return { data: await this.contacts.list(projectId, query), meta: {} };
+  }
+
+  @Post('contacts')
+  @RequireProjectPermission('contacts:manage')
+  @ApiBody({ type: CreateContactDto })
+  async create(
+    @Param('projectId') projectId: string,
+    @Body() body: CreateContactDto,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return {
+      data: await this.contacts.create(projectId, body, this.context(request)),
+      meta: {},
+    };
   }
 
   @Get('contacts/:contactId')

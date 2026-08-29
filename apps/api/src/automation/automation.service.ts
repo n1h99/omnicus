@@ -653,6 +653,29 @@ export class AutomationService {
   private async assertReferencedResources(projectId: string, graph: unknown): Promise<void> {
     const parsed = scenarioGraphSchema.safeParse(graph);
     if (!parsed.success) return;
+    const mediaAssetIds = new Set(
+      parsed.data.nodes
+        .filter((node) => node.type === 'SEND_MESSAGE')
+        .flatMap((node) => [
+          ...(typeof node.config.mediaAssetId === 'string' ? [node.config.mediaAssetId] : []),
+          ...(Array.isArray(node.config.mediaAssetIds)
+            ? node.config.mediaAssetIds.filter(
+                (assetId): assetId is string => typeof assetId === 'string',
+              )
+            : []),
+        ]),
+    );
+    if (mediaAssetIds.size) {
+      const assets = await this.database.client.mediaAsset.findMany({
+        select: { id: true },
+        where: { id: { in: [...mediaAssetIds] }, projectId, status: 'AVAILABLE' },
+      });
+      if (assets.length !== mediaAssetIds.size)
+        throw new BadRequestException({
+          code: 'SCENARIO_MEDIA_ASSET_INVALID',
+          message: 'Scenario references an unavailable media asset',
+        });
+    }
     const tagIds = new Set(
       parsed.data.nodes
         .filter((node) => node.type === 'ADD_TAG' || node.type === 'REMOVE_TAG')

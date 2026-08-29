@@ -464,21 +464,64 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
         Array.isArray(node.config.telegramButtons) &&
         node.config.telegramButtons.length > 0
       ) {
-        errors.push(`Send Message node ${node.id} can use URL buttons only with Telegram`);
+        errors.push(`Send Message node ${node.id} can use Telegram buttons only with Telegram`);
       }
       if (Array.isArray(node.config.telegramButtons)) {
+        if (node.config.telegramButtons.length > 8)
+          errors.push(`Send Message node ${node.id} can use at most 8 Telegram buttons`);
         for (const button of node.config.telegramButtons) {
+          const record =
+            button && typeof button === 'object' && !Array.isArray(button)
+              ? (button as Record<string, unknown>)
+              : undefined;
+          const url = record?.url;
+          const callbackData = record?.callbackData;
+          let validUrl = false;
+          if (isNonEmptyString(url)) {
+            try {
+              validUrl = ['http:', 'https:'].includes(new URL(url).protocol);
+            } catch {
+              validUrl = false;
+            }
+          }
+          const validCallback = isNonEmptyString(callbackData) && callbackData.length <= 64;
           if (
-            !button ||
-            typeof button !== 'object' ||
-            !isNonEmptyString((button as Record<string, unknown>).text) ||
-            !isNonEmptyString((button as Record<string, unknown>).url)
+            !record ||
+            !isNonEmptyString(record.text) ||
+            (validUrl ? 1 : 0) + (validCallback ? 1 : 0) !== 1
           ) {
-            errors.push(`Send Message node ${node.id} has an incomplete Telegram URL button`);
+            errors.push(`Send Message node ${node.id} has an invalid Telegram button`);
             break;
           }
         }
       }
+      const additionalMediaAssetIds = Array.isArray(node.config.mediaAssetIds)
+        ? node.config.mediaAssetIds
+        : [];
+      if (
+        additionalMediaAssetIds.some((assetId) => !isNonEmptyString(assetId)) ||
+        additionalMediaAssetIds.length > 9
+      )
+        errors.push(`Send Message node ${node.id} has invalid additional attachments`);
+      if (deliveryTarget !== 'TELEGRAM' && additionalMediaAssetIds.length > 0)
+        errors.push(`Send Message node ${node.id} can use multiple attachments only with Telegram`);
+      if (
+        node.config.mediaDeliveryMode !== undefined &&
+        !['GROUP', 'SEPARATE'].includes(String(node.config.mediaDeliveryMode))
+      )
+        errors.push(`Send Message node ${node.id} has an invalid attachment delivery mode`);
+      const totalMediaAssets =
+        (isNonEmptyString(node.config.mediaAssetId) ? 1 : 0) + additionalMediaAssetIds.length;
+      if (totalMediaAssets > 10)
+        errors.push(`Send Message node ${node.id} can use at most 10 attachments`);
+      if (node.config.mediaDeliveryMode === 'GROUP' && totalMediaAssets < 2)
+        errors.push(`Send Message node ${node.id} needs at least 2 attachments for a media group`);
+      if (
+        node.config.mediaDeliveryMode === 'GROUP' &&
+        Array.isArray(node.config.telegramButtons) &&
+        node.config.telegramButtons.length > 0
+      )
+        errors.push(`Send Message node ${node.id} cannot attach buttons to a Telegram media group`);
       const whatsAppButtons = Array.isArray(node.config.whatsappButtons)
         ? node.config.whatsappButtons
         : [];

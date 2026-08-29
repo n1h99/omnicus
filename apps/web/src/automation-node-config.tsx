@@ -666,7 +666,18 @@ export function AutomationNodeConfig({
                         kind: uploadKind,
                       })
                       .then((asset) => {
-                        set('mediaAssetId', asset.id);
+                        const primaryAssetId =
+                          typeof config.mediaAssetId === 'string' ? config.mediaAssetId : undefined;
+                        if (primaryAssetId) {
+                          const additionalAssetIds = Array.isArray(config.mediaAssetIds)
+                            ? config.mediaAssetIds.filter(
+                                (value): value is string => typeof value === 'string',
+                              )
+                            : [];
+                          set('mediaAssetIds', [...new Set([...additionalAssetIds, asset.id])]);
+                        } else {
+                          set('mediaAssetId', asset.id);
+                        }
                         void message.success('Attachment uploaded');
                       })
                       .catch(() => void message.error('Attachment could not be uploaded'));
@@ -704,7 +715,62 @@ export function AutomationNodeConfig({
             size={10}
             style={{ width: '100%' }}
           >
-            <Typography.Text strong>URL buttons</Typography.Text>
+            <Typography.Text strong>Additional attachments</Typography.Text>
+            <Typography.Text type="secondary">
+              Add up to 9 more Telegram files. Uploading another file also adds it here.
+            </Typography.Text>
+            <Select<string[]>
+              allowClear
+              maxCount={9}
+              mode="multiple"
+              onChange={(mediaAssetIds) => set('mediaAssetIds', mediaAssetIds)}
+              optionFilterProp="label"
+              options={(assets.data ?? [])
+                .filter((asset) => asset.id !== config.mediaAssetId)
+                .map((asset) => ({
+                  label: asset.originalFilename ?? `${asset.kind.toLowerCase()} file`,
+                  value: asset.id,
+                }))}
+              placeholder="Choose more files from the media library"
+              value={
+                Array.isArray(config.mediaAssetIds)
+                  ? config.mediaAssetIds.filter(
+                      (value): value is string => typeof value === 'string',
+                    )
+                  : []
+              }
+            />
+            <label className="automation-url-button-field">
+              <span>Delivery mode</span>
+              <Select
+                disabled={
+                  (typeof config.mediaAssetId === 'string' ? 1 : 0) +
+                    (Array.isArray(config.mediaAssetIds) ? config.mediaAssetIds.length : 0) <
+                  2
+                }
+                onChange={(value) => set('mediaDeliveryMode', value)}
+                options={[
+                  { label: 'Separate messages', value: 'SEPARATE' },
+                  { label: 'Telegram media group', value: 'GROUP' },
+                ]}
+                value={config.mediaDeliveryMode === 'GROUP' ? 'GROUP' : 'SEPARATE'}
+              />
+            </label>
+          </Space>
+        ) : null}
+
+        {sendDeliveryTarget === 'TELEGRAM' ? (
+          <Space
+            className="automation-url-buttons"
+            direction="vertical"
+            size={10}
+            style={{ width: '100%' }}
+          >
+            <Typography.Text strong>Telegram buttons</Typography.Text>
+            <Typography.Text type="secondary">
+              URL buttons open a page. Callback buttons can be matched by value in a Wait for reply
+              callback condition and routed to another branch.
+            </Typography.Text>
             {telegramButtons.map((button, index) => (
               <div className="automation-url-button-card" key={index}>
                 <div className="automation-url-button-header">
@@ -724,6 +790,36 @@ export function AutomationNodeConfig({
                   </Button>
                 </div>
                 <label className="automation-url-button-field">
+                  <span>Button action</span>
+                  <Select
+                    onChange={(value) => {
+                      const next = [...telegramButtons];
+                      next[index] =
+                        value === 'CALLBACK'
+                          ? ({
+                              callbackData: `button_${index + 1}`,
+                              text: button.text,
+                              url: '',
+                            } as typeof button)
+                          : ({
+                              callbackData: undefined,
+                              text: button.text,
+                              url: '',
+                            } as typeof button);
+                      set('telegramButtons', next);
+                    }}
+                    options={[
+                      { label: 'Open URL', value: 'URL' },
+                      { label: 'Continue scenario', value: 'CALLBACK' },
+                    ]}
+                    value={
+                      typeof (button as { callbackData?: unknown }).callbackData === 'string'
+                        ? 'CALLBACK'
+                        : 'URL'
+                    }
+                  />
+                </label>
+                <label className="automation-url-button-field">
                   <span>Button text</span>
                   <Input
                     maxLength={64}
@@ -736,18 +832,42 @@ export function AutomationNodeConfig({
                     value={button.text}
                   />
                 </label>
-                <label className="automation-url-button-field">
-                  <span>Destination URL</span>
-                  <Input
-                    onChange={(event) => {
-                      const next = [...telegramButtons];
-                      next[index] = { ...button, url: event.target.value };
-                      set('telegramButtons', next);
-                    }}
-                    placeholder="https://example.com"
-                    value={button.url}
-                  />
-                </label>
+                {typeof (button as { callbackData?: unknown }).callbackData === 'string' ? (
+                  <label className="automation-url-button-field">
+                    <span>Callback value</span>
+                    <Input
+                      maxLength={64}
+                      onChange={(event) => {
+                        const next = [...telegramButtons];
+                        next[index] = {
+                          ...button,
+                          callbackData: event.target.value,
+                          url: '',
+                        } as typeof button;
+                        set('telegramButtons', next);
+                      }}
+                      placeholder="pricing"
+                      value={String((button as { callbackData?: unknown }).callbackData ?? '')}
+                    />
+                  </label>
+                ) : (
+                  <label className="automation-url-button-field">
+                    <span>Destination URL</span>
+                    <Input
+                      onChange={(event) => {
+                        const next = [...telegramButtons];
+                        next[index] = {
+                          ...button,
+                          callbackData: undefined,
+                          url: event.target.value,
+                        } as typeof button;
+                        set('telegramButtons', next);
+                      }}
+                      placeholder="https://example.com"
+                      value={button.url}
+                    />
+                  </label>
+                )}
               </div>
             ))}
             <Button
@@ -757,7 +877,7 @@ export function AutomationNodeConfig({
               onClick={() => set('telegramButtons', [...telegramButtons, { text: '', url: '' }])}
               type="dashed"
             >
-              Add URL button
+              Add button
             </Button>
           </Space>
         ) : null}

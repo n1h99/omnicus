@@ -42,6 +42,45 @@ export function spreadCompactFlowNodes(nodes: Node[]): Node[] {
   return nodes.map((node) => ({ ...node, position: positions.get(node.id) ?? node.position }));
 }
 
+function compactPreview(value: unknown, maximum = 64): string | undefined {
+  if (typeof value !== 'string' || !value.trim()) return undefined;
+  const compact = value.replace(/\s+/g, ' ').trim();
+  return compact.length > maximum ? `${compact.slice(0, maximum - 3)}...` : compact;
+}
+
+function automationNodePreview(type: string, config: Record<string, unknown> | undefined) {
+  const value = config ?? {};
+  if (type === 'SEND_MESSAGE') {
+    const text = compactPreview(value.text, 52);
+    const additionalAssets = Array.isArray(value.mediaAssetIds) ? value.mediaAssetIds.length : 0;
+    const attachments = (typeof value.mediaAssetId === 'string' ? 1 : 0) + additionalAssets;
+    const buttons = [
+      ...(Array.isArray(value.telegramButtons) ? value.telegramButtons : []),
+      ...(Array.isArray(value.whatsappButtons) ? value.whatsappButtons : []),
+    ];
+    return [
+      text,
+      attachments ? `${attachments} attachment${attachments === 1 ? '' : 's'}` : undefined,
+      buttons.length ? `${buttons.length} button${buttons.length === 1 ? '' : 's'}` : undefined,
+    ]
+      .filter(Boolean)
+      .join(' | ');
+  }
+  if (type === 'DELAY' && typeof value.delaySeconds === 'number')
+    return `Wait ${value.delaySeconds}s`;
+  if (type === 'WAIT_FOR_REPLY' && typeof value.timeoutSeconds === 'number')
+    return `Timeout ${value.timeoutSeconds}s`;
+  if (type === 'CONDITION')
+    return compactPreview(
+      [value.field, value.operator, value.value].filter((part) => part !== undefined).join(' '),
+    );
+  if (type === 'INCOMING_MESSAGE' && value.triggerType === 'WEBSITE_REGISTRATION')
+    return compactPreview(`Website: ${String(value.sourceKey ?? '')}`);
+  if (type === 'SEND_EMAIL') return 'Published email template';
+  if (type === 'SEND_TEMPLATE') return 'Published message template';
+  return undefined;
+}
+
 export function scenarioGraphToFlow(graph: ScenarioGraph): { edges: Edge[]; nodes: Node[] } {
   return {
     edges: graph.edges.map((edge, index) => ({
@@ -57,7 +96,9 @@ export function scenarioGraphToFlow(graph: ScenarioGraph): { edges: Edge[]; node
       target: edge.to,
     })),
     nodes: graph.nodes.map((node) => ({
-      data: { label: node.type },
+      data: {
+        label: `${node.type}\u0000${automationNodePreview(node.type, node.config) ?? ''}`,
+      },
       id: node.id,
       position: node.position ?? { x: 0, y: 0 },
       type: 'default',
@@ -87,7 +128,7 @@ export function flowToScenarioGraph(
       config: configs[node.id] ?? {},
       id: node.id,
       position: node.position,
-      type: String(node.data.label),
+      type: String(node.data.label).split('\u0000')[0] ?? '',
     })),
   };
 }

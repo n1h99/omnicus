@@ -166,7 +166,8 @@ const paletteLabels = new Map<string, string>(
 
 type AutomationCanvasNodeDefinition = Node<{ label: string }, 'automation'>;
 
-function automationNodeIcon(type: string) {
+function automationNodeIcon(rawType: string) {
+  const type = rawType.split('\u0000')[0] ?? rawType;
   if (type === 'INCOMING_MESSAGE') return <ThunderboltOutlined />;
   if (type === 'CONDITION') return <BranchesOutlined />;
   if (type === 'SEND_MESSAGE' || type === 'SEND_TEMPLATE' || type === 'SEND_EMAIL')

@@ -6,7 +6,13 @@ const idSchema = z.string().min(1).max(100);
 const safeUrlSchema = z
   .string()
   .url()
-  .refine((value) => ['http:', 'https:'].includes(new URL(value).protocol));
+  .refine((value) => {
+    try {
+      return ['http:', 'https:'].includes(new URL(value).protocol);
+    } catch {
+      return false;
+    }
+  }, 'Enter a complete http:// or https:// URL');
 
 const headingBlockSchema = z.object({
   align: alignmentSchema.default('left'),

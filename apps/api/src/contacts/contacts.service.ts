@@ -8,6 +8,7 @@ import type {
   AddTagDto,
   BulkTagsDto,
   ContactsQueryDto,
+  CreateContactDto,
   CreateCustomFieldDto,
   CreateSegmentDto,
   CreateTagDto,
@@ -95,6 +96,58 @@ export class ContactsService {
       this.database.client.contact.count({ where }),
     ]);
     return { items, page: query.page, pageSize: query.pageSize, total };
+  }
+
+  async create(
+    projectId: string,
+    input: CreateContactDto,
+    context: RequestSecurityContext & { actorUserId: string; actorEmail: string },
+  ) {
+    const email = input.email?.trim().toLowerCase() || null;
+    const phone = input.phone?.trim() || null;
+    const normalizedPhone = phone ? phone.replace(/\D/g, '') : null;
+    const identityPredicates: Prisma.ContactWhereInput[] = [
+      ...(email ? [{ normalizedEmail: email }] : []),
+      ...(normalizedPhone ? [{ normalizedPhone }] : []),
+    ];
+    if (identityPredicates.length) {
+      const existing = await this.database.client.contact.findFirst({
+        select: { id: true },
+        where: { OR: identityPredicates, projectId, status: { not: 'MERGED' } },
+      });
+      if (existing)
+        throw new ConflictException({
+          code: 'CONTACT_IDENTITY_EXISTS',
+          message: 'A contact with this email or phone already exists',
+        });
+    }
+    const contact = await this.database.client.contact.create({
+      data: {
+        displayName: input.displayName.trim(),
+        email,
+        firstName: input.firstName?.trim() || null,
+        lastName: input.lastName?.trim() || null,
+        normalizedEmail: email,
+        normalizedPhone,
+        phone,
+        projectId,
+        username: input.username?.trim() || null,
+      },
+      select: contactSelect,
+    });
+    await this.audit.record({
+      action: 'contact.created',
+      actorEmailSnapshot: context.actorEmail,
+      actorUserId: context.actorUserId,
+      afterSafeJson: { source: 'manual', status: contact.status },
+      correlationId: context.correlationId,
+      entityId: contact.id,
+      entityType: 'Contact',
+      ip: context.ip,
+      projectId,
+      userAgent: context.userAgent,
+    });
+    return contact;
   }
 
   async get(projectId: string, contactId: string) {
