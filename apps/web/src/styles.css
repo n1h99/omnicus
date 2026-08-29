@@ -2966,30 +2966,49 @@ button:disabled,
 .automation-flow-node {
   --node-accent: #0f766e;
   --node-soft: rgba(15, 118, 110, 0.1);
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  width: 210px;
-  min-height: 64px;
-  padding: 10px 14px;
+  gap: 13px;
+  width: 258px;
+  min-height: 82px;
+  padding: 14px 16px;
   color: var(--text-soft);
   background: rgba(255, 255, 255, 0.97);
   border: 1px solid var(--border-strong);
-  border-radius: 14px;
-  box-shadow: none;
-  transition: border-color 160ms ease;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.automation-flow-node::before {
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: -1px;
+  width: 3px;
+  background: var(--node-accent);
+  border-radius: 0 4px 4px 0;
+  content: '';
+  opacity: 0.62;
+}
+
+.automation-flow-node.has-preview {
+  min-height: 116px;
 }
 
 .automation-flow-node:hover {
-  border-color: var(--border-strong);
-  box-shadow: none;
+  border-color: color-mix(in srgb, var(--node-accent) 42%, var(--border-strong));
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.09);
   transform: none;
 }
 
 .automation-flow-node.is-selected {
   border-color: var(--node-accent);
   outline: none;
-  box-shadow: none;
+  box-shadow: 0 0 0 3px var(--node-soft), 0 12px 30px rgba(15, 23, 42, 0.1);
 }
 
 .scenario-canvas .react-flow__node:focus,
@@ -3010,50 +3029,58 @@ button:disabled,
 
 .automation-flow-node-icon {
   display: grid;
-  flex: 0 0 36px;
-  width: 36px;
-  height: 36px;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
   color: var(--node-accent);
-  font-size: 16px;
+  font-size: 18px;
   background: var(--node-soft);
-  border-radius: 11px;
+  border-radius: 12px;
   place-items: center;
 }
 
 .automation-flow-node-copy {
   display: grid;
+  flex: 1;
   min-width: 0;
   text-align: left;
 }
 
 .automation-flow-node-copy small {
-  margin-bottom: 2px;
-  color: var(--text-muted);
-  font-size: 9px;
+  margin-bottom: 3px;
+  color: var(--node-accent);
+  font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.09em;
   line-height: 1.2;
   text-transform: uppercase;
+  opacity: 0.78;
 }
 
 .automation-flow-node-copy strong {
   overflow: hidden;
   color: var(--text);
-  font-size: 12px;
-  font-weight: 650;
-  line-height: 1.3;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .automation-flow-node-preview {
+  display: -webkit-box;
   overflow: hidden;
-  margin-top: 2px;
-  color: var(--text-muted);
-  font-size: 10px;
-  line-height: 1.25;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  margin-top: 7px;
+  padding: 6px 8px;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+  background: color-mix(in srgb, var(--node-soft) 32%, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--node-accent) 14%, var(--border));
+  border-radius: 8px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .automation-node-handle {

@@ -20,8 +20,8 @@ export function automationEdgeLabel(output?: string): string | undefined {
 }
 
 export function spreadCompactFlowNodes(nodes: Node[]): Node[] {
-  const minimumVerticalStep = 128;
-  const overlappingLaneWidth = 250;
+  const minimumVerticalStep = 156;
+  const overlappingLaneWidth = 300;
   const placed: Node[] = [];
   const positions = new Map<string, { x: number; y: number }>();
 

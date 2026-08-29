@@ -198,10 +198,11 @@ function automationNodeCategory(type: string) {
 
 function AutomationCanvasNode({ data, selected }: NodeProps<AutomationCanvasNodeDefinition>) {
   const type = String(data.label);
-  const preview = typeof data.preview === 'string' ? data.preview : undefined;
+  const preview =
+    typeof data.preview === 'string' ? data.preview.replaceAll(' | ', ' · ') : undefined;
   return (
     <div
-      className={`automation-flow-node automation-flow-node--${automationNodeCategory(type).toLowerCase()}${selected ? ' is-selected' : ''}`}
+      className={`automation-flow-node automation-flow-node--${automationNodeCategory(type).toLowerCase()}${preview ? ' has-preview' : ''}${selected ? ' is-selected' : ''}`}
     >
       <Handle className="automation-node-handle" position={Position.Top} type="target" />
       <span className="automation-flow-node-icon">{automationNodeIcon(type)}</span>
