@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
@@ -11,6 +10,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { resolve, sep } from 'node:path';
+import { spawnPackageManagerSync } from './package-manager.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const runtimeRoot = resolve(repositoryRoot, '.runtime');
@@ -39,9 +39,9 @@ function deployWorkspace(service) {
   const target = resolve(runtimeRoot, service);
   resetTarget(target);
   const workspaceDirectory = resolve(repositoryRoot, 'apps', service);
-  const result = spawnSync(
-    process.execPath,
-    [pnpmExecutable, '--filter', `@omnicus/${service}`, '--prod', 'deploy', '--legacy', target],
+  const result = spawnPackageManagerSync(
+    pnpmExecutable,
+    ['--filter', `@omnicus/${service}`, '--prod', 'deploy', '--legacy', target],
     {
       cwd: repositoryRoot,
       env: process.env,

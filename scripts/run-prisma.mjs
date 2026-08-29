@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
+import { spawnPackageManagerSync } from './package-manager.mjs';
 
 const pnpmExecutable = process.env.npm_execpath;
 const prismaArguments = process.argv.slice(2);
@@ -102,9 +102,9 @@ if (environment.PRISMA_ENV_DIAGNOSTICS === '1') {
   );
 }
 
-const result = spawnSync(
-  process.execPath,
-  [pnpmExecutable, '--filter', '@omnicus/database', 'exec', 'prisma', ...prismaArguments],
+const result = spawnPackageManagerSync(
+  pnpmExecutable,
+  ['--filter', '@omnicus/database', 'exec', 'prisma', ...prismaArguments],
   {
     encoding: 'utf8',
     env: environment,

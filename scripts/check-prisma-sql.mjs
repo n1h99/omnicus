@@ -1,6 +1,6 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { spawnPackageManagerSync } from './package-manager.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const pnpmExecutable = process.env.npm_execpath;
@@ -9,10 +9,9 @@ if (!pnpmExecutable || !/(?:corepack|pnpm)/i.test(pnpmExecutable)) {
   throw new Error('Run this check through the repository pnpm command');
 }
 
-const result = spawnSync(
-  process.execPath,
+const result = spawnPackageManagerSync(
+  pnpmExecutable,
   [
-    pnpmExecutable,
     '--filter',
     '@omnicus/database',
     'exec',

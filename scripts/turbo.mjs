@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { chmodSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { delimiter, join, resolve, sep } from 'node:path';
+import { packageManagerRequiresNode } from './package-manager.mjs';
 
 const repositoryRoot = resolve(import.meta.dirname, '..');
 const pnpmExecutable = process.env.npm_execpath;
@@ -28,6 +29,7 @@ const shimEnvironment = {
   ...process.env,
   OMNICUS_NODE_EXECUTABLE: process.execPath,
   OMNICUS_PNPM_EXECUTABLE: pnpmExecutable,
+  OMNICUS_PNPM_REQUIRES_NODE: packageManagerRequiresNode(pnpmExecutable) ? '1' : '0',
   OMNICUS_TOOLCHAIN_NODE_VERSION: process.version,
   PATH: `${shimDirectory}${delimiter}${process.env.PATH ?? ''}`,
 };
@@ -36,7 +38,7 @@ try {
   const posixShim = join(shimDirectory, 'pnpm');
   writeFileSync(
     posixShim,
-    '#!/bin/sh\nexec "$OMNICUS_NODE_EXECUTABLE" "$OMNICUS_PNPM_EXECUTABLE" "$@"\n',
+    '#!/bin/sh\nif [ "$OMNICUS_PNPM_REQUIRES_NODE" = "1" ]; then\n  exec "$OMNICUS_NODE_EXECUTABLE" "$OMNICUS_PNPM_EXECUTABLE" "$@"\nfi\nexec "$OMNICUS_PNPM_EXECUTABLE" "$@"\n',
     'utf8',
   );
   chmodSync(posixShim, 0o700);

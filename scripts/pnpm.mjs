@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnPackageManagerSync } from './package-manager.mjs';
 
 const pnpmExecutable = process.env.npm_execpath;
 
@@ -7,7 +7,7 @@ if (!pnpmExecutable || !/(?:corepack|pnpm)/i.test(pnpmExecutable)) {
   process.exit(1);
 }
 
-const result = spawnSync(process.execPath, [pnpmExecutable, ...process.argv.slice(2)], {
+const result = spawnPackageManagerSync(pnpmExecutable, process.argv.slice(2), {
   encoding: 'utf8',
   env: process.env,
   stdio: 'inherit',
