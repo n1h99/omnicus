@@ -5243,9 +5243,9 @@ button:disabled,
 }
 
 .automation-flow-node:hover {
-  transform: translateY(-1px);
-  border-color: #bccbdd;
-  box-shadow: 0 12px 30px rgba(24, 45, 72, 0.14);
+  transform: none;
+  border-color: #d8e1ea;
+  box-shadow: 0 8px 24px rgba(24, 45, 72, 0.1);
 }
 
 .automation-flow-node.is-selected {
@@ -5555,9 +5555,16 @@ button:disabled,
 .automation-node-handle {
   width: 13px;
   height: 13px;
-  border: 3px solid #ffffff;
+  border: 0;
   background: #5266dc;
-  box-shadow: 0 0 0 1px #9caae9;
+  box-shadow: none;
+}
+
+.automation-flow-node .automation-node-handle,
+.automation-flow-node.is-selected .automation-node-handle {
+  border: 0;
+  background: #5266dc;
+  box-shadow: none;
 }
 
 .automation-node-handle-target {
@@ -5572,9 +5579,15 @@ button:disabled,
 }
 
 .automation-flow-node-trigger .automation-node-handle,
+.automation-flow-node-trigger.is-selected .automation-node-handle,
 .automation-flow-node-trigger .automation-node-button-port {
   background: #18a39a;
-  box-shadow: 0 0 0 1px #87cfc9;
+  box-shadow: none;
+}
+
+.automation-node-button-port {
+  border: 0;
+  box-shadow: none;
 }
 
 @media (max-width: 760px) {
