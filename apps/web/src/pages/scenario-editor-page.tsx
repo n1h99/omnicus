@@ -90,6 +90,7 @@ import {
 } from '../automation-api';
 import { AutomationTestPanel, type AutomationTestInput } from '../automation-test-panel';
 import { ApiError, getUserErrorMessage } from '../api';
+import { useMediaAssets, useMediaMutations, type MediaAsset } from '../media-api';
 import {
   automationActionErrorMessage,
   automationEditorSignature,
@@ -165,7 +166,19 @@ const paletteLabels = new Map<string, string>(
   ),
 );
 
-type AutomationCanvasNodeDefinition = Node<{ label: string; preview?: string }, 'automation'>;
+type AutomationCanvasNodeData = {
+  config?: Record<string, unknown>;
+  label: string;
+  preview?: string;
+};
+
+type AutomationCanvasNodeDefinition = Node<AutomationCanvasNodeData, 'automation'>;
+
+type AutomationMessageButton = {
+  callback: boolean;
+  detail: string;
+  label: string;
+};
 
 function automationNodeIcon(rawType: string) {
   const type = rawType.split('\u0000')[0] ?? rawType;
@@ -198,20 +211,193 @@ function automationNodeCategory(type: string) {
 
 function AutomationCanvasNode({ data, selected }: NodeProps<AutomationCanvasNodeDefinition>) {
   const type = String(data.label);
-  const preview =
-    typeof data.preview === 'string' ? data.preview.replaceAll(' | ', ' · ') : undefined;
+  const { projectId } = useParams<{ projectId: string }>();
+  const config = automationConfigRecord(data.config);
+  const isMessage = type === 'SEND_MESSAGE';
+  const isTrigger = type === 'INCOMING_MESSAGE';
+  const preview = typeof data.preview === 'string' ? data.preview.replaceAll(' | ', ' / ') : '';
+  const messageText = automationConfigText(config.text);
+  const buttons = automationMessageButtons(config);
+  const mediaIds = automationMediaIds(config);
+  const mediaAssets = useMediaAssets(projectId, isMessage && mediaIds.length > 0);
+  const primaryMedia = mediaAssets.data?.find((asset) => asset.id === mediaIds[0]);
+  const cardKind = isMessage ? 'message' : isTrigger ? 'trigger' : 'action';
+
   return (
-    <div
-      className={`automation-flow-node automation-flow-node--${automationNodeCategory(type).toLowerCase()}${preview ? ' has-preview' : ''}${selected ? ' is-selected' : ''}`}
+    <article
+      className={`automation-flow-node automation-flow-node-${cardKind}${selected ? ' is-selected' : ''}`}
     >
-      <Handle className="automation-node-handle" position={Position.Top} type="target" />
-      <span className="automation-flow-node-icon">{automationNodeIcon(type)}</span>
-      <span className="automation-flow-node-copy">
-        <small>{automationNodeCategory(type)}</small>
-        <strong>{paletteLabels.get(type) ?? automationNodeLabel(type)}</strong>
-        {preview ? <span className="automation-flow-node-preview">{preview}</span> : null}
-      </span>
-      <Handle className="automation-node-handle" position={Position.Bottom} type="source" />
+      <Handle
+        className="automation-node-handle automation-node-handle-target"
+        position={Position.Top}
+        type="target"
+      />
+
+      <header className="automation-node-header">
+        <span className="automation-node-icon">{automationNodeIcon(type)}</span>
+        <span className="automation-node-heading">
+          <small>
+            {isMessage ? automationDeliveryLabel(config.deliveryTarget) : automationNodeCategory(type)}
+          </small>
+          <strong>{isTrigger ? 'When...' : paletteLabels.get(type) ?? automationNodeLabel(type)}</strong>
+        </span>
+      </header>
+
+      <div className="automation-node-content">
+        {isTrigger ? (
+          <div className="automation-node-event">
+            <span className="automation-node-event-icon">{automationNodeIcon(type)}</span>
+            <span>
+              <small>Event</small>
+              <strong>{preview || 'Incoming message received'}</strong>
+            </span>
+          </div>
+        ) : isMessage ? (
+          <>
+            {mediaIds.length > 0 ? (
+              <AutomationNodeMediaPreview
+                asset={primaryMedia}
+                count={mediaIds.length}
+                projectId={projectId}
+              />
+            ) : null}
+            {messageText ? <div className="automation-node-message-text">{messageText}</div> : null}
+            {mediaIds.length > 1 ? (
+              <div className="automation-node-media-mode">
+                {config.mediaDeliveryMode === 'GROUP' ? 'Media group' : 'Separate media'}
+                <span>{mediaIds.length} files</span>
+              </div>
+            ) : null}
+            {buttons.length > 0 ? (
+              <div className="automation-node-buttons">
+                {buttons.map((button, index) => (
+                  <div className="automation-node-button" key={`${button.label}-${index}`}>
+                    <span className="automation-node-button-copy">
+                      <strong>{button.label}</strong>
+                      <small>{button.detail}</small>
+                    </span>
+                    {button.callback ? (
+                      <span
+                        aria-label="Continue through Wait for reply"
+                        className="automation-node-button-port"
+                        role="img"
+                        title="Continue through Wait for reply"
+                      />
+                    ) : (
+                      <span className="automation-node-button-link">URL</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {!messageText && mediaIds.length === 0 && buttons.length === 0 ? (
+              <div className="automation-node-empty">Add message content in the settings panel</div>
+            ) : null}
+          </>
+        ) : preview ? (
+          <div className="automation-node-summary">{preview}</div>
+        ) : (
+          <div className="automation-node-empty">Configure this step in the settings panel</div>
+        )}
+      </div>
+
+      <footer className="automation-node-footer">
+        <span>Next step</span>
+        <Handle
+          className="automation-node-handle automation-node-handle-source"
+          position={Position.Bottom}
+          type="source"
+        />
+      </footer>
+    </article>
+  );
+}
+
+function automationConfigRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function automationConfigText(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function automationDeliveryLabel(value: unknown): string {
+  if (value === 'TELEGRAM') return 'Telegram';
+  if (value === 'WHATSAPP') return 'WhatsApp';
+  return 'Incoming conversation';
+}
+
+function automationMessageButtons(config: Record<string, unknown>): AutomationMessageButton[] {
+  const source =
+    config.deliveryTarget === 'WHATSAPP'
+      ? (config.whatsappButtons ?? config.buttons)
+      : (config.telegramButtons ?? config.buttons);
+  if (!Array.isArray(source)) return [];
+
+  return source.map((value, index) => {
+    const button = automationConfigRecord(value);
+    const url = automationConfigText(button.url);
+    const callbackData = automationConfigText(button.callbackData ?? button.id);
+    return {
+      callback: !url,
+      detail: url ? 'Open URL' : callbackData ? 'Callback' : 'Quick reply',
+      label: automationConfigText(button.text ?? button.title) || `Button ${index + 1}`,
+    };
+  });
+}
+
+function automationMediaIds(config: Record<string, unknown>): string[] {
+  const ids = [
+    automationConfigText(config.mediaAssetId),
+    ...(Array.isArray(config.mediaAssetIds)
+      ? config.mediaAssetIds.map(automationConfigText)
+      : []),
+  ].filter(Boolean);
+  return [...new Set(ids)];
+}
+
+function AutomationNodeMediaPreview({
+  asset,
+  count,
+  projectId,
+}: {
+  asset?: MediaAsset;
+  count: number;
+  projectId?: string;
+}) {
+  const { mutateAsync: getSignedUrl } = useMediaMutations(projectId).signedUrl;
+  const [preview, setPreview] = useState<{ assetId: string; url: string }>();
+  const assetId = asset?.id;
+  const isPhoto = asset?.kind === 'PHOTO';
+
+  useEffect(() => {
+    let active = true;
+    if (!assetId || !isPhoto) return undefined;
+    void getSignedUrl(assetId)
+      .then((result) => {
+        if (active) setPreview({ assetId, url: result.url });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, [assetId, getSignedUrl, isPhoto]);
+
+  const previewUrl = preview?.assetId === assetId ? preview.url : undefined;
+  return (
+    <div className={`automation-node-media${previewUrl ? ' has-image' : ''}`}>
+      {previewUrl ? (
+        <img alt={asset?.originalFilename ?? 'Message attachment'} draggable={false} src={previewUrl} />
+      ) : (
+        <div className="automation-node-media-placeholder">
+          <span>{asset?.kind ?? 'MEDIA'}</span>
+          <strong>{asset?.originalFilename ?? 'Attached media'}</strong>
+          {asset?.detectedMimeType ? <small>{asset.detectedMimeType}</small> : null}
+        </div>
+      )}
+      {count > 1 ? <span className="automation-node-media-count">+{count - 1}</span> : null}
     </div>
   );
 }
@@ -546,39 +732,40 @@ export function ScenarioEditorPage() {
   const addNode = (type: string) => {
     captureHistory();
     const id = `${type.toLowerCase()}-${crypto.randomUUID().slice(0, 8)}`;
+    const nodeConfig =
+      type === 'DELAY'
+        ? { delaySeconds: 60 }
+        : type === 'WAIT_FOR_REPLY'
+          ? { timeoutSeconds: 300 }
+          : type === 'EXTERNAL_HTTP_REQUEST'
+            ? {
+                contentType: 'application/json',
+                headers: [],
+                mappings: [],
+                maxAttempts: 1,
+                method: 'GET',
+                query: [],
+                successStatusMaximum: 299,
+                successStatusMinimum: 200,
+                timeoutMs: 10_000,
+                url: 'https://',
+              }
+            : {};
     setNodes((current) => [
       ...current,
       {
-        data: { label: type },
+        data: { config: nodeConfig, label: type },
         id,
         position: {
           x: 140,
-          y: current.reduce((maximum, node) => Math.max(maximum, node.position.y), 0) + 140,
+          y: current.reduce((maximum, node) => Math.max(maximum, node.position.y), 0) + 340,
         },
         type: 'automation',
       },
     ]);
     setConfigs((current) => ({
       ...current,
-      [id]:
-        type === 'DELAY'
-          ? { delaySeconds: 60 }
-          : type === 'WAIT_FOR_REPLY'
-            ? { timeoutSeconds: 300 }
-            : type === 'EXTERNAL_HTTP_REQUEST'
-              ? {
-                  contentType: 'application/json',
-                  headers: [],
-                  mappings: [],
-                  maxAttempts: 1,
-                  method: 'GET',
-                  query: [],
-                  successStatusMaximum: 299,
-                  successStatusMinimum: 200,
-                  timeoutMs: 10_000,
-                  url: 'https://',
-                }
-              : {},
+      [id]: nodeConfig,
     }));
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
@@ -977,6 +1164,7 @@ export function ScenarioEditorPage() {
                                     ...node,
                                     data: {
                                       ...node.data,
+                                      config,
                                       preview: automationNodePreview(
                                         String(selected.data.label),
                                         config,

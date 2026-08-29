@@ -20,8 +20,8 @@ export function automationEdgeLabel(output?: string): string | undefined {
 }
 
 export function spreadCompactFlowNodes(nodes: Node[]): Node[] {
-  const minimumVerticalStep = 156;
-  const overlappingLaneWidth = 300;
+  const minimumVerticalStep = 340;
+  const overlappingLaneWidth = 360;
   const placed: Node[] = [];
   const positions = new Map<string, { x: number; y: number }>();
 
@@ -98,10 +98,11 @@ export function scenarioGraphToFlow(graph: ScenarioGraph): { edges: Edge[]; node
     nodes: graph.nodes.map((node) => {
       const preview = automationNodePreview(node.type, node.config);
       return {
-        data: {
-          label: node.type,
-          ...(preview ? { preview } : {}),
-        },
+      data: {
+        config: node.config ?? {},
+        label: node.type,
+        ...(preview ? { preview } : {}),
+      },
         id: node.id,
         position: node.position ?? { x: 0, y: 0 },
         type: 'default',
