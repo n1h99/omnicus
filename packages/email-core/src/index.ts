@@ -192,21 +192,52 @@ function safeHref(value: string): string | undefined {
   }
 }
 
+function renderEmphasis(value: string): string {
+  return value
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/__([^_]+)__/g, '<u>$1</u>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+}
+
 export function renderInlineMarkup(value: string): string {
+  const links: string[] = [];
+  const preserveLink = (html: string) => {
+    const token = `\uE000${links.length}\uE001`;
+    links.push(html);
+    return token;
+  };
   let output = escapeHtml(value);
   output = output.replace(
     /\[([^\]]{1,300})\]\((https?:\/\/[^\s)]+)\)/g,
     (_match, label: string, url: string) => {
       const href = safeHref(url);
       return href
-        ? `<a href="${href}" style="color:#0f766e;text-decoration:underline">${label}</a>`
+        ? preserveLink(
+            `<a href="${href}" style="color:#0f766e;text-decoration:underline">${renderEmphasis(label)}</a>`,
+          )
         : label;
     },
   );
-  output = output.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  output = output.replace(/__([^_]+)__/g, '<u>$1</u>');
-  output = output.replace(/\*([^*]+)\*/g, '<em>$1</em>');
-  return output.replaceAll('\n', '<br />');
+  output = output.replace(/https?:\/\/[^\s<]*?(?=\s|$|&quot;|&#039;|&lt;|&gt;)/g, (matchedUrl) => {
+    let url = matchedUrl;
+    let trailing = '';
+    while (/[.,!?;:)\]}]$/.test(url)) {
+      trailing = url.at(-1)! + trailing;
+      url = url.slice(0, -1);
+    }
+    const href = safeHref(url);
+    return href
+      ? preserveLink(
+          `<a href="${href}" style="color:#0f766e;text-decoration:underline">${url}</a>`,
+        ) + trailing
+      : matchedUrl;
+  });
+  output = renderEmphasis(output);
+  output = output.replaceAll('\n', '<br />');
+  return output.replace(
+    /\uE000(\d+)\uE001/g,
+    (_match, index: string) => links[Number(index)] ?? '',
+  );
 }
 
 function valueAtPath(variables: Record<string, unknown>, path: string): unknown {

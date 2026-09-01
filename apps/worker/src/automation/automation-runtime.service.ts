@@ -942,7 +942,7 @@ export class AutomationRuntimeService {
       data: {
         contactId: context.contactId,
         inputSafe: { nodeId: node.id, scenarioExecutionId: executionId },
-        normalizedEventId: context.normalizedEventId,
+        ...(context.normalizedEventId ? { normalizedEventId: context.normalizedEventId } : {}),
         outboxRecordId: outbox.id,
         projectId: context.projectId,
         type:

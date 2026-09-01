@@ -318,6 +318,51 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     expect(outboxFindUnique).not.toHaveBeenCalled();
   });
 
+  it('omits the normalized-event foreign key for website lead CRM upserts', async () => {
+    const crmOperationCreate = vi.fn().mockResolvedValue({ id: 'crm-operation-a' });
+    const outboxUpdate = vi.fn().mockResolvedValue(undefined);
+    const service = new AutomationRuntimeService({} as never) as unknown as {
+      queueCrmOperation(
+        transaction: unknown,
+        node: unknown,
+        context: unknown,
+        executionId: string,
+      ): Promise<void>;
+    };
+
+    await service.queueCrmOperation(
+      {
+        crmOperation: { create: crmOperationCreate },
+        outboxRecord: {
+          create: vi.fn().mockResolvedValue({ id: 'outbox-a' }),
+          findUnique: vi.fn().mockResolvedValue(null),
+          update: outboxUpdate,
+        },
+      },
+      { config: {}, id: 'crm-upsert-a', type: 'CREATE_OR_UPDATE_LEAD' },
+      {
+        contactId: 'contact-a',
+        normalizedEventId: '',
+        projectId: 'project-a',
+      },
+      'execution-a',
+    );
+
+    expect(crmOperationCreate).toHaveBeenCalledWith({
+      data: {
+        contactId: 'contact-a',
+        inputSafe: { nodeId: 'crm-upsert-a', scenarioExecutionId: 'execution-a' },
+        outboxRecordId: 'outbox-a',
+        projectId: 'project-a',
+        type: 'CREATE_OR_UPDATE_LEAD',
+      },
+    });
+    expect(outboxUpdate).toHaveBeenCalledWith({
+      data: { payload: { crmOperationId: 'crm-operation-a' } },
+      where: { projectId_id: { id: 'outbox-a', projectId: 'project-a' } },
+    });
+  });
+
   it('returns safe Telegram delivery references when a message is queued', async () => {
     const service = new AutomationRuntimeService({} as never) as unknown as {
       applyNode(
@@ -579,7 +624,9 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
       ): Promise<void>;
     };
     Object.assign(service, {
-      applyNode: vi.fn().mockRejectedValue(new Error('automation_telegram_media_group_kind_invalid')),
+      applyNode: vi
+        .fn()
+        .mockRejectedValue(new Error('automation_telegram_media_group_kind_invalid')),
     });
 
     await service.executeGraph(

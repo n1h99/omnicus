@@ -4,6 +4,7 @@ import {
   createDefaultEmailDocument,
   emailAssetReferences,
   renderEmailDocument,
+  renderInlineMarkup,
   renderEmailTemplate,
 } from './index';
 
@@ -65,5 +66,32 @@ describe('email core', () => {
     expect(rendered.html).toContain('object-fit:cover');
     expect(rendered.html).not.toContain('Download report');
     expect(rendered.text).not.toContain('Download report');
+  });
+
+  it('renders plain URLs as trackable anchors without corrupting Markdown links', () => {
+    const rendered = renderInlineMarkup(
+      'Open https://example.com/report?first=1&second=2, or [**view docs**](https://docs.example.com/path).',
+    );
+
+    expect(rendered).toContain(
+      '<a href="https://example.com/report?first=1&amp;second=2" style="color:#0f766e;text-decoration:underline">https://example.com/report?first=1&amp;second=2</a>,',
+    );
+    expect(rendered).toContain(
+      '<a href="https://docs.example.com/path" style="color:#0f766e;text-decoration:underline"><strong>view docs</strong></a>.',
+    );
+    expect(rendered.match(/<a /g)).toHaveLength(2);
+  });
+
+  it('keeps HTML escaped while auto-linking a plain URL', () => {
+    const rendered = renderInlineMarkup(
+      '<script>alert(1)</script> https://example.com/path <strong>unsafe</strong>',
+    );
+
+    expect(rendered).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    expect(rendered).toContain(
+      '<a href="https://example.com/path" style="color:#0f766e;text-decoration:underline">https://example.com/path</a>',
+    );
+    expect(rendered).toContain('&lt;strong&gt;unsafe&lt;/strong&gt;');
+    expect(rendered).not.toContain('<script>');
   });
 });
