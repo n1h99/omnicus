@@ -13,6 +13,7 @@ describe('ContactsService v2', () => {
     const database = {
       client: {
         auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+        emailEvent: { findMany: vi.fn().mockResolvedValue([]) },
         scenarioExecution: {
           findMany: vi.fn().mockResolvedValue([
             {
@@ -60,6 +61,72 @@ describe('ContactsService v2', () => {
         },
       ],
     });
+  });
+
+  it('includes provider-tracked email clicks in the contact timeline', async () => {
+    const createdAt = new Date('2026-09-01T15:22:32.000Z');
+    const occurredAt = new Date('2026-09-01T15:25:25.000Z');
+    const emailEventFindMany = vi.fn().mockResolvedValue([
+      {
+        delivery: {
+          campaign: null,
+          nodeId: 'send-email-a',
+          scenarioExecutionId: 'execution-a',
+          source: 'AUTOMATION',
+        },
+        id: 'email-event-a',
+        occurredAt,
+        providerPayload: {
+          data: { click: { user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' } },
+        },
+        targetUrl: 'https://example.com/email-link',
+      },
+    ]);
+    const database = {
+      client: {
+        auditLog: { findMany: vi.fn().mockResolvedValue([]) },
+        emailEvent: { findMany: emailEventFindMany },
+        scenarioExecution: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: 'execution-a',
+              scenario: { id: 'scenario-a', name: 'QA Website Registration' },
+              triggerType: 'WEBSITE_REGISTRATION',
+            },
+          ]),
+        },
+        trackedLink: { findMany: vi.fn().mockResolvedValue([]) },
+        trackedLinkClick: { findMany: vi.fn().mockResolvedValue([]) },
+      },
+    };
+    const instance = new ContactsService({ record: vi.fn() } as never, database as never);
+    vi.spyOn(instance, 'get').mockResolvedValue({ createdAt } as never);
+
+    await expect(instance.timeline('project-a', 'contact-a')).resolves.toMatchObject({
+      createdAt,
+      trackedLinkClicks: [
+        {
+          id: 'email-event:email-event-a',
+          isLikelyBot: false,
+          nodeId: 'send-email-a',
+          occurredAt,
+          scenario: { id: 'scenario-a', name: 'QA Website Registration' },
+          scenarioExecutionId: 'execution-a',
+          targetUrl: 'https://example.com/email-link',
+          trackedLinkId: 'email-event:email-event-a',
+          triggerType: 'WEBSITE_REGISTRATION',
+        },
+      ],
+    });
+    expect(emailEventFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          delivery: { contactId: 'contact-a', projectId: 'project-a' },
+          projectId: 'project-a',
+          type: 'CLICKED',
+        }),
+      }),
+    );
   });
 
   it('lists archived custom fields separately and restores them safely', async () => {

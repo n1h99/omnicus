@@ -81,6 +81,9 @@ function triggerTypeLabel(triggerType: string | null): string {
   if (triggerType === 'TELEGRAM_DEEP_LINK') return 'Telegram link';
   if (triggerType === 'WEBSITE_REGISTRATION') return 'Website registration';
   if (triggerType === 'INCOMING_MESSAGE') return 'Incoming message';
+  if (triggerType === 'EMAIL_CAMPAIGN') return 'Email campaign';
+  if (triggerType === 'EMAIL_AUTOMATION') return 'Email automation';
+  if (triggerType === 'EMAIL_TEST') return 'Test email';
   return 'Automation';
 }
 

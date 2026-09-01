@@ -282,7 +282,7 @@ export class ContactsService {
 
   async timeline(projectId: string, contactId: string) {
     const contact = await this.get(projectId, contactId);
-    const [audit, clicks] = await Promise.all([
+    const [audit, clicks, emailClicks] = await Promise.all([
       this.database.client.auditLog.findMany({
         orderBy: { createdAt: 'desc' },
         where: { entityId: contactId, entityType: 'Contact', projectId },
@@ -298,6 +298,30 @@ export class ContactsService {
         take: 100,
         where: { contactId, projectId },
       }),
+      this.database.client.emailEvent.findMany({
+        orderBy: [{ occurredAt: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          delivery: {
+            select: {
+              campaign: { select: { id: true, name: true } },
+              nodeId: true,
+              scenarioExecutionId: true,
+              source: true,
+            },
+          },
+          id: true,
+          occurredAt: true,
+          providerPayload: true,
+          targetUrl: true,
+        },
+        take: 100,
+        where: {
+          delivery: { contactId, projectId },
+          projectId,
+          targetUrl: { not: null },
+          type: 'CLICKED',
+        },
+      }),
     ]);
     const trackedLinkIds = [...new Set(clicks.map((click) => click.trackedLinkId))];
     const links = trackedLinkIds.length
@@ -311,7 +335,14 @@ export class ContactsService {
           where: { id: { in: trackedLinkIds }, projectId },
         })
       : [];
-    const executionIds = [...new Set(links.map((link) => link.scenarioExecutionId))];
+    const executionIds = [
+      ...new Set([
+        ...links.map((link) => link.scenarioExecutionId),
+        ...emailClicks.flatMap((click) =>
+          click.delivery.scenarioExecutionId ? [click.delivery.scenarioExecutionId] : [],
+        ),
+      ]),
+    ];
     const executions = executionIds.length
       ? await this.database.client.scenarioExecution.findMany({
           select: {
@@ -324,7 +355,7 @@ export class ContactsService {
       : [];
     const linksById = new Map(links.map((link) => [link.id, link]));
     const executionsById = new Map(executions.map((execution) => [execution.id, execution]));
-    const trackedLinkClicks = clicks.flatMap((click) => {
+    const automationLinkClicks = clicks.flatMap((click) => {
       const link = linksById.get(click.trackedLinkId);
       if (!link) return [];
       const execution = executionsById.get(link.scenarioExecutionId);
@@ -342,6 +373,27 @@ export class ContactsService {
         },
       ];
     });
+    const emailLinkClicks = emailClicks.flatMap((click) => {
+      if (!click.targetUrl) return [];
+      const scenarioExecutionId = click.delivery.scenarioExecutionId ?? '';
+      const execution = scenarioExecutionId ? executionsById.get(scenarioExecutionId) : undefined;
+      return [
+        {
+          id: `email-event:${click.id}`,
+          isLikelyBot: this.emailClickIsLikelyBot(click.providerPayload),
+          nodeId: click.delivery.nodeId ?? '',
+          occurredAt: click.occurredAt,
+          scenario: execution?.scenario ?? click.delivery.campaign ?? null,
+          scenarioExecutionId,
+          targetUrl: click.targetUrl,
+          trackedLinkId: `email-event:${click.id}`,
+          triggerType: execution?.triggerType ?? `EMAIL_${click.delivery.source}`,
+        },
+      ];
+    });
+    const trackedLinkClicks = [...automationLinkClicks, ...emailLinkClicks]
+      .sort((left, right) => right.occurredAt.getTime() - left.occurredAt.getTime())
+      .slice(0, 100);
     return { audit, createdAt: contact.createdAt, trackedLinkClicks };
   }
 
@@ -1158,6 +1210,19 @@ export class ContactsService {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? (value as Record<string, Prisma.JsonValue>)
       : {};
+  }
+
+  private emailClickIsLikelyBot(providerPayload: Prisma.JsonValue): boolean {
+    const data = this.jsonObject(this.jsonObject(providerPayload).data ?? null);
+    const click = this.jsonObject(data.click ?? null);
+    const rawUserAgent = click.userAgent ?? click.user_agent;
+    const userAgent = typeof rawUserAgent === 'string' ? rawUserAgent : undefined;
+    return (
+      !userAgent ||
+      /bot|crawler|spider|preview|facebookexternalhit|whatsapp|telegrambot|slackbot|discordbot/i.test(
+        userAgent,
+      )
+    );
   }
 
   private async assertTag(projectId: string, tagId: string) {
