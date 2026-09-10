@@ -74,6 +74,25 @@ test('serves the SPA fallback for an extensionless route', async () => {
   assert.match(await response.text(), /<div id="root"><\/div>/);
 });
 
+test('serves public legal pages without the authenticated SPA', async () => {
+  const pages = [
+    ['/privacy', 'Privacy Policy'],
+    ['/terms', 'Terms of Service'],
+    ['/data-deletion', 'Data Deletion Instructions'],
+  ];
+
+  for (const [path, heading] of pages) {
+    const response = await fetch(`${baseUrl}${path}`);
+    const body = await response.text();
+
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type') ?? '', /^text\/html/);
+    assert.match(body, new RegExp(`<h1>${heading}<\\/h1>`));
+    assert.match(body, /privacy@omnicus\.app/);
+    assert.doesNotMatch(body, /<div id="root"><\/div>/);
+  }
+});
+
 test('returns 404 instead of the SPA for a missing asset', async () => {
   const response = await fetch(`${baseUrl}/assets/missing-stage-zero.js`);
   assert.equal(response.status, 404);

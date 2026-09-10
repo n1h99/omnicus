@@ -10,6 +10,9 @@ describe('workspace lifecycle UI contracts', () => {
     expect(login).toContain('requiredMark={false}');
     expect(login).toContain("rules={[{ required: true, type: 'email' }]}");
     expect(login).toContain('rules={[{ required: true }]}');
+    expect(login).toContain('href="/privacy"');
+    expect(login).toContain('href="/terms"');
+    expect(login).toContain('href="/data-deletion"');
   });
 
   it('locks canvas zoom together with editor interactivity', () => {

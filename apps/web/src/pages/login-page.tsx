@@ -51,6 +51,11 @@ export function LoginPage() {
         <Link className="account-link-back" to="/forgot-password">
           Forgot password?
         </Link>
+        <nav aria-label="Legal information" className="login-legal-links">
+          <a href="/privacy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/data-deletion">Data deletion</a>
+        </nav>
       </Card>
     </main>
   );
