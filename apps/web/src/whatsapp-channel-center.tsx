@@ -1,4 +1,9 @@
-import { ExportOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  ExportOutlined,
+  ReloadOutlined,
+  WarningOutlined,
+  WhatsAppOutlined,
+} from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -17,6 +22,7 @@ import { Link } from 'react-router';
 import { getUserErrorMessage } from './api';
 import { humanizeStatus } from './humanize';
 import { type WhatsAppChannel } from './channels-api';
+import { WhatsAppHealthNotices } from './whatsapp-health-notices';
 import {
   formatWhatsAppMoney,
   useWhatsAppBilling,
@@ -41,14 +47,69 @@ const statusTag = (status: string) => (
   </Tag>
 );
 
+function ChannelStatusState({
+  title,
+  description,
+  warning = false,
+  action,
+  actionLabel,
+  loading = false,
+  details,
+}: {
+  title: string;
+  description: string;
+  warning?: boolean;
+  action?: (() => void) | undefined;
+  actionLabel?: string;
+  loading?: boolean;
+  details?: string;
+}) {
+  return (
+    <div className={`wa-center-state${warning ? ' wa-center-state--warning' : ''}`}>
+      <div className="wa-center-state-icon" aria-hidden="true">
+        {warning ? <WarningOutlined /> : <WhatsAppOutlined />}
+      </div>
+      <div className="wa-center-state-content">
+        <span className="wa-center-state-eyebrow">
+          {warning ? 'Connection needs attention' : 'Your WhatsApp channel'}
+        </span>
+        <h3>{title}</h3>
+        <p>{description}</p>
+        {!warning ? (
+          <div className="wa-center-state-features">
+            <span>Connection health</span>
+            <span>Number quality</span>
+            <span>Messaging limits</span>
+          </div>
+        ) : null}
+        {action && actionLabel ? (
+          <Button type="primary" loading={loading} onClick={action}>
+            {actionLabel}
+          </Button>
+        ) : null}
+        {details ? (
+          <details className="wa-center-state-details">
+            <summary>Technical details</summary>
+            <p>{details}</p>
+          </details>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function WhatsAppChannelCenter({
   projectId,
   channel,
   canManage,
+  onSetup,
+  onOpenSettings,
 }: {
   projectId: string | undefined;
   channel: WhatsAppChannel;
   canManage: boolean;
+  onSetup: () => void;
+  onOpenSettings: () => void;
 }) {
   const [tab, setTab] = useState('health');
   const [days, setDays] = useState(30);
@@ -64,6 +125,11 @@ export function WhatsAppChannelCenter({
   const managerUrl =
     h?.managerUrl ??
     `https://business.facebook.com/wa/manage/home/?waba_id=${encodeURIComponent(channel.businessAccountId ?? '')}`;
+  const accessInvalid =
+    h?.token.valid === false ||
+    Object.values(h?.unavailable ?? {}).some((issue) => issue.code === 190);
+  const numberUnavailable = Boolean(h?.unavailable.phone) && !h?.phone.number;
+  const connectionAttention = accessInvalid || numberUnavailable;
   return (
     <Card className="wa-channel-center" title="WhatsApp channel center">
       <Tabs
@@ -77,7 +143,9 @@ export function WhatsAppChannelCenter({
               <>
                 <div className="wa-center-actions">
                   <Typography.Text type="secondary">
-                    {h ? `Checked ${date(h.checkedAt)}` : 'Live connection and account checks'}
+                    {h
+                      ? `${health.isError ? 'Last successful check' : 'Checked'} ${date(h.checkedAt)}`
+                      : 'Live connection and account checks'}
                   </Typography.Text>
                   <Button
                     icon={<ReloadOutlined />}
@@ -89,19 +157,62 @@ export function WhatsAppChannelCenter({
                   </Button>
                 </div>
                 {!channel.configured ? (
-                  <Alert title="Finish channel setup to check Meta status." type="info" showIcon />
+                  <ChannelStatusState
+                    title="Connect your business number"
+                    description={
+                      canManage
+                        ? 'Finish WhatsApp setup to see connection health, number quality and messaging limits in one place.'
+                        : 'Ask a project administrator to finish WhatsApp setup. Your channel status and number details will appear here once connected.'
+                    }
+                    action={canManage ? onSetup : undefined}
+                    actionLabel="Continue setup"
+                  />
                 ) : health.isLoading ? (
-                  <Spin />
+                  <div className="wa-center-loading" role="status">
+                    <Spin />
+                    <span>Checking your WhatsApp connection…</span>
+                  </div>
+                ) : health.isError && !h ? (
+                  <ChannelStatusState
+                    warning
+                    title="We couldn’t check your channel"
+                    description="Channel status is temporarily unavailable. Try refreshing in a moment; your connection settings have not been changed."
+                    action={() => void health.refetch()}
+                    actionLabel="Try again"
+                    loading={health.isFetching}
+                    details={getUserErrorMessage(health.error)}
+                  />
+                ) : connectionAttention ? (
+                  <ChannelStatusState
+                    warning
+                    title={
+                      accessInvalid
+                        ? 'Restore your Meta connection'
+                        : 'We couldn’t verify this number'
+                    }
+                    description={
+                      accessInvalid
+                        ? canManage
+                          ? 'Meta access has expired or is no longer valid. Review the connection settings and update access to see live channel details again.'
+                          : 'Meta access has expired or is no longer valid. Ask a project administrator to restore the connection.'
+                        : canManage
+                          ? 'Meta did not return details for this business number. Check the number and account settings, or refresh the status to try again.'
+                          : 'Meta did not return details for this business number. Try refreshing, or ask a project administrator to check the connection.'
+                    }
+                    action={canManage ? onOpenSettings : undefined}
+                    actionLabel="Review connection settings"
+                  />
                 ) : null}
-                {health.isError ? (
+                {channel.configured && health.isError && h ? (
                   <Alert
-                    title="Could not check Meta"
+                    className="wa-center-refresh-error"
+                    title="Could not refresh Meta status. Showing the last successful check."
                     description={getUserErrorMessage(health.error)}
                     showIcon
                     type="warning"
                   />
                 ) : null}
-                {h ? (
+                {channel.configured && h && !connectionAttention ? (
                   <>
                     <div className="wa-health-grid">
                       <div className="wa-health-tile">
@@ -211,49 +322,10 @@ export function WhatsAppChannelCenter({
                         },
                       ]}
                     />
-                    <div className="wa-center-details">
-                      {h.entities
-                        .filter((e) => e.status !== 'AVAILABLE')
-                        .map((entity, index) => (
-                          <Alert
-                            key={index}
-                            showIcon
-                            type={entity.status === 'BLOCKED' ? 'error' : 'warning'}
-                            title={`${humanizeStatus(entity.type ?? 'Account')}: ${humanizeStatus(entity.status)}`}
-                            description={
-                              <>
-                                {entity.info.map((info, i) => (
-                                  <p key={i}>{info}</p>
-                                ))}
-                                {entity.errors.map((error, i) => (
-                                  <p key={i}>
-                                    {error.description} {error.solution}{' '}
-                                    {error.code ? `(Meta ${error.code})` : ''}
-                                  </p>
-                                ))}
-                              </>
-                            }
-                          />
-                        ))}
-                      {h.lastError ? (
-                        <Alert
-                          showIcon
-                          type="warning"
-                          title={`Last delivery error: ${h.lastError.code ?? 'Unknown'} · ${date(h.lastError.at)}`}
-                          description={h.lastError.guidance}
-                        />
-                      ) : null}
-                      {Object.entries(h.unavailable).map(([key, issue]) => (
-                        <Alert
-                          key={key}
-                          showIcon
-                          type="info"
-                          title={`${humanizeStatus(key)} check unavailable`}
-                          description={issue.reason}
-                        />
-                      ))}
-                    </div>
                   </>
+                ) : null}
+                {channel.configured && h ? (
+                  <WhatsAppHealthNotices health={h} connectionAttention={connectionAttention} />
                 ) : null}
               </>
             ),

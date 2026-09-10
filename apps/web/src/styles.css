@@ -4180,16 +4180,27 @@ button:disabled,
 
 .whatsapp-template-toolbar .ant-card-body {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
   padding: 16px;
 }
 
-.whatsapp-template-toolbar .ant-card-body > div {
+.whatsapp-template-toolbar .whatsapp-template-channel-picker {
   display: grid;
   flex: 1 1 460px;
+  min-width: 0;
   gap: 7px;
+}
+
+.whatsapp-template-toolbar-actions {
+  display: flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  max-width: 100%;
+  gap: 8px;
 }
 
 .whatsapp-template-toolbar .ant-select {

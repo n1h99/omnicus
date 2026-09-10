@@ -1,6 +1,6 @@
-import { DeleteOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, FileImageOutlined, PlusOutlined, UploadOutlined } from '@ant-design/icons';
 import { Alert, Button, Form, Input, Modal, Select, Typography, Upload } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError, getUserErrorMessage } from './api';
 import {
   type WhatsAppMessageTemplate,
@@ -14,6 +14,41 @@ type Values = Omit<WhatsAppTemplateDraft, 'header'> & {
   headerText?: string;
   headerExamples?: string[];
 };
+
+function ImageSamplePreview({ file }: { file: File }) {
+  const [preview, setPreview] = useState<{ file: File; url: string }>();
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const reader = new FileReader();
+    setFailed(false);
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setPreview({ file, url: reader.result });
+      else setFailed(true);
+    };
+    reader.onerror = () => setFailed(true);
+    reader.readAsDataURL(file);
+    return () => {
+      reader.onload = null;
+      reader.onerror = null;
+      if (reader.readyState === FileReader.LOADING) reader.abort();
+    };
+  }, [file]);
+
+  return preview?.file === file && !failed ? (
+    <img
+      className="wa-preview-image"
+      src={preview.url}
+      alt={`Template header: ${file.name}`}
+      onError={() => setFailed(true)}
+    />
+  ) : (
+    <div className="wa-preview-media">
+      <FileImageOutlined />
+      <span>{failed ? 'Image preview unavailable' : 'Preparing image preview…'}</span>
+      <small>{file.name}</small>
+    </div>
+  );
+}
 
 export function templateEditorInitial(
   template?: WhatsAppMessageTemplate,
@@ -93,7 +128,12 @@ export function WhatsAppTemplateEditor({
   const [form] = Form.useForm<Values>();
   const values = Form.useWatch([], form) as Values | undefined;
   const mutations = useWhatsAppTemplateMutations(projectId, connectionId);
-  const [sample, setSample] = useState<{ handle: string; format: string; name: string }>();
+  const [sample, setSample] = useState<{
+    handle: string;
+    format: string;
+    name: string;
+    file: File;
+  }>();
   const [error, setError] = useState<string>();
   const editing = Boolean(template && !duplicate);
   const format = values?.headerFormat ?? 'NONE';
@@ -238,6 +278,7 @@ export function WhatsAppTemplateEditor({
             </Form.Item>
             <Form.Item name="headerFormat" label="Header">
               <Select
+                disabled={busy}
                 onChange={() => setSample(undefined)}
                 options={['NONE', 'TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT'].map((value) => ({
                   value,
@@ -278,7 +319,7 @@ export function WhatsAppTemplateEditor({
                     }
                     try {
                       const result = await mutations.uploadSample.mutateAsync(file);
-                      setSample({ ...result, name: file.name });
+                      setSample({ ...result, name: file.name, file });
                     } catch (error) {
                       setError(getUserErrorMessage(error, 'Sample could not be uploaded.'));
                     }
@@ -416,6 +457,14 @@ export function WhatsAppTemplateEditor({
               <div className="wa-preview-bubble">
                 {format === 'TEXT' ? (
                   <strong>{sampleText(values?.headerText, values?.headerExamples)}</strong>
+                ) : format === 'IMAGE' && sample?.format === 'IMAGE' ? (
+                  <ImageSamplePreview file={sample.file} />
+                ) : format === 'IMAGE' ? (
+                  <div className="wa-preview-media">
+                    <FileImageOutlined />
+                    <span>Image header</span>
+                    <small>Upload a sample to preview it here</small>
+                  </div>
                 ) : format !== 'NONE' ? (
                   <div className="wa-preview-media">
                     {format} · {sample?.name ?? 'Review sample'}

@@ -56,11 +56,30 @@
   margin-top: 8px;
 }
 .wa-preview-media {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   background: #e9f0ec;
   padding: 28px 12px;
   border-radius: 8px;
   text-align: center;
   color: #526c5d;
+  overflow-wrap: anywhere;
+}
+.wa-preview-media > .anticon {
+  font-size: 28px;
+}
+.wa-preview-media small {
+  margin-bottom: 0;
+}
+.wa-preview-image {
+  display: block;
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 8px;
+  background: #e9f0ec;
 }
 .wa-sample-upload {
   display: flex;
@@ -120,11 +139,172 @@
   flex-wrap: wrap;
   align-items: center;
 }
-.wa-center-details {
+.wa-center-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 22px;
+  margin-top: 18px;
+  padding: 28px;
+  background: linear-gradient(120deg, #f0f9f6, #f8fafc);
+  border: 1px solid #dcebe4;
+  border-radius: 16px;
+}
+.wa-center-state--warning {
+  background: linear-gradient(120deg, #fffbf3, #f8fafc);
+  border-color: #ede2ca;
+}
+.wa-center-state-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 56px;
+  height: 56px;
+  border-radius: 16px;
+  background: #dff1e9;
+  color: var(--primary);
+  font-size: 28px;
+}
+.wa-center-state--warning .wa-center-state-icon {
+  color: #a16207;
+  background: #fbefce;
+}
+.wa-center-state-content {
+  min-width: 0;
+  max-width: 650px;
+  overflow-wrap: anywhere;
+}
+.wa-center-state-eyebrow {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.wa-center-state-content h3 {
+  margin: 6px 0 8px;
+  font-size: 20px;
+  line-height: 1.35;
+}
+.wa-center-state-content > p {
+  margin: 0 0 18px;
+  color: var(--text-soft);
+  line-height: 1.7;
+}
+.wa-center-state-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.wa-center-state-features > span {
+  padding: 4px 10px;
+  background: var(--surface-soft);
+  border: 1px solid #dcebe4;
+  border-radius: 20px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.wa-center-state-details {
+  margin-top: 16px;
+  color: var(--text-muted);
+}
+.wa-center-state-details summary {
+  cursor: pointer;
+}
+.wa-center-state-details p {
+  margin-bottom: 0;
+}
+.wa-center-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-height: 180px;
+  color: var(--text-muted);
+}
+.wa-center-refresh-error {
   margin-top: 18px;
 }
-.wa-center-details .ant-alert {
-  margin-bottom: 10px;
+.wa-health-notices {
+  margin-top: 18px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.wa-health-issues {
+  padding: 16px 18px;
+}
+.wa-health-issue,
+.wa-health-check-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  overflow-wrap: anywhere;
+}
+.wa-health-issue {
+  margin-bottom: 16px;
+}
+.wa-health-issue > div,
+.wa-health-check-summary > div {
+  min-width: 0;
+}
+.wa-health-issue > .anticon,
+.wa-health-check-summary > .anticon {
+  margin-top: 4px;
+  font-size: 17px;
+  color: var(--warning);
+}
+.wa-health-issue--blocked > .anticon {
+  color: var(--danger);
+}
+.wa-health-issue-heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.wa-health-issue p,
+.wa-health-check-summary p,
+.wa-diagnostic-list p,
+.wa-delivery-history p {
+  margin: 6px 0 0;
+}
+.wa-health-next-step,
+.wa-health-check-summary p,
+.wa-diagnostic-list,
+.wa-delivery-history {
+  color: var(--text-soft);
+}
+.wa-health-check-summary {
+  padding: 16px 18px;
+}
+.wa-health-check-summary > .anticon {
+  color: var(--primary);
+}
+.wa-health-diagnostics {
+  background: var(--surface-muted);
+}
+.wa-health-notices > div + .wa-health-diagnostics {
+  border-top: 1px solid var(--border);
+}
+.wa-diagnostic-count,
+.wa-diagnostic-list small,
+.wa-delivery-history small,
+.wa-delivery-history > span {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.wa-diagnostic-list {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding-left: 20px;
+  overflow-wrap: anywhere;
+}
+.wa-diagnostic-list small,
+.wa-delivery-history small {
+  display: block;
+  margin-top: 6px;
 }
 .wa-billing-instructions {
   margin: 18px 0;
@@ -147,5 +327,16 @@
   }
   .wa-health-grid {
     grid-template-columns: 1fr;
+  }
+  .wa-center-state {
+    flex-direction: column;
+    gap: 16px;
+    padding: 20px;
+  }
+  .wa-center-state-icon {
+    width: 48px;
+    height: 48px;
+    flex-basis: 48px;
+    font-size: 24px;
   }
 }

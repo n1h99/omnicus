@@ -113,7 +113,7 @@ export function WhatsAppTemplatesPanel({
         type="info"
       />
       <Card className="whatsapp-template-toolbar">
-        <div>
+        <div className="whatsapp-template-channel-picker">
           <Typography.Text strong>WhatsApp channel</Typography.Text>
           <Select
             loading={channels.isLoading}
@@ -130,7 +130,7 @@ export function WhatsAppTemplatesPanel({
           />
         </div>
         {canManage ? (
-          <Space wrap>
+          <div className="whatsapp-template-toolbar-actions">
             <Button
               disabled={!connectionId || connection?.status !== 'ACTIVE'}
               icon={<PlusOutlined />}
@@ -156,7 +156,7 @@ export function WhatsAppTemplatesPanel({
             >
               Sync from Meta
             </Button>
-          </Space>
+          </div>
         ) : null}
       </Card>
 

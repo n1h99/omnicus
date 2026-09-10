@@ -744,14 +744,6 @@ export function ChannelDetailPage() {
         </div>
       ) : null}
 
-      {connection.type === 'WHATSAPP' ? (
-        <WhatsAppChannelCenter
-          key={connection.id}
-          projectId={projectId}
-          channel={connection}
-          canManage={canManage}
-        />
-      ) : null}
       <Card className="channel-overview-card" title="Connection overview">
         <Descriptions
           column={{ lg: 3, md: 2, xs: 1 }}
@@ -854,6 +846,19 @@ export function ChannelDetailPage() {
           )}
         </div>
       </Card>
+
+      {connection.type === 'WHATSAPP' ? (
+        <WhatsAppChannelCenter
+          key={connection.id}
+          projectId={projectId}
+          channel={connection}
+          canManage={canManage}
+          onSetup={() => setSetupOpen(true)}
+          onOpenSettings={() =>
+            whatsappSettingsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        />
+      ) : null}
 
       {canManage ? (
         <div className="channel-management-grid">
