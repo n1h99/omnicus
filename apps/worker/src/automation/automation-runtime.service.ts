@@ -236,7 +236,7 @@ export class AutomationRuntimeService {
         where: { projectId_id: { id: input.conversationId, projectId: input.projectId } },
       }),
       transaction.normalizedEvent.findUnique({
-        select: { payload: true },
+        select: { payload: true, type: true },
         where: { projectId_id: { id: input.normalizedEventId, projectId: input.projectId } },
       }),
       transaction.scenario.findMany({
@@ -257,7 +257,7 @@ export class AutomationRuntimeService {
       ...input,
       contactVariables: this.contactVariables(contact),
       customFields: contact.customFields,
-      eventPayload: event.payload,
+      eventPayload: this.automationEventPayload(event.type, event.payload),
       subflowDepth: 0,
       variables: {},
     };
@@ -266,7 +266,8 @@ export class AutomationRuntimeService {
       if (!version?.compiledDefinition) continue;
       const graph = scenarioGraphSchema.safeParse(version.compiledDefinition);
       if (!graph.success) continue;
-      if (!this.matchesInboundTrigger(graph.data, event.payload, input.connectionId)) continue;
+      if (!this.matchesInboundTrigger(graph.data, context.eventPayload, input.connectionId))
+        continue;
       const execution = await transaction.scenarioExecution.upsert({
         create: {
           contactId: input.contactId,
@@ -280,7 +281,7 @@ export class AutomationRuntimeService {
           status: 'RUNNING',
           triggerEventId: input.normalizedEventId,
           triggerKey: input.normalizedEventId,
-          triggerPayload: event.payload as Prisma.InputJsonValue,
+          triggerPayload: context.eventPayload as Prisma.InputJsonValue,
           triggerType: 'INCOMING_MESSAGE',
         },
         update: {},
@@ -403,7 +404,9 @@ export class AutomationRuntimeService {
         contactVariables: this.contactVariables(contact),
         conversationId: execution.conversationId ?? '',
         customFields: contact.customFields,
-        eventPayload: event?.payload ?? execution.triggerPayload ?? {},
+        eventPayload: event
+          ? this.automationEventPayload(event.type, event.payload)
+          : (execution.triggerPayload ?? {}),
         normalizedEventId: eventId ?? '',
         projectId,
         subflowDepth: 0,
@@ -1853,6 +1856,17 @@ export class AutomationRuntimeService {
     return value && typeof value === 'object' && !Array.isArray(value)
       ? (value as Record<string, Prisma.JsonValue>)
       : {};
+  }
+
+  private automationEventPayload(type: string, payload: Prisma.JsonValue): Prisma.JsonObject {
+    const storedPayload = this.object(payload);
+    const nestedContent = this.object(storedPayload.content);
+    const content = Object.keys(nestedContent).length ? nestedContent : { ...storedPayload };
+    return {
+      ...storedPayload,
+      content,
+      type,
+    };
   }
 
   private customFieldProjections(type: CustomFieldType, value: unknown) {

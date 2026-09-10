@@ -207,6 +207,69 @@ describe('AutomationRuntimeService Wait for Reply criteria', () => {
     });
   });
 
+  it('normalizes a flat WhatsApp event before evaluating message conditions', async () => {
+    const service = new AutomationRuntimeService({} as never) as unknown as {
+      applyNode(
+        transaction: unknown,
+        node: unknown,
+        edges: unknown[],
+        context: unknown,
+        executionId: string,
+      ): Promise<{ next?: { output: string }; reasonCode?: string }>;
+      automationEventPayload(type: string, payload: unknown): Record<string, unknown>;
+    };
+    const eventPayload = service.automationEventPayload('MESSAGE', {
+      occurredAt: '2026-09-10T06:01:00.000Z',
+      text: 'META_REVIEW_TEST_969378529363534',
+    });
+
+    const result = await service.applyNode(
+      {},
+      { config: {}, id: 'condition', type: 'CONDITION' },
+      [
+        {
+          conditionGroup: {
+            combinator: 'AND',
+            rules: [
+              {
+                field: 'message.text',
+                operator: 'equals',
+                value: 'META_REVIEW_TEST_969378529363534',
+              },
+            ],
+          },
+          from: 'condition',
+          output: 'branch-1',
+          priority: 0,
+          to: 'send',
+        },
+        { from: 'condition', output: 'branch-2', priority: 1, to: 'stop' },
+      ],
+      {
+        connectionId: 'whatsapp-connection',
+        contactId: 'contact-a',
+        contactVariables: {},
+        conversationId: 'conversation-a',
+        customFields: {},
+        eventPayload,
+        normalizedEventId: 'event-a',
+        projectId: 'project-a',
+        subflowDepth: 0,
+        variables: {},
+      },
+      'execution-a',
+    );
+
+    expect(eventPayload).toMatchObject({
+      content: { text: 'META_REVIEW_TEST_969378529363534' },
+      type: 'MESSAGE',
+    });
+    expect(result).toMatchObject({
+      next: { output: 'branch-1' },
+      reasonCode: 'CONDITION_MATCHED',
+    });
+  });
+
   it('queues one durable idempotent HTTP operation and suspends the execution', async () => {
     const outboxCreate = vi.fn().mockResolvedValue({ id: 'outbox-a' });
     const operationCreate = vi.fn().mockResolvedValue({ id: 'operation-a' });
