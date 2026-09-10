@@ -1,5 +1,6 @@
 import {
   ExportOutlined,
+  LoadingOutlined,
   ReloadOutlined,
   WarningOutlined,
   WhatsAppOutlined,
@@ -168,8 +169,8 @@ export function WhatsAppChannelCenter({
                     actionLabel="Continue setup"
                   />
                 ) : health.isLoading ? (
-                  <div className="wa-center-loading" role="status">
-                    <Spin />
+                  <div className="wa-center-loading" role="status" aria-live="polite">
+                    <Spin indicator={<LoadingOutlined spin />} />
                     <span>Checking your WhatsApp connection…</span>
                   </div>
                 ) : health.isError && !h ? (
@@ -398,7 +399,12 @@ export function WhatsAppChannelCenter({
                           Refresh cost report
                         </Button>
                       </div>
-                      {billing.isLoading ? <Spin /> : null}
+                      {billing.isLoading ? (
+                        <div className="wa-center-loading" role="status" aria-live="polite">
+                          <Spin indicator={<LoadingOutlined spin />} />
+                          <span>Loading Meta cost report…</span>
+                        </div>
+                      ) : null}
                       {billing.isError ? (
                         <Alert
                           className="form-alert"
