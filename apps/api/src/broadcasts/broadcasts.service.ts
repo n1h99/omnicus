@@ -9,6 +9,8 @@ import { Prisma } from '@omnicus/database';
 import {
   assertWhatsAppTemplateComponents,
   whatsAppTemplateDisabledReason,
+  estimateWhatsAppCost,
+  normalizeWhatsAppPricing,
 } from '@omnicus/channel-whatsapp';
 import { renderMessageTemplateContent, renderTemplate } from '@omnicus/media-core';
 
@@ -210,8 +212,51 @@ export class BroadcastsService {
     return this.safe(broadcast);
   }
 
-  async estimate(projectId: string, broadcastId: string) {
+  async estimate(projectId: string, broadcastId: string, currency = 'USD') {
     const broadcast = await this.broadcast(projectId, broadcastId);
+    const snapshot = this.whatsAppTemplateFromContent(broadcast.content);
+    if (snapshot) {
+      const template = await this.database.client.whatsAppMessageTemplate.findFirst({
+        where: { projectId, connectionId: broadcast.connectionId, id: snapshot.templateId },
+      });
+      const at =
+        broadcast.scheduledAt && broadcast.scheduledAt > new Date()
+          ? broadcast.scheduledAt
+          : new Date();
+      const [identities, conversations] = await Promise.all([
+        this.database.client.channelIdentity.findMany({
+          select: { externalUserId: true },
+          where: await this.audienceWhere(
+            projectId,
+            broadcast.connectionId,
+            broadcast.audience as unknown as Audience,
+          ),
+        }),
+        this.database.client.conversation.findMany({
+          select: { externalChatId: true, serviceWindowExpiresAt: true },
+          where: {
+            projectId,
+            connectionId: broadcast.connectionId,
+            serviceWindowExpiresAt: { gt: at },
+          },
+        }),
+      ]);
+      const windows = new Map(
+        conversations.map((c) => [c.externalChatId, c.serviceWindowExpiresAt]),
+      );
+      return {
+        eligibleRecipients: identities.length,
+        cost: estimateWhatsAppCost({
+          category: template?.category ?? 'UNKNOWN',
+          currency,
+          at,
+          recipients: identities.map((identity) => ({
+            phone: identity.externalUserId,
+            serviceWindowExpiresAt: windows.get(identity.externalUserId) ?? null,
+          })),
+        }),
+      };
+    }
     return {
       eligibleRecipients: await this.countAudience(
         projectId,
@@ -479,11 +524,24 @@ export class BroadcastsService {
         include: {
           contact: { select: { displayName: true } },
           channelIdentity: { select: { username: true, externalUserId: true } },
+          message: { select: { metadata: true } },
         },
       }),
       this.database.client.broadcastRecipient.count({ where }),
     ]);
-    return { items, page: query.page, pageSize: query.pageSize, total };
+    return {
+      items: items.map(({ message, ...item }) => {
+        const metadata = message?.metadata as Prisma.JsonObject | null | undefined;
+        const raw = metadata?.whatsappPricing as Prisma.JsonObject | undefined;
+        const pricing = raw
+          ? normalizeWhatsAppPricing({ ...raw, pricing_model: raw.pricingModel })
+          : undefined;
+        return { ...item, ...(pricing ? { pricing } : {}) };
+      }),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   private async prepareAndQueue(projectId: string, broadcastId: string): Promise<number> {

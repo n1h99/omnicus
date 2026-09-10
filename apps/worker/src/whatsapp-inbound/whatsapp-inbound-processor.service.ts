@@ -12,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   assertWhatsAppReactionEmoji,
   normalizeWhatsAppWebhookItem,
+  normalizeWhatsAppPricing,
   WHATSAPP_INBOUND_JOB_NAME,
   WHATSAPP_INBOUND_QUEUE_NAME,
   type WhatsAppInboundJob,
@@ -408,12 +409,16 @@ export class WhatsAppInboundProcessorService
       });
       if (!target) throw new WhatsAppInboundPendingError('whatsapp_status_source_pending');
       const errorCode = this.statusErrorCode(status);
+      const pricing = ['DELIVERED', 'READ'].includes(mapped)
+        ? normalizeWhatsAppPricing(status.pricing)
+        : undefined;
       const normalized = await transaction.normalizedEvent.create({
         data: {
           connectionId: claimed.connectionId,
           inboxRecordId: claimed.id,
           payload: {
             ...(errorCode ? { errorCode } : {}),
+            ...(pricing ? { pricing } : {}),
             messageId: target.id,
             occurredAt: eventAt.toISOString(),
             providerMessageId,
@@ -452,6 +457,16 @@ export class WhatsAppInboundProcessorService
         normalized.id,
       );
       const projection = messageProjectionStatus(target.status, mapped);
+      if (pricing && target.status !== 'DELETED' && !object(target.metadata)?.whatsappPricing)
+        await transaction.message.update({
+          data: {
+            metadata: {
+              ...(object(target.metadata) ?? {}),
+              whatsappPricing: { ...pricing, reportedAt: eventAt.toISOString() },
+            } as Prisma.InputJsonValue,
+          },
+          where: { projectId_id: { id: target.id, projectId: claimed.projectId } },
+        });
       if (projection)
         await transaction.message.update({
           data: {

@@ -4,11 +4,17 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
-import { useBroadcast, useBroadcastMutations, useBroadcastRecipients } from '../broadcasts-api';
+import {
+  type BroadcastRecipient,
+  useBroadcast,
+  useBroadcastMutations,
+  useBroadcastRecipients,
+} from '../broadcasts-api';
 import { channelAccountLabel, channelProviderLabel } from '../channel-provider';
 import { useChannels } from '../channels-api';
 import { hasProjectPermission, useProjectAccess } from '../project-access';
 import { StatusText } from '../status-text';
+import { WhatsAppBroadcastCost } from '../whatsapp-broadcast-cost';
 
 export function BroadcastDetailPage() {
   const { projectId, broadcastId } = useParams();
@@ -108,6 +114,13 @@ export function BroadcastDetailPage() {
           },
         ]}
       />
+      {channel?.type === 'WHATSAPP' && ['DRAFT', 'SCHEDULED'].includes(broadcast.status) ? (
+        <WhatsAppBroadcastCost
+          projectId={projectId}
+          broadcastId={broadcast.id}
+          updatedAt={broadcast.updatedAt}
+        />
+      ) : null}
       <Space wrap style={{ marginTop: 16 }}>
         {canLaunch && ['DRAFT', 'SCHEDULED'].includes(broadcast.status) ? (
           <Button
@@ -161,7 +174,7 @@ export function BroadcastDetailPage() {
       {recipients.isError ? (
         <Alert message="Broadcast recipients could not be loaded." showIcon type="error" />
       ) : null}
-      <Table
+      <Table<BroadcastRecipient>
         rowKey="id"
         loading={recipients.isLoading}
         dataSource={recipients.data?.items ?? []}
@@ -181,6 +194,20 @@ export function BroadcastDetailPage() {
             render: (value) => <StatusText status={value} />,
           },
           { title: 'Error code', dataIndex: 'lastError', render: (value) => value ?? '—' },
+          ...(channel?.type === 'WHATSAPP'
+            ? [
+                {
+                  title: 'Meta pricing',
+                  key: 'pricing',
+                  render: (_: unknown, recipient: { pricing?: { billable: boolean } }) =>
+                    recipient.pricing
+                      ? recipient.pricing.billable
+                        ? 'Paid'
+                        : 'Free'
+                      : 'Not reported',
+                },
+              ]
+            : []),
         ]}
       />
       <Modal

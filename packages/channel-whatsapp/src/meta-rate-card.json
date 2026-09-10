@@ -1,0 +1,2472 @@
+{
+  "source": "https://developers.facebook.com/documentation/business-messaging/whatsapp/pricing?locale=en_US",
+  "verifiedAt": "2026-09-10",
+  "effectiveFrom": "2026-07-01",
+  "effectiveUntil": "2026-10-01",
+  "cards": {
+    "USD": {
+      "Argentina": {
+        "marketing": 0.0618,
+        "utility": 0.026
+      },
+      "Brazil": {
+        "marketing": 0.0625,
+        "utility": 0.0068
+      },
+      "Chile": {
+        "marketing": 0.0889,
+        "utility": 0.02
+      },
+      "Colombia": {
+        "marketing": 0.0125,
+        "utility": 0.0008
+      },
+      "Egypt": {
+        "marketing": 0.0644,
+        "utility": 0.0036
+      },
+      "France": {
+        "marketing": 0.0859,
+        "utility": 0.03
+      },
+      "Germany": {
+        "marketing": 0.1365,
+        "utility": 0.055
+      },
+      "Hong Kong": {
+        "marketing": 0.0732,
+        "utility": 0.026
+      },
+      "Hungary": {
+        "marketing": 0.086,
+        "utility": 0.035
+      },
+      "India": {
+        "marketing": 0.0118,
+        "utility": 0.0014
+      },
+      "Indonesia": {
+        "marketing": 0.0411,
+        "utility": 0.025
+      },
+      "Israel": {
+        "marketing": 0.0353,
+        "utility": 0.0053
+      },
+      "Italy": {
+        "marketing": 0.0795,
+        "utility": 0.03
+      },
+      "Malaysia": {
+        "marketing": 0.086,
+        "utility": 0.014
+      },
+      "Mexico": {
+        "marketing": 0.0305,
+        "utility": 0.0085
+      },
+      "Netherlands": {
+        "marketing": 0.1597,
+        "utility": 0.05
+      },
+      "Nigeria": {
+        "marketing": 0.0516,
+        "utility": 0.0067
+      },
+      "Pakistan": {
+        "marketing": 0.0473,
+        "utility": 0.01
+      },
+      "Peru": {
+        "marketing": 0.0703,
+        "utility": 0.02
+      },
+      "Poland": {
+        "marketing": 0.0366,
+        "utility": 0.0122
+      },
+      "Qatar": {
+        "marketing": 0.0341,
+        "utility": 0.012
+      },
+      "Romania": {
+        "marketing": 0.086,
+        "utility": 0.029
+      },
+      "Russia": {
+        "marketing": 0.0802,
+        "utility": 0.04
+      },
+      "Saudi Arabia": {
+        "marketing": 0.0501,
+        "utility": 0.0107
+      },
+      "Singapore": {
+        "marketing": 0.0732,
+        "utility": 0.016
+      },
+      "South Africa": {
+        "marketing": 0.0379,
+        "utility": 0.0076
+      },
+      "Spain": {
+        "marketing": 0.0707,
+        "utility": 0.02
+      },
+      "Turkey": {
+        "marketing": 0.0109,
+        "utility": 0.0009
+      },
+      "United Arab Emirates": {
+        "marketing": 0.0499,
+        "utility": 0.0157
+      },
+      "United Kingdom": {
+        "marketing": 0.0635,
+        "utility": 0.022
+      },
+      "North America": {
+        "marketing": 0.025,
+        "utility": 0.0034
+      },
+      "Rest of Africa": {
+        "marketing": 0.0225,
+        "utility": 0.004
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.0732,
+        "utility": 0.0113
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.086,
+        "utility": 0.0212
+      },
+      "Rest of Latin America": {
+        "marketing": 0.074,
+        "utility": 0.0113
+      },
+      "Rest of Middle East": {
+        "marketing": 0.0341,
+        "utility": 0.0091
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.0592,
+        "utility": 0.0171
+      },
+      "Other": {
+        "marketing": 0.0604,
+        "utility": 0.0077
+      }
+    },
+    "AED": {
+      "Argentina": {
+        "marketing": 0.2269,
+        "utility": 0.0955
+      },
+      "Brazil": {
+        "marketing": 0.2295,
+        "utility": 0.025
+      },
+      "Chile": {
+        "marketing": 0.3264,
+        "utility": 0.0734
+      },
+      "Colombia": {
+        "marketing": 0.0459,
+        "utility": 0.0029
+      },
+      "Egypt": {
+        "marketing": 0.2364,
+        "utility": 0.0132
+      },
+      "France": {
+        "marketing": 0.3154,
+        "utility": 0.1101
+      },
+      "Germany": {
+        "marketing": 0.5012,
+        "utility": 0.2019
+      },
+      "Hong Kong": {
+        "marketing": 0.2688,
+        "utility": 0.0955
+      },
+      "Hungary": {
+        "marketing": 0.3157,
+        "utility": 0.1284
+      },
+      "India": {
+        "marketing": 0.0433,
+        "utility": 0.0051
+      },
+      "Indonesia": {
+        "marketing": 0.1509,
+        "utility": 0.0918
+      },
+      "Israel": {
+        "marketing": 0.1296,
+        "utility": 0.0195
+      },
+      "Italy": {
+        "marketing": 0.2918,
+        "utility": 0.1101
+      },
+      "Malaysia": {
+        "marketing": 0.3157,
+        "utility": 0.0514
+      },
+      "Mexico": {
+        "marketing": 0.112,
+        "utility": 0.0312
+      },
+      "Netherlands": {
+        "marketing": 0.5863,
+        "utility": 0.1836
+      },
+      "Nigeria": {
+        "marketing": 0.1894,
+        "utility": 0.0246
+      },
+      "Pakistan": {
+        "marketing": 0.1737,
+        "utility": 0.0367
+      },
+      "Peru": {
+        "marketing": 0.2581,
+        "utility": 0.0734
+      },
+      "Poland": {
+        "marketing": 0.1344,
+        "utility": 0.0448
+      },
+      "Qatar": {
+        "marketing": 0.1252,
+        "utility": 0.044
+      },
+      "Romania": {
+        "marketing": 0.3157,
+        "utility": 0.1064
+      },
+      "Russia": {
+        "marketing": 0.2945,
+        "utility": 0.1469
+      },
+      "Saudi Arabia": {
+        "marketing": 0.1839,
+        "utility": 0.0393
+      },
+      "Singapore": {
+        "marketing": 0.2688,
+        "utility": 0.0588
+      },
+      "South Africa": {
+        "marketing": 0.1391,
+        "utility": 0.0279
+      },
+      "Spain": {
+        "marketing": 0.2597,
+        "utility": 0.0734
+      },
+      "Turkey": {
+        "marketing": 0.04,
+        "utility": 0.0033
+      },
+      "United Arab Emirates": {
+        "marketing": 0.1832,
+        "utility": 0.0576
+      },
+      "United Kingdom": {
+        "marketing": 0.233,
+        "utility": 0.0808
+      },
+      "North America": {
+        "marketing": 0.0918,
+        "utility": 0.0125
+      },
+      "Rest of Africa": {
+        "marketing": 0.0826,
+        "utility": 0.0147
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.2688,
+        "utility": 0.0415
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.3157,
+        "utility": 0.0778
+      },
+      "Rest of Latin America": {
+        "marketing": 0.2717,
+        "utility": 0.0415
+      },
+      "Rest of Middle East": {
+        "marketing": 0.1252,
+        "utility": 0.0334
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.2174,
+        "utility": 0.0628
+      },
+      "Other": {
+        "marketing": 0.2218,
+        "utility": 0.0283
+      }
+    },
+    "ARS": {
+      "Argentina": {
+        "marketing": 89.562,
+        "utility": 37.6798
+      },
+      "Brazil": {
+        "marketing": 90.5765,
+        "utility": 9.8547
+      },
+      "Chile": {
+        "marketing": 128.836,
+        "utility": 28.9845
+      },
+      "Colombia": {
+        "marketing": 18.1153,
+        "utility": 1.1594
+      },
+      "Egypt": {
+        "marketing": 93.33,
+        "utility": 5.2172
+      },
+      "France": {
+        "marketing": 124.4883,
+        "utility": 43.4767
+      },
+      "Germany": {
+        "marketing": 197.819,
+        "utility": 79.7073
+      },
+      "Hong Kong": {
+        "marketing": 106.0832,
+        "utility": 37.6798
+      },
+      "Hungary": {
+        "marketing": 124.6332,
+        "utility": 50.7228
+      },
+      "India": {
+        "marketing": 17.1008,
+        "utility": 2.0289
+      },
+      "Indonesia": {
+        "marketing": 59.5631,
+        "utility": 36.2306
+      },
+      "Israel": {
+        "marketing": 51.1576,
+        "utility": 7.6809
+      },
+      "Italy": {
+        "marketing": 115.1625,
+        "utility": 43.4767
+      },
+      "Malaysia": {
+        "marketing": 124.6332,
+        "utility": 20.2891
+      },
+      "Mexico": {
+        "marketing": 44.2013,
+        "utility": 12.3184
+      },
+      "Netherlands": {
+        "marketing": 231.441,
+        "utility": 72.4612
+      },
+      "Nigeria": {
+        "marketing": 74.7799,
+        "utility": 9.7098
+      },
+      "Pakistan": {
+        "marketing": 68.5483,
+        "utility": 14.4922
+      },
+      "Peru": {
+        "marketing": 101.8804,
+        "utility": 28.9845
+      },
+      "Poland": {
+        "marketing": 53.0415,
+        "utility": 17.6805
+      },
+      "Qatar": {
+        "marketing": 49.4185,
+        "utility": 17.3906
+      },
+      "Romania": {
+        "marketing": 124.6332,
+        "utility": 42.0274
+      },
+      "Russia": {
+        "marketing": 116.2277,
+        "utility": 57.9689
+      },
+      "Saudi Arabia": {
+        "marketing": 72.6061,
+        "utility": 15.5067
+      },
+      "Singapore": {
+        "marketing": 106.0832,
+        "utility": 23.1875
+      },
+      "South Africa": {
+        "marketing": 54.9256,
+        "utility": 11.0141
+      },
+      "Spain": {
+        "marketing": 102.4963,
+        "utility": 28.9845
+      },
+      "Turkey": {
+        "marketing": 15.7965,
+        "utility": 1.3043
+      },
+      "United Arab Emirates": {
+        "marketing": 72.3163,
+        "utility": 22.7528
+      },
+      "United Kingdom": {
+        "marketing": 91.9967,
+        "utility": 31.8829
+      },
+      "North America": {
+        "marketing": 36.2306,
+        "utility": 4.9274
+      },
+      "Rest of Africa": {
+        "marketing": 32.6075,
+        "utility": 5.7969
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 106.0832,
+        "utility": 16.3762
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 124.6332,
+        "utility": 30.7235
+      },
+      "Rest of Latin America": {
+        "marketing": 107.2425,
+        "utility": 16.3762
+      },
+      "Rest of Middle East": {
+        "marketing": 49.4185,
+        "utility": 13.1879
+      },
+      "Rest of Western Europe": {
+        "marketing": 85.794,
+        "utility": 24.7817
+      },
+      "Other": {
+        "marketing": 87.5331,
+        "utility": 11.159
+      }
+    },
+    "AUD": {
+      "Argentina": {
+        "marketing": 0.0804,
+        "utility": 0.034
+      },
+      "Brazil": {
+        "marketing": 0.0813,
+        "utility": 0.0088
+      },
+      "Chile": {
+        "marketing": 0.1156,
+        "utility": 0.026
+      },
+      "Colombia": {
+        "marketing": 0.0163,
+        "utility": 0.0012
+      },
+      "Egypt": {
+        "marketing": 0.0837,
+        "utility": 0.0047
+      },
+      "France": {
+        "marketing": 0.1117,
+        "utility": 0.039
+      },
+      "Germany": {
+        "marketing": 0.1775,
+        "utility": 0.0715
+      },
+      "Hong Kong": {
+        "marketing": 0.0952,
+        "utility": 0.0341
+      },
+      "Hungary": {
+        "marketing": 0.1117,
+        "utility": 0.0454
+      },
+      "India": {
+        "marketing": 0.0153,
+        "utility": 0.0018
+      },
+      "Indonesia": {
+        "marketing": 0.0535,
+        "utility": 0.0325
+      },
+      "Israel": {
+        "marketing": 0.0459,
+        "utility": 0.0069
+      },
+      "Italy": {
+        "marketing": 0.1032,
+        "utility": 0.0389
+      },
+      "Malaysia": {
+        "marketing": 0.1117,
+        "utility": 0.0182
+      },
+      "Mexico": {
+        "marketing": 0.0396,
+        "utility": 0.0112
+      },
+      "Netherlands": {
+        "marketing": 0.2077,
+        "utility": 0.065
+      },
+      "Nigeria": {
+        "marketing": 0.0671,
+        "utility": 0.0087
+      },
+      "Pakistan": {
+        "marketing": 0.0615,
+        "utility": 0.013
+      },
+      "Peru": {
+        "marketing": 0.0913,
+        "utility": 0.026
+      },
+      "Poland": {
+        "marketing": 0.0474,
+        "utility": 0.0158
+      },
+      "Qatar": {
+        "marketing": 0.0443,
+        "utility": 0.0154
+      },
+      "Romania": {
+        "marketing": 0.1117,
+        "utility": 0.0376
+      },
+      "Russia": {
+        "marketing": 0.1043,
+        "utility": 0.052
+      },
+      "Saudi Arabia": {
+        "marketing": 0.0649,
+        "utility": 0.0139
+      },
+      "Singapore": {
+        "marketing": 0.0952,
+        "utility": 0.021
+      },
+      "South Africa": {
+        "marketing": 0.0493,
+        "utility": 0.0099
+      },
+      "Spain": {
+        "marketing": 0.0919,
+        "utility": 0.026
+      },
+      "Turkey": {
+        "marketing": 0.0142,
+        "utility": 0.0012
+      },
+      "United Arab Emirates": {
+        "marketing": 0.0649,
+        "utility": 0.0205
+      },
+      "United Kingdom": {
+        "marketing": 0.0824,
+        "utility": 0.0286
+      },
+      "North America": {
+        "marketing": 0.0325,
+        "utility": 0.0044
+      },
+      "Rest of Africa": {
+        "marketing": 0.0293,
+        "utility": 0.0052
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.0952,
+        "utility": 0.0148
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.1117,
+        "utility": 0.0275
+      },
+      "Rest of Latin America": {
+        "marketing": 0.0961,
+        "utility": 0.0147
+      },
+      "Rest of Middle East": {
+        "marketing": 0.0443,
+        "utility": 0.0117
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.0769,
+        "utility": 0.0222
+      },
+      "Other": {
+        "marketing": 0.0784,
+        "utility": 0.01
+      }
+    },
+    "BRL": {
+      "Argentina": {
+        "marketing": 0.3181,
+        "utility": 0.1338
+      },
+      "Brazil": {
+        "marketing": 0.3217,
+        "utility": 0.035
+      },
+      "Chile": {
+        "marketing": 0.4576,
+        "utility": 0.1029
+      },
+      "Colombia": {
+        "marketing": 0.0643,
+        "utility": 0.0041
+      },
+      "Egypt": {
+        "marketing": 0.3315,
+        "utility": 0.0185
+      },
+      "France": {
+        "marketing": 0.4421,
+        "utility": 0.1544
+      },
+      "Germany": {
+        "marketing": 0.7026,
+        "utility": 0.2831
+      },
+      "Hong Kong": {
+        "marketing": 0.3768,
+        "utility": 0.1338
+      },
+      "Hungary": {
+        "marketing": 0.4427,
+        "utility": 0.1801
+      },
+      "India": {
+        "marketing": 0.0607,
+        "utility": 0.0072
+      },
+      "Indonesia": {
+        "marketing": 0.2115,
+        "utility": 0.1287
+      },
+      "Israel": {
+        "marketing": 0.1817,
+        "utility": 0.0273
+      },
+      "Italy": {
+        "marketing": 0.4092,
+        "utility": 0.1544
+      },
+      "Malaysia": {
+        "marketing": 0.4427,
+        "utility": 0.0721
+      },
+      "Mexico": {
+        "marketing": 0.157,
+        "utility": 0.0438
+      },
+      "Netherlands": {
+        "marketing": 0.822,
+        "utility": 0.2574
+      },
+      "Nigeria": {
+        "marketing": 0.2656,
+        "utility": 0.0345
+      },
+      "Pakistan": {
+        "marketing": 0.2435,
+        "utility": 0.0515
+      },
+      "Peru": {
+        "marketing": 0.3618,
+        "utility": 0.1029
+      },
+      "Poland": {
+        "marketing": 0.1884,
+        "utility": 0.0628
+      },
+      "Qatar": {
+        "marketing": 0.1755,
+        "utility": 0.0618
+      },
+      "Romania": {
+        "marketing": 0.4427,
+        "utility": 0.1493
+      },
+      "Russia": {
+        "marketing": 0.4128,
+        "utility": 0.2059
+      },
+      "Saudi Arabia": {
+        "marketing": 0.2579,
+        "utility": 0.0551
+      },
+      "Singapore": {
+        "marketing": 0.3768,
+        "utility": 0.0824
+      },
+      "South Africa": {
+        "marketing": 0.1951,
+        "utility": 0.0391
+      },
+      "Spain": {
+        "marketing": 0.3639,
+        "utility": 0.1029
+      },
+      "Turkey": {
+        "marketing": 0.0561,
+        "utility": 0.0046
+      },
+      "United Arab Emirates": {
+        "marketing": 0.2568,
+        "utility": 0.0808
+      },
+      "United Kingdom": {
+        "marketing": 0.3268,
+        "utility": 0.1132
+      },
+      "North America": {
+        "marketing": 0.1287,
+        "utility": 0.0175
+      },
+      "Rest of Africa": {
+        "marketing": 0.1158,
+        "utility": 0.0206
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.3768,
+        "utility": 0.0582
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.4427,
+        "utility": 0.1091
+      },
+      "Rest of Latin America": {
+        "marketing": 0.3809,
+        "utility": 0.0582
+      },
+      "Rest of Middle East": {
+        "marketing": 0.1755,
+        "utility": 0.0468
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.3047,
+        "utility": 0.088
+      },
+      "Other": {
+        "marketing": 0.3109,
+        "utility": 0.0396
+      }
+    },
+    "CLP": {
+      "Argentina": {
+        "marketing": 54.5645,
+        "utility": 22.956
+      },
+      "Brazil": {
+        "marketing": 55.1826,
+        "utility": 6.0039
+      },
+      "Chile": {
+        "marketing": 78.4917,
+        "utility": 17.6584
+      },
+      "Colombia": {
+        "marketing": 11.0365,
+        "utility": 0.7063
+      },
+      "Egypt": {
+        "marketing": 56.8601,
+        "utility": 3.1785
+      },
+      "France": {
+        "marketing": 75.8429,
+        "utility": 26.4876
+      },
+      "Germany": {
+        "marketing": 120.5188,
+        "utility": 48.5607
+      },
+      "Hong Kong": {
+        "marketing": 64.6298,
+        "utility": 22.9559
+      },
+      "Hungary": {
+        "marketing": 75.9312,
+        "utility": 30.9022
+      },
+      "India": {
+        "marketing": 10.4185,
+        "utility": 1.2361
+      },
+      "Indonesia": {
+        "marketing": 36.2881,
+        "utility": 22.073
+      },
+      "Israel": {
+        "marketing": 31.1671,
+        "utility": 4.6795
+      },
+      "Italy": {
+        "marketing": 70.1614,
+        "utility": 26.4876
+      },
+      "Malaysia": {
+        "marketing": 75.9312,
+        "utility": 12.3609
+      },
+      "Mexico": {
+        "marketing": 26.9291,
+        "utility": 7.5048
+      },
+      "Netherlands": {
+        "marketing": 141.0025,
+        "utility": 44.1461
+      },
+      "Nigeria": {
+        "marketing": 45.5587,
+        "utility": 5.9156
+      },
+      "Pakistan": {
+        "marketing": 41.7622,
+        "utility": 8.8292
+      },
+      "Peru": {
+        "marketing": 62.0694,
+        "utility": 17.6584
+      },
+      "Poland": {
+        "marketing": 32.3148,
+        "utility": 10.7716
+      },
+      "Qatar": {
+        "marketing": 30.1076,
+        "utility": 10.5951
+      },
+      "Romania": {
+        "marketing": 75.9312,
+        "utility": 25.6047
+      },
+      "Russia": {
+        "marketing": 70.8103,
+        "utility": 35.3169
+      },
+      "Saudi Arabia": {
+        "marketing": 44.2344,
+        "utility": 9.4473
+      },
+      "Singapore": {
+        "marketing": 64.6298,
+        "utility": 14.1267
+      },
+      "South Africa": {
+        "marketing": 33.4627,
+        "utility": 6.7102
+      },
+      "Spain": {
+        "marketing": 62.4447,
+        "utility": 17.6584
+      },
+      "Turkey": {
+        "marketing": 9.6238,
+        "utility": 0.7946
+      },
+      "United Arab Emirates": {
+        "marketing": 44.0578,
+        "utility": 13.8619
+      },
+      "United Kingdom": {
+        "marketing": 56.0478,
+        "utility": 19.4243
+      },
+      "North America": {
+        "marketing": 22.073,
+        "utility": 3.0019
+      },
+      "Rest of Africa": {
+        "marketing": 19.8657,
+        "utility": 3.5317
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 64.6298,
+        "utility": 9.977
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 75.9312,
+        "utility": 18.7179
+      },
+      "Rest of Latin America": {
+        "marketing": 65.3362,
+        "utility": 9.977
+      },
+      "Rest of Middle East": {
+        "marketing": 30.1076,
+        "utility": 8.0346
+      },
+      "Rest of Western Europe": {
+        "marketing": 52.2689,
+        "utility": 15.098
+      },
+      "Other": {
+        "marketing": 53.3285,
+        "utility": 6.7985
+      }
+    },
+    "COP": {
+      "Argentina": {
+        "marketing": 227.5361,
+        "utility": 95.7271
+      },
+      "Brazil": {
+        "marketing": 230.1133,
+        "utility": 25.0363
+      },
+      "Chile": {
+        "marketing": 327.3132,
+        "utility": 73.6363
+      },
+      "Colombia": {
+        "marketing": 46.0227,
+        "utility": 2.9455
+      },
+      "Egypt": {
+        "marketing": 237.1088,
+        "utility": 13.2545
+      },
+      "France": {
+        "marketing": 316.2678,
+        "utility": 110.4544
+      },
+      "Germany": {
+        "marketing": 502.5675,
+        "utility": 202.4997
+      },
+      "Hong Kong": {
+        "marketing": 269.5087,
+        "utility": 95.7272
+      },
+      "Hungary": {
+        "marketing": 316.636,
+        "utility": 128.8634
+      },
+      "India": {
+        "marketing": 43.4454,
+        "utility": 5.1545
+      },
+      "Indonesia": {
+        "marketing": 151.3225,
+        "utility": 92.0453
+      },
+      "Israel": {
+        "marketing": 129.968,
+        "utility": 19.5136
+      },
+      "Italy": {
+        "marketing": 292.5753,
+        "utility": 110.4544
+      },
+      "Malaysia": {
+        "marketing": 316.636,
+        "utility": 51.5454
+      },
+      "Mexico": {
+        "marketing": 112.2953,
+        "utility": 31.2954
+      },
+      "Netherlands": {
+        "marketing": 587.9856,
+        "utility": 184.0907
+      },
+      "Nigeria": {
+        "marketing": 189.9816,
+        "utility": 24.6681
+      },
+      "Pakistan": {
+        "marketing": 174.1498,
+        "utility": 36.8181
+      },
+      "Peru": {
+        "marketing": 258.8315,
+        "utility": 73.6363
+      },
+      "Poland": {
+        "marketing": 134.7543,
+        "utility": 44.9181
+      },
+      "Qatar": {
+        "marketing": 125.5498,
+        "utility": 44.1818
+      },
+      "Romania": {
+        "marketing": 316.636,
+        "utility": 106.7725
+      },
+      "Russia": {
+        "marketing": 295.2814,
+        "utility": 147.2725
+      },
+      "Saudi Arabia": {
+        "marketing": 184.4589,
+        "utility": 39.3954
+      },
+      "Singapore": {
+        "marketing": 269.5087,
+        "utility": 58.909
+      },
+      "South Africa": {
+        "marketing": 139.5407,
+        "utility": 27.9818
+      },
+      "Spain": {
+        "marketing": 260.3962,
+        "utility": 73.6363
+      },
+      "Turkey": {
+        "marketing": 40.1318,
+        "utility": 3.3136
+      },
+      "United Arab Emirates": {
+        "marketing": 183.7225,
+        "utility": 57.8045
+      },
+      "United Kingdom": {
+        "marketing": 233.7215,
+        "utility": 80.9999
+      },
+      "North America": {
+        "marketing": 92.0453,
+        "utility": 12.5182
+      },
+      "Rest of Africa": {
+        "marketing": 82.8408,
+        "utility": 14.7273
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 269.5087,
+        "utility": 41.6045
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 316.636,
+        "utility": 78.0544
+      },
+      "Rest of Latin America": {
+        "marketing": 272.4542,
+        "utility": 41.6045
+      },
+      "Rest of Middle East": {
+        "marketing": 125.5498,
+        "utility": 33.5045
+      },
+      "Rest of Western Europe": {
+        "marketing": 217.9634,
+        "utility": 62.959
+      },
+      "Other": {
+        "marketing": 222.3815,
+        "utility": 28.35
+      }
+    },
+    "EUR": {
+      "Argentina": {
+        "marketing": 0.0512,
+        "utility": 0.0216
+      },
+      "Brazil": {
+        "marketing": 0.0518,
+        "utility": 0.0056
+      },
+      "Chile": {
+        "marketing": 0.0736,
+        "utility": 0.0166
+      },
+      "Colombia": {
+        "marketing": 0.0104,
+        "utility": 0.0008
+      },
+      "Egypt": {
+        "marketing": 0.0533,
+        "utility": 0.003
+      },
+      "France": {
+        "marketing": 0.0712,
+        "utility": 0.0248
+      },
+      "Germany": {
+        "marketing": 0.1131,
+        "utility": 0.0456
+      },
+      "Hong Kong": {
+        "marketing": 0.0606,
+        "utility": 0.0216
+      },
+      "Hungary": {
+        "marketing": 0.0712,
+        "utility": 0.0289
+      },
+      "India": {
+        "marketing": 0.0099,
+        "utility": 0.0012
+      },
+      "Indonesia": {
+        "marketing": 0.0341,
+        "utility": 0.0208
+      },
+      "Israel": {
+        "marketing": 0.0292,
+        "utility": 0.0044
+      },
+      "Italy": {
+        "marketing": 0.0658,
+        "utility": 0.0248
+      },
+      "Malaysia": {
+        "marketing": 0.0712,
+        "utility": 0.0116
+      },
+      "Mexico": {
+        "marketing": 0.0253,
+        "utility": 0.0071
+      },
+      "Netherlands": {
+        "marketing": 0.1323,
+        "utility": 0.0414
+      },
+      "Nigeria": {
+        "marketing": 0.0428,
+        "utility": 0.0056
+      },
+      "Pakistan": {
+        "marketing": 0.0392,
+        "utility": 0.0083
+      },
+      "Peru": {
+        "marketing": 0.0582,
+        "utility": 0.0166
+      },
+      "Poland": {
+        "marketing": 0.0303,
+        "utility": 0.0101
+      },
+      "Qatar": {
+        "marketing": 0.0282,
+        "utility": 0.0099
+      },
+      "Romania": {
+        "marketing": 0.0712,
+        "utility": 0.0239
+      },
+      "Russia": {
+        "marketing": 0.0664,
+        "utility": 0.0331
+      },
+      "Saudi Arabia": {
+        "marketing": 0.0414,
+        "utility": 0.0088
+      },
+      "Singapore": {
+        "marketing": 0.0606,
+        "utility": 0.0133
+      },
+      "South Africa": {
+        "marketing": 0.0314,
+        "utility": 0.0063
+      },
+      "Spain": {
+        "marketing": 0.0585,
+        "utility": 0.0166
+      },
+      "Turkey": {
+        "marketing": 0.009,
+        "utility": 0.0007
+      },
+      "United Arab Emirates": {
+        "marketing": 0.0415,
+        "utility": 0.013
+      },
+      "United Kingdom": {
+        "marketing": 0.0526,
+        "utility": 0.0182
+      },
+      "North America": {
+        "marketing": 0.0207,
+        "utility": 0.0028
+      },
+      "Rest of Africa": {
+        "marketing": 0.0186,
+        "utility": 0.0033
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.0606,
+        "utility": 0.0094
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.0712,
+        "utility": 0.0175
+      },
+      "Rest of Latin America": {
+        "marketing": 0.0612,
+        "utility": 0.0094
+      },
+      "Rest of Middle East": {
+        "marketing": 0.0282,
+        "utility": 0.0075
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.049,
+        "utility": 0.0142
+      },
+      "Other": {
+        "marketing": 0.05,
+        "utility": 0.0064
+      }
+    },
+    "GBP": {
+      "Argentina": {
+        "marketing": 0.0445,
+        "utility": 0.0188
+      },
+      "Brazil": {
+        "marketing": 0.0451,
+        "utility": 0.0049
+      },
+      "Chile": {
+        "marketing": 0.0641,
+        "utility": 0.0144
+      },
+      "Colombia": {
+        "marketing": 0.009,
+        "utility": 0.0004
+      },
+      "Egypt": {
+        "marketing": 0.0464,
+        "utility": 0.0026
+      },
+      "France": {
+        "marketing": 0.062,
+        "utility": 0.0216
+      },
+      "Germany": {
+        "marketing": 0.0985,
+        "utility": 0.0397
+      },
+      "Hong Kong": {
+        "marketing": 0.0528,
+        "utility": 0.0189
+      },
+      "Hungary": {
+        "marketing": 0.062,
+        "utility": 0.0251
+      },
+      "India": {
+        "marketing": 0.0086,
+        "utility": 0.001
+      },
+      "Indonesia": {
+        "marketing": 0.0297,
+        "utility": 0.018
+      },
+      "Israel": {
+        "marketing": 0.0254,
+        "utility": 0.0038
+      },
+      "Italy": {
+        "marketing": 0.0573,
+        "utility": 0.0216
+      },
+      "Malaysia": {
+        "marketing": 0.062,
+        "utility": 0.0101
+      },
+      "Mexico": {
+        "marketing": 0.0221,
+        "utility": 0.0062
+      },
+      "Netherlands": {
+        "marketing": 0.1152,
+        "utility": 0.0361
+      },
+      "Nigeria": {
+        "marketing": 0.0372,
+        "utility": 0.0048
+      },
+      "Pakistan": {
+        "marketing": 0.0341,
+        "utility": 0.0072
+      },
+      "Peru": {
+        "marketing": 0.0507,
+        "utility": 0.0144
+      },
+      "Poland": {
+        "marketing": 0.0261,
+        "utility": 0.0087
+      },
+      "Qatar": {
+        "marketing": 0.0246,
+        "utility": 0.0086
+      },
+      "Romania": {
+        "marketing": 0.062,
+        "utility": 0.0208
+      },
+      "Russia": {
+        "marketing": 0.0578,
+        "utility": 0.0288
+      },
+      "Saudi Arabia": {
+        "marketing": 0.036,
+        "utility": 0.0077
+      },
+      "Singapore": {
+        "marketing": 0.0528,
+        "utility": 0.0116
+      },
+      "South Africa": {
+        "marketing": 0.0273,
+        "utility": 0.0055
+      },
+      "Spain": {
+        "marketing": 0.0509,
+        "utility": 0.0144
+      },
+      "Turkey": {
+        "marketing": 0.0078,
+        "utility": 0.0006
+      },
+      "United Arab Emirates": {
+        "marketing": 0.036,
+        "utility": 0.0113
+      },
+      "United Kingdom": {
+        "marketing": 0.0458,
+        "utility": 0.0159
+      },
+      "North America": {
+        "marketing": 0.018,
+        "utility": 0.0025
+      },
+      "Rest of Africa": {
+        "marketing": 0.0162,
+        "utility": 0.0029
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.0528,
+        "utility": 0.0082
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.062,
+        "utility": 0.0152
+      },
+      "Rest of Latin America": {
+        "marketing": 0.0534,
+        "utility": 0.0081
+      },
+      "Rest of Middle East": {
+        "marketing": 0.0246,
+        "utility": 0.0065
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.0427,
+        "utility": 0.0123
+      },
+      "Other": {
+        "marketing": 0.0435,
+        "utility": 0.0056
+      }
+    },
+    "IDR": {
+      "Argentina": {
+        "marketing": 881.95,
+        "utility": 371.19
+      },
+      "Brazil": {
+        "marketing": 891.98,
+        "utility": 97.05
+      },
+      "Chile": {
+        "marketing": 1268.36,
+        "utility": 285.34
+      },
+      "Colombia": {
+        "marketing": 178.4,
+        "utility": 11.4
+      },
+      "Egypt": {
+        "marketing": 918.92,
+        "utility": 51.38
+      },
+      "France": {
+        "marketing": 1226.58,
+        "utility": 428.27
+      },
+      "Germany": {
+        "marketing": 1948.66,
+        "utility": 785.17
+      },
+      "Hong Kong": {
+        "marketing": 1044.97,
+        "utility": 371.06
+      },
+      "Hungary": {
+        "marketing": 1226.72,
+        "utility": 498.17
+      },
+      "India": {
+        "marketing": 168.05,
+        "utility": 19.97
+      },
+      "Indonesia": {
+        "marketing": 586.33,
+        "utility": 356.65
+      },
+      "Israel": {
+        "marketing": 503.79,
+        "utility": 75.64
+      },
+      "Italy": {
+        "marketing": 1133.39,
+        "utility": 427.89
+      },
+      "Malaysia": {
+        "marketing": 1227.49,
+        "utility": 199.82
+      },
+      "Mexico": {
+        "marketing": 435.34,
+        "utility": 121.24
+      },
+      "Netherlands": {
+        "marketing": 2279.8,
+        "utility": 713.78
+      },
+      "Nigeria": {
+        "marketing": 737.05,
+        "utility": 95.7
+      },
+      "Pakistan": {
+        "marketing": 675.37,
+        "utility": 142.78
+      },
+      "Peru": {
+        "marketing": 1003.55,
+        "utility": 285.5
+      },
+      "Poland": {
+        "marketing": 520.95,
+        "utility": 173.65
+      },
+      "Qatar": {
+        "marketing": 486.68,
+        "utility": 171.14
+      },
+      "Romania": {
+        "marketing": 1226.72,
+        "utility": 412.77
+      },
+      "Russia": {
+        "marketing": 1144.36,
+        "utility": 570.75
+      },
+      "Saudi Arabia": {
+        "marketing": 713.11,
+        "utility": 152.54
+      },
+      "Singapore": {
+        "marketing": 1044.97,
+        "utility": 228.35
+      },
+      "South Africa": {
+        "marketing": 541.75,
+        "utility": 108.64
+      },
+      "Spain": {
+        "marketing": 1008.68,
+        "utility": 285.24
+      },
+      "Turkey": {
+        "marketing": 155.56,
+        "utility": 12.84
+      },
+      "United Arab Emirates": {
+        "marketing": 712.95,
+        "utility": 224.11
+      },
+      "United Kingdom": {
+        "marketing": 905.41,
+        "utility": 313.93
+      },
+      "North America": {
+        "marketing": 356.6,
+        "utility": 48.5
+      },
+      "Rest of Africa": {
+        "marketing": 321.24,
+        "utility": 57.06
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 1044.97,
+        "utility": 161.27
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 1226.72,
+        "utility": 301.75
+      },
+      "Rest of Latin America": {
+        "marketing": 1055.54,
+        "utility": 161.18
+      },
+      "Rest of Middle East": {
+        "marketing": 486.68,
+        "utility": 129.78
+      },
+      "Rest of Western Europe": {
+        "marketing": 844.68,
+        "utility": 243.72
+      },
+      "Other": {
+        "marketing": 861.62,
+        "utility": 109.84
+      }
+    },
+    "INR": {
+      "Argentina": {
+        "marketing": 4.5293,
+        "utility": 1.9062
+      },
+      "Brazil": {
+        "marketing": 4.5808,
+        "utility": 0.4984
+      },
+      "Chile": {
+        "marketing": 6.5135,
+        "utility": 1.4654
+      },
+      "Colombia": {
+        "marketing": 0.9161,
+        "utility": 0.0588
+      },
+      "Egypt": {
+        "marketing": 4.7191,
+        "utility": 0.2639
+      },
+      "France": {
+        "marketing": 6.299,
+        "utility": 2.1994
+      },
+      "Germany": {
+        "marketing": 10.0073,
+        "utility": 4.0322
+      },
+      "Hong Kong": {
+        "marketing": 5.3664,
+        "utility": 1.9056
+      },
+      "Hungary": {
+        "marketing": 6.2997,
+        "utility": 2.5583
+      },
+      "India": {
+        "marketing": 0.8631,
+        "utility": 0.115
+      },
+      "Indonesia": {
+        "marketing": 3.0111,
+        "utility": 1.8316
+      },
+      "Israel": {
+        "marketing": 2.5871,
+        "utility": 0.3885
+      },
+      "Italy": {
+        "marketing": 5.8206,
+        "utility": 2.1974
+      },
+      "Malaysia": {
+        "marketing": 6.3037,
+        "utility": 1.0262
+      },
+      "Mexico": {
+        "marketing": 2.2357,
+        "utility": 0.6226
+      },
+      "Netherlands": {
+        "marketing": 11.7078,
+        "utility": 3.6656
+      },
+      "Nigeria": {
+        "marketing": 3.7851,
+        "utility": 0.4915
+      },
+      "Pakistan": {
+        "marketing": 3.4683,
+        "utility": 0.7333
+      },
+      "Peru": {
+        "marketing": 5.1536,
+        "utility": 1.4662
+      },
+      "Poland": {
+        "marketing": 2.6754,
+        "utility": 0.8918
+      },
+      "Qatar": {
+        "marketing": 2.4993,
+        "utility": 0.8789
+      },
+      "Romania": {
+        "marketing": 6.2997,
+        "utility": 2.1197
+      },
+      "Russia": {
+        "marketing": 5.8767,
+        "utility": 2.9311
+      },
+      "Saudi Arabia": {
+        "marketing": 3.6621,
+        "utility": 0.7834
+      },
+      "Singapore": {
+        "marketing": 5.3664,
+        "utility": 1.1727
+      },
+      "South Africa": {
+        "marketing": 2.7821,
+        "utility": 0.5579
+      },
+      "Spain": {
+        "marketing": 5.1801,
+        "utility": 1.4648
+      },
+      "Turkey": {
+        "marketing": 0.7989,
+        "utility": 0.066
+      },
+      "United Arab Emirates": {
+        "marketing": 3.6613,
+        "utility": 1.1509
+      },
+      "United Kingdom": {
+        "marketing": 4.6496,
+        "utility": 1.6122
+      },
+      "North America": {
+        "marketing": 1.8313,
+        "utility": 0.2491
+      },
+      "Rest of Africa": {
+        "marketing": 1.6497,
+        "utility": 0.293
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 5.3664,
+        "utility": 0.8282
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 6.2997,
+        "utility": 1.5496
+      },
+      "Rest of Latin America": {
+        "marketing": 5.4207,
+        "utility": 0.8278
+      },
+      "Rest of Middle East": {
+        "marketing": 2.4993,
+        "utility": 0.6665
+      },
+      "Rest of Western Europe": {
+        "marketing": 4.3378,
+        "utility": 1.2516
+      },
+      "Other": {
+        "marketing": 4.4248,
+        "utility": 0.5641
+      }
+    },
+    "MXN": {
+      "Argentina": {
+        "marketing": 1.1375,
+        "utility": 0.4786
+      },
+      "Brazil": {
+        "marketing": 1.1504,
+        "utility": 0.1252
+      },
+      "Chile": {
+        "marketing": 1.6363,
+        "utility": 0.3681
+      },
+      "Colombia": {
+        "marketing": 0.2301,
+        "utility": 0.0147
+      },
+      "Egypt": {
+        "marketing": 1.1853,
+        "utility": 0.0663
+      },
+      "France": {
+        "marketing": 1.5811,
+        "utility": 0.5522
+      },
+      "Germany": {
+        "marketing": 2.5124,
+        "utility": 1.0123
+      },
+      "Hong Kong": {
+        "marketing": 1.3473,
+        "utility": 0.4786
+      },
+      "Hungary": {
+        "marketing": 1.5829,
+        "utility": 0.6442
+      },
+      "India": {
+        "marketing": 0.2172,
+        "utility": 0.0258
+      },
+      "Indonesia": {
+        "marketing": 0.7565,
+        "utility": 0.4602
+      },
+      "Israel": {
+        "marketing": 0.6497,
+        "utility": 0.0976
+      },
+      "Italy": {
+        "marketing": 1.4627,
+        "utility": 0.5522
+      },
+      "Malaysia": {
+        "marketing": 1.5829,
+        "utility": 0.2577
+      },
+      "Mexico": {
+        "marketing": 0.5614,
+        "utility": 0.1565
+      },
+      "Netherlands": {
+        "marketing": 2.9394,
+        "utility": 0.9203
+      },
+      "Nigeria": {
+        "marketing": 0.9497,
+        "utility": 0.1233
+      },
+      "Pakistan": {
+        "marketing": 0.8706,
+        "utility": 0.1841
+      },
+      "Peru": {
+        "marketing": 1.2939,
+        "utility": 0.3681
+      },
+      "Poland": {
+        "marketing": 0.6735,
+        "utility": 0.2245
+      },
+      "Qatar": {
+        "marketing": 0.6276,
+        "utility": 0.2209
+      },
+      "Romania": {
+        "marketing": 1.5829,
+        "utility": 0.5338
+      },
+      "Russia": {
+        "marketing": 1.4762,
+        "utility": 0.7362
+      },
+      "Saudi Arabia": {
+        "marketing": 0.9213,
+        "utility": 0.1969
+      },
+      "Singapore": {
+        "marketing": 1.3473,
+        "utility": 0.2945
+      },
+      "South Africa": {
+        "marketing": 0.6976,
+        "utility": 0.1399
+      },
+      "Spain": {
+        "marketing": 1.3018,
+        "utility": 0.3681
+      },
+      "Turkey": {
+        "marketing": 0.2006,
+        "utility": 0.0166
+      },
+      "United Arab Emirates": {
+        "marketing": 0.9185,
+        "utility": 0.289
+      },
+      "United Kingdom": {
+        "marketing": 1.1684,
+        "utility": 0.4049
+      },
+      "North America": {
+        "marketing": 0.4602,
+        "utility": 0.0626
+      },
+      "Rest of Africa": {
+        "marketing": 0.4141,
+        "utility": 0.0736
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 1.3473,
+        "utility": 0.208
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 1.5829,
+        "utility": 0.3902
+      },
+      "Rest of Latin America": {
+        "marketing": 1.362,
+        "utility": 0.208
+      },
+      "Rest of Middle East": {
+        "marketing": 0.6276,
+        "utility": 0.1675
+      },
+      "Rest of Western Europe": {
+        "marketing": 1.0896,
+        "utility": 0.3147
+      },
+      "Other": {
+        "marketing": 1.1117,
+        "utility": 0.1417
+      }
+    },
+    "MYR": {
+      "Argentina": {
+        "marketing": 0.2492,
+        "utility": 0.1048
+      },
+      "Brazil": {
+        "marketing": 0.252,
+        "utility": 0.0274
+      },
+      "Chile": {
+        "marketing": 0.3584,
+        "utility": 0.0806
+      },
+      "Colombia": {
+        "marketing": 0.0504,
+        "utility": 0.0032
+      },
+      "Egypt": {
+        "marketing": 0.2596,
+        "utility": 0.0145
+      },
+      "France": {
+        "marketing": 0.3463,
+        "utility": 0.121
+      },
+      "Germany": {
+        "marketing": 0.5503,
+        "utility": 0.2217
+      },
+      "Hong Kong": {
+        "marketing": 0.2951,
+        "utility": 0.1049
+      },
+      "Hungary": {
+        "marketing": 0.3467,
+        "utility": 0.1412
+      },
+      "India": {
+        "marketing": 0.0476,
+        "utility": 0.0056
+      },
+      "Indonesia": {
+        "marketing": 0.1657,
+        "utility": 0.1008
+      },
+      "Israel": {
+        "marketing": 0.1423,
+        "utility": 0.0214
+      },
+      "Italy": {
+        "marketing": 0.3204,
+        "utility": 0.121
+      },
+      "Malaysia": {
+        "marketing": 0.3467,
+        "utility": 0.0564
+      },
+      "Mexico": {
+        "marketing": 0.123,
+        "utility": 0.0343
+      },
+      "Netherlands": {
+        "marketing": 0.6439,
+        "utility": 0.2016
+      },
+      "Nigeria": {
+        "marketing": 0.208,
+        "utility": 0.027
+      },
+      "Pakistan": {
+        "marketing": 0.1907,
+        "utility": 0.0403
+      },
+      "Peru": {
+        "marketing": 0.2834,
+        "utility": 0.0806
+      },
+      "Poland": {
+        "marketing": 0.1476,
+        "utility": 0.0492
+      },
+      "Qatar": {
+        "marketing": 0.1375,
+        "utility": 0.0484
+      },
+      "Romania": {
+        "marketing": 0.3467,
+        "utility": 0.117
+      },
+      "Russia": {
+        "marketing": 0.3233,
+        "utility": 0.1613
+      },
+      "Saudi Arabia": {
+        "marketing": 0.202,
+        "utility": 0.0431
+      },
+      "Singapore": {
+        "marketing": 0.2951,
+        "utility": 0.0646
+      },
+      "South Africa": {
+        "marketing": 0.1528,
+        "utility": 0.0306
+      },
+      "Spain": {
+        "marketing": 0.2851,
+        "utility": 0.0806
+      },
+      "Turkey": {
+        "marketing": 0.0439,
+        "utility": 0.0036
+      },
+      "United Arab Emirates": {
+        "marketing": 0.2012,
+        "utility": 0.0633
+      },
+      "United Kingdom": {
+        "marketing": 0.256,
+        "utility": 0.0887
+      },
+      "North America": {
+        "marketing": 0.1008,
+        "utility": 0.0137
+      },
+      "Rest of Africa": {
+        "marketing": 0.0907,
+        "utility": 0.0161
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.2951,
+        "utility": 0.0456
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.3467,
+        "utility": 0.0855
+      },
+      "Rest of Latin America": {
+        "marketing": 0.2983,
+        "utility": 0.0456
+      },
+      "Rest of Middle East": {
+        "marketing": 0.1375,
+        "utility": 0.0367
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.2387,
+        "utility": 0.0689
+      },
+      "Other": {
+        "marketing": 0.2435,
+        "utility": 0.031
+      }
+    },
+    "PEN": {
+      "Argentina": {
+        "marketing": 0.2056,
+        "utility": 0.0865
+      },
+      "Brazil": {
+        "marketing": 0.2079,
+        "utility": 0.0226
+      },
+      "Chile": {
+        "marketing": 0.2958,
+        "utility": 0.0665
+      },
+      "Colombia": {
+        "marketing": 0.0416,
+        "utility": 0.0027
+      },
+      "Egypt": {
+        "marketing": 0.2143,
+        "utility": 0.012
+      },
+      "France": {
+        "marketing": 0.2858,
+        "utility": 0.0998
+      },
+      "Germany": {
+        "marketing": 0.4541,
+        "utility": 0.183
+      },
+      "Hong Kong": {
+        "marketing": 0.2435,
+        "utility": 0.0865
+      },
+      "Hungary": {
+        "marketing": 0.2861,
+        "utility": 0.1164
+      },
+      "India": {
+        "marketing": 0.0393,
+        "utility": 0.0047
+      },
+      "Indonesia": {
+        "marketing": 0.1367,
+        "utility": 0.0832
+      },
+      "Israel": {
+        "marketing": 0.1174,
+        "utility": 0.0176
+      },
+      "Italy": {
+        "marketing": 0.2644,
+        "utility": 0.0998
+      },
+      "Malaysia": {
+        "marketing": 0.2861,
+        "utility": 0.0466
+      },
+      "Mexico": {
+        "marketing": 0.1015,
+        "utility": 0.0283
+      },
+      "Netherlands": {
+        "marketing": 0.5313,
+        "utility": 0.1663
+      },
+      "Nigeria": {
+        "marketing": 0.1717,
+        "utility": 0.0223
+      },
+      "Pakistan": {
+        "marketing": 0.1574,
+        "utility": 0.0333
+      },
+      "Peru": {
+        "marketing": 0.2339,
+        "utility": 0.0665
+      },
+      "Poland": {
+        "marketing": 0.1218,
+        "utility": 0.0406
+      },
+      "Qatar": {
+        "marketing": 0.1134,
+        "utility": 0.04
+      },
+      "Romania": {
+        "marketing": 0.2861,
+        "utility": 0.0964
+      },
+      "Russia": {
+        "marketing": 0.2668,
+        "utility": 0.1331
+      },
+      "Saudi Arabia": {
+        "marketing": 0.1667,
+        "utility": 0.0356
+      },
+      "Singapore": {
+        "marketing": 0.2435,
+        "utility": 0.0532
+      },
+      "South Africa": {
+        "marketing": 0.1261,
+        "utility": 0.0253
+      },
+      "Spain": {
+        "marketing": 0.2353,
+        "utility": 0.0665
+      },
+      "Turkey": {
+        "marketing": 0.0363,
+        "utility": 0.003
+      },
+      "United Arab Emirates": {
+        "marketing": 0.166,
+        "utility": 0.0522
+      },
+      "United Kingdom": {
+        "marketing": 0.2112,
+        "utility": 0.0732
+      },
+      "North America": {
+        "marketing": 0.0832,
+        "utility": 0.0113
+      },
+      "Rest of Africa": {
+        "marketing": 0.0749,
+        "utility": 0.0133
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.2435,
+        "utility": 0.0376
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.2861,
+        "utility": 0.0705
+      },
+      "Rest of Latin America": {
+        "marketing": 0.2462,
+        "utility": 0.0376
+      },
+      "Rest of Middle East": {
+        "marketing": 0.1134,
+        "utility": 0.0303
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.197,
+        "utility": 0.0569
+      },
+      "Other": {
+        "marketing": 0.2009,
+        "utility": 0.0256
+      }
+    },
+    "SAR": {
+      "Argentina": {
+        "marketing": 0.2315,
+        "utility": 0.0974
+      },
+      "Brazil": {
+        "marketing": 0.2342,
+        "utility": 0.0255
+      },
+      "Chile": {
+        "marketing": 0.3331,
+        "utility": 0.0749
+      },
+      "Colombia": {
+        "marketing": 0.0468,
+        "utility": 0.003
+      },
+      "Egypt": {
+        "marketing": 0.2413,
+        "utility": 0.0135
+      },
+      "France": {
+        "marketing": 0.3218,
+        "utility": 0.1124
+      },
+      "Germany": {
+        "marketing": 0.5114,
+        "utility": 0.2061
+      },
+      "Hong Kong": {
+        "marketing": 0.2742,
+        "utility": 0.0973
+      },
+      "Hungary": {
+        "marketing": 0.3222,
+        "utility": 0.1311
+      },
+      "India": {
+        "marketing": 0.0442,
+        "utility": 0.0052
+      },
+      "Indonesia": {
+        "marketing": 0.154,
+        "utility": 0.0937
+      },
+      "Israel": {
+        "marketing": 0.1322,
+        "utility": 0.0199
+      },
+      "Italy": {
+        "marketing": 0.2977,
+        "utility": 0.1124
+      },
+      "Malaysia": {
+        "marketing": 0.3222,
+        "utility": 0.0524
+      },
+      "Mexico": {
+        "marketing": 0.1143,
+        "utility": 0.0318
+      },
+      "Netherlands": {
+        "marketing": 0.5983,
+        "utility": 0.1873
+      },
+      "Nigeria": {
+        "marketing": 0.1933,
+        "utility": 0.0251
+      },
+      "Pakistan": {
+        "marketing": 0.1772,
+        "utility": 0.0375
+      },
+      "Peru": {
+        "marketing": 0.2634,
+        "utility": 0.0749
+      },
+      "Poland": {
+        "marketing": 0.1371,
+        "utility": 0.0457
+      },
+      "Qatar": {
+        "marketing": 0.1278,
+        "utility": 0.045
+      },
+      "Romania": {
+        "marketing": 0.3222,
+        "utility": 0.1086
+      },
+      "Russia": {
+        "marketing": 0.3005,
+        "utility": 0.1499
+      },
+      "Saudi Arabia": {
+        "marketing": 0.1877,
+        "utility": 0.0401
+      },
+      "Singapore": {
+        "marketing": 0.2742,
+        "utility": 0.0599
+      },
+      "South Africa": {
+        "marketing": 0.142,
+        "utility": 0.0285
+      },
+      "Spain": {
+        "marketing": 0.265,
+        "utility": 0.0749
+      },
+      "Turkey": {
+        "marketing": 0.0408,
+        "utility": 0.0034
+      },
+      "United Arab Emirates": {
+        "marketing": 0.1869,
+        "utility": 0.0588
+      },
+      "United Kingdom": {
+        "marketing": 0.2378,
+        "utility": 0.0824
+      },
+      "North America": {
+        "marketing": 0.0937,
+        "utility": 0.0127
+      },
+      "Rest of Africa": {
+        "marketing": 0.0843,
+        "utility": 0.015
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.2742,
+        "utility": 0.0423
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.3222,
+        "utility": 0.0794
+      },
+      "Rest of Latin America": {
+        "marketing": 0.2772,
+        "utility": 0.0423
+      },
+      "Rest of Middle East": {
+        "marketing": 0.1278,
+        "utility": 0.0341
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.2218,
+        "utility": 0.0641
+      },
+      "Other": {
+        "marketing": 0.2263,
+        "utility": 0.0288
+      }
+    },
+    "SGD": {
+      "Argentina": {
+        "marketing": 0.0791,
+        "utility": 0.0333
+      },
+      "Brazil": {
+        "marketing": 0.08,
+        "utility": 0.0087
+      },
+      "Chile": {
+        "marketing": 0.1138,
+        "utility": 0.0256
+      },
+      "Colombia": {
+        "marketing": 0.016,
+        "utility": 0.001
+      },
+      "Egypt": {
+        "marketing": 0.0825,
+        "utility": 0.0046
+      },
+      "France": {
+        "marketing": 0.11,
+        "utility": 0.0384
+      },
+      "Germany": {
+        "marketing": 0.1748,
+        "utility": 0.0704
+      },
+      "Hong Kong": {
+        "marketing": 0.0937,
+        "utility": 0.0334
+      },
+      "Hungary": {
+        "marketing": 0.1101,
+        "utility": 0.0447
+      },
+      "India": {
+        "marketing": 0.0151,
+        "utility": 0.0018
+      },
+      "Indonesia": {
+        "marketing": 0.0526,
+        "utility": 0.032
+      },
+      "Israel": {
+        "marketing": 0.0452,
+        "utility": 0.0068
+      },
+      "Italy": {
+        "marketing": 0.1018,
+        "utility": 0.0384
+      },
+      "Malaysia": {
+        "marketing": 0.1101,
+        "utility": 0.0179
+      },
+      "Mexico": {
+        "marketing": 0.0391,
+        "utility": 0.0109
+      },
+      "Netherlands": {
+        "marketing": 0.2045,
+        "utility": 0.064
+      },
+      "Nigeria": {
+        "marketing": 0.0661,
+        "utility": 0.0086
+      },
+      "Pakistan": {
+        "marketing": 0.0606,
+        "utility": 0.0128
+      },
+      "Peru": {
+        "marketing": 0.09,
+        "utility": 0.0256
+      },
+      "Poland": {
+        "marketing": 0.0468,
+        "utility": 0.0156
+      },
+      "Qatar": {
+        "marketing": 0.0437,
+        "utility": 0.0154
+      },
+      "Romania": {
+        "marketing": 0.1101,
+        "utility": 0.0371
+      },
+      "Russia": {
+        "marketing": 0.1027,
+        "utility": 0.0512
+      },
+      "Saudi Arabia": {
+        "marketing": 0.0641,
+        "utility": 0.0137
+      },
+      "Singapore": {
+        "marketing": 0.0937,
+        "utility": 0.0205
+      },
+      "South Africa": {
+        "marketing": 0.0485,
+        "utility": 0.0097
+      },
+      "Spain": {
+        "marketing": 0.0905,
+        "utility": 0.0256
+      },
+      "Turkey": {
+        "marketing": 0.014,
+        "utility": 0.0012
+      },
+      "United Arab Emirates": {
+        "marketing": 0.0639,
+        "utility": 0.0201
+      },
+      "United Kingdom": {
+        "marketing": 0.0812,
+        "utility": 0.0282
+      },
+      "North America": {
+        "marketing": 0.032,
+        "utility": 0.0044
+      },
+      "Rest of Africa": {
+        "marketing": 0.0288,
+        "utility": 0.0051
+      },
+      "Rest of Asia Pacific": {
+        "marketing": 0.0937,
+        "utility": 0.0145
+      },
+      "Rest of Central & Eastern Europe": {
+        "marketing": 0.1101,
+        "utility": 0.0271
+      },
+      "Rest of Latin America": {
+        "marketing": 0.0947,
+        "utility": 0.0145
+      },
+      "Rest of Middle East": {
+        "marketing": 0.0437,
+        "utility": 0.0117
+      },
+      "Rest of Western Europe": {
+        "marketing": 0.0758,
+        "utility": 0.0219
+      },
+      "Other": {
+        "marketing": 0.0773,
+        "utility": 0.0099
+      }
+    }
+  }
+}

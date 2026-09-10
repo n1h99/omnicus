@@ -8,7 +8,15 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChannelSecretsService, type EncryptedSecretEnvelope } from '@omnicus/channel-secrets';
-import { WhatsAppCloudApi, whatsAppTemplateDisabledReason } from '@omnicus/channel-whatsapp';
+import {
+  WhatsAppCloudApi,
+  WhatsAppApiError,
+  whatsAppTemplateDisabledReason,
+  buildWhatsAppTemplate,
+  WhatsAppTemplateValidationError,
+  type WhatsAppTemplateDraft,
+} from '@omnicus/channel-whatsapp';
+import { prepareMediaForWhatsApp } from '@omnicus/media-core';
 import type { ApiEnvironment } from '@omnicus/config/server';
 import { Prisma } from '@omnicus/database';
 
@@ -596,6 +604,205 @@ export class WhatsAppChannelsService {
     });
   }
 
+  async managementContext(projectId: string, connectionId: string) {
+    const row = await this.connection(projectId, connectionId);
+    if (this.missing(row).length)
+      throw new ConflictException({ code: 'WHATSAPP_CONFIGURATION_INCOMPLETE' });
+    return {
+      row,
+      token: this.decrypt(row),
+      version: this.metadata(row.webhookMetadata).graphApiVersion!,
+      wabaId: row.providerAccountId!,
+      phoneNumberId: row.providerIdentityId!,
+    };
+  }
+
+  async saveTemplate(
+    projectId: string,
+    connectionId: string,
+    draft: WhatsAppTemplateDraft,
+    actor: AuthenticatedUser,
+    context: RequestSecurityContext,
+    templateId?: string,
+  ) {
+    const { row, token, version, wabaId } = await this.managementContext(projectId, connectionId);
+    if (row.status !== 'ACTIVE') throw new ConflictException({ code: 'CHANNEL_NOT_ACTIVE' });
+    let payload: ReturnType<typeof buildWhatsAppTemplate>;
+    try {
+      payload = buildWhatsAppTemplate(draft);
+    } catch (error) {
+      if (error instanceof WhatsAppTemplateValidationError)
+        throw new BadRequestException({
+          code: 'WHATSAPP_TEMPLATE_INVALID',
+          details: { field: error.field, reason: error.message },
+        });
+      throw error;
+    }
+    const current = templateId
+      ? await this.database.client.whatsAppMessageTemplate.findFirst({
+          where: { projectId, connectionId, id: templateId },
+        })
+      : null;
+    if (templateId && !current)
+      throw new NotFoundException({ code: 'WHATSAPP_TEMPLATE_NOT_FOUND' });
+    if (
+      current &&
+      (current.name !== payload.name ||
+        current.languageCode !== payload.language ||
+        current.category !== payload.category)
+    )
+      throw new ConflictException({ code: 'WHATSAPP_TEMPLATE_IDENTITY_IMMUTABLE' });
+    if (current && !['APPROVED', 'REJECTED', 'PAUSED'].includes(current.status))
+      throw new ConflictException({ code: 'WHATSAPP_TEMPLATE_NOT_EDITABLE' });
+    if (current && this.templateDisabledReason({ ...current, status: 'APPROVED' }))
+      throw new ConflictException({ code: 'WHATSAPP_TEMPLATE_NOT_EDITABLE' });
+    let provider: Record<string, unknown>;
+    try {
+      if (current) {
+        await this.api.editTemplate(token, version, current.providerTemplateId, payload.components);
+        provider = { ...payload, id: current.providerTemplateId, status: 'PENDING' };
+      } else {
+        const result = await this.api.createTemplate(token, version, wabaId, payload);
+        provider = { ...payload, ...result };
+      }
+    } catch (error) {
+      throw this.managementError(error, 'WHATSAPP_TEMPLATE_SAVE_FAILED');
+    }
+    const normalized = this.normalizeTemplate(provider);
+    if (!normalized) throw new BadRequestException({ code: 'WHATSAPP_TEMPLATE_SAVE_FAILED' });
+    // All phone numbers on the same WABA share templates. Keep existing local IDs stable.
+    const connections = await this.database.client.channelConnection.findMany({
+      select: { id: true },
+      where: { projectId, type: 'WHATSAPP', providerAccountId: wabaId },
+    });
+    await this.database.client.$transaction(async (transaction) => {
+      for (const connection of connections) {
+        await transaction.whatsAppMessageTemplate.upsert({
+          create: {
+            ...normalized,
+            projectId,
+            connectionId: connection.id,
+            lastSyncedAt: new Date(),
+          },
+          update: { ...normalized, lastSyncedAt: new Date() },
+          where: {
+            projectId_connectionId_name_languageCode: {
+              projectId,
+              connectionId: connection.id,
+              name: normalized.name,
+              languageCode: normalized.languageCode,
+            },
+          },
+        });
+      }
+    });
+    await this.record(
+      current ? 'whatsapp.template.edit' : 'whatsapp.template.create',
+      connectionId,
+      projectId,
+      actor,
+      context,
+      { name: normalized.name, languageCode: normalized.languageCode, status: normalized.status },
+    );
+    return this.templates(projectId, connectionId);
+  }
+
+  async deleteTemplate(
+    projectId: string,
+    connectionId: string,
+    templateId: string,
+    actor: AuthenticatedUser,
+    context: RequestSecurityContext,
+  ) {
+    const { token, version, wabaId } = await this.managementContext(projectId, connectionId);
+    const template = await this.database.client.whatsAppMessageTemplate.findFirst({
+      where: { projectId, connectionId, id: templateId },
+    });
+    if (!template) throw new NotFoundException({ code: 'WHATSAPP_TEMPLATE_NOT_FOUND' });
+    try {
+      await this.api.deleteTemplate(
+        token,
+        version,
+        wabaId,
+        template.providerTemplateId,
+        template.name,
+      );
+    } catch (error) {
+      throw this.managementError(error, 'WHATSAPP_TEMPLATE_DELETE_FAILED');
+    }
+    await this.database.client.whatsAppMessageTemplate.deleteMany({
+      where: {
+        projectId,
+        providerTemplateId: template.providerTemplateId,
+        connection: { providerAccountId: wabaId, type: 'WHATSAPP' },
+      },
+    });
+    await this.record('whatsapp.template.delete', connectionId, projectId, actor, context, {
+      name: template.name,
+      languageCode: template.languageCode,
+    });
+    return this.templates(projectId, connectionId);
+  }
+
+  async uploadTemplateSample(
+    projectId: string,
+    connectionId: string,
+    file: { buffer: Buffer; mimetype: string; originalname: string } | undefined,
+  ) {
+    const { token, version } = await this.managementContext(projectId, connectionId);
+    const appId = this.config.get('WHATSAPP_META_APP_ID', { infer: true });
+    if (!appId) throw new ConflictException({ code: 'WHATSAPP_META_CONFIGURATION_REQUIRED' });
+    if (
+      !file ||
+      !['image/jpeg', 'image/png', 'video/mp4', 'application/pdf'].includes(file.mimetype)
+    )
+      throw new BadRequestException({ code: 'WHATSAPP_TEMPLATE_SAMPLE_INVALID' });
+    try {
+      const prepared = await prepareMediaForWhatsApp({
+        bytes: file.buffer,
+        declaredMimeType: file.mimetype,
+        filename: file.originalname,
+        kind: file.mimetype.startsWith('image/')
+          ? 'PHOTO'
+          : file.mimetype === 'video/mp4'
+            ? 'VIDEO'
+            : 'DOCUMENT',
+        maximumBytes: 16 * 1024 * 1024,
+      });
+      const handle = await this.api.uploadTemplateSample({
+        token,
+        version,
+        appId,
+        bytes: prepared.bytes,
+        filename: file.originalname,
+        contentType: file.mimetype,
+      });
+      return {
+        handle,
+        format: file.mimetype.startsWith('image/')
+          ? 'IMAGE'
+          : file.mimetype === 'video/mp4'
+            ? 'VIDEO'
+            : 'DOCUMENT',
+      };
+    } catch (error) {
+      throw this.managementError(error, 'WHATSAPP_TEMPLATE_SAMPLE_INVALID');
+    }
+  }
+
+  private managementError(error: unknown, code: string) {
+    return new BadRequestException({
+      code,
+      details:
+        error instanceof WhatsAppApiError
+          ? {
+              providerCode: error.providerCode ?? null,
+              providerSubcode: error.providerSubcode ?? null,
+            }
+          : {},
+    });
+  }
+
   async syncTemplates(projectId: string, connectionId: string) {
     const row = await this.connection(projectId, connectionId);
     const missing = this.missing(row);
@@ -627,10 +834,11 @@ export class WhatsAppChannelsService {
           create: { ...normalized, connectionId, lastSyncedAt: syncedAt, projectId },
           update: { ...normalized, lastSyncedAt: syncedAt },
           where: {
-            projectId_connectionId_providerTemplateId: {
+            projectId_connectionId_name_languageCode: {
               connectionId,
               projectId,
-              providerTemplateId: normalized.providerTemplateId,
+              name: normalized.name,
+              languageCode: normalized.languageCode,
             },
           },
         });
@@ -666,7 +874,10 @@ export class WhatsAppChannelsService {
       name,
       providerTemplateId,
       quality,
-      rejectionReasonCode: status === 'REJECTED' ? 'META_REJECTED' : null,
+      rejectionReasonCode:
+        status === 'REJECTED'
+          ? (this.text(provider.rejected_reason)?.slice(0, 1024) ?? 'META_REJECTED')
+          : null,
       status,
     };
   }
@@ -677,11 +888,12 @@ export class WhatsAppChannelsService {
       if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return [];
       const component = candidate as Record<string, unknown>;
       const type = this.text(component.type)?.toUpperCase();
-      if (!type || !['HEADER', 'BODY', 'FOOTER', 'BUTTONS'].includes(type)) return [];
+      if (!type || !['HEADER', 'BODY', 'FOOTER', 'BUTTONS'].includes(type))
+        return [{ type: 'BODY', unsupportedReason: 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED' }];
       const format = this.text(component.format)?.toUpperCase();
       const componentText = this.text(component.text);
       const parameterStyle = this.parameterStyle(componentText);
-      const unsupportedReason =
+      let unsupportedReason =
         type === 'HEADER' && format === 'LOCATION'
           ? 'WHATSAPP_TEMPLATE_LOCATION_HEADER_UNSUPPORTED'
           : parameterStyle === 'named' || parameterStyle === 'mixed'
@@ -695,6 +907,14 @@ export class WhatsAppChannelsService {
             const text = this.text(button.text);
             const url = this.text(button.url);
             const buttonParameterStyle = this.parameterStyle(url);
+            if (buttonParameterStyle === 'named' || buttonParameterStyle === 'mixed')
+              unsupportedReason = 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED';
+            if (
+              !buttonType ||
+              !text ||
+              !['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(buttonType)
+            )
+              unsupportedReason = 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED';
             return buttonType && text && ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(buttonType)
               ? [
                   {
@@ -711,11 +931,28 @@ export class WhatsAppChannelsService {
                       : {}),
                     text: text.slice(0, 80),
                     type: buttonType,
+                    ...(url ? { url: url.slice(0, 2000) } : {}),
+                    ...(this.text(button.phone_number)
+                      ? { phoneNumber: this.text(button.phone_number)!.slice(0, 32) }
+                      : {}),
+                    ...(Array.isArray(button.example)
+                      ? {
+                          examples: button.example
+                            .filter((value): value is string => typeof value === 'string')
+                            .slice(0, 1)
+                            .map((value) => value.slice(0, 2000)),
+                        }
+                      : {}),
                   },
                 ]
               : [];
           })
         : undefined;
+      if (
+        type === 'HEADER' &&
+        !['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'].includes(format ?? '')
+      )
+        unsupportedReason = 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED';
       return [
         {
           ...(buttons?.length ? { buttons } : {}),
@@ -723,12 +960,33 @@ export class WhatsAppChannelsService {
             ? { format }
             : {}),
           ...(componentText ? { text: componentText.slice(0, 4_096) } : {}),
+          ...(component.example &&
+          typeof component.example === 'object' &&
+          !Array.isArray(component.example)
+            ? { example: this.templateExamples(component.example as Record<string, unknown>) }
+            : {}),
           ...(type === 'BODY' || type === 'HEADER' ? { parameterStyle } : {}),
           ...(unsupportedReason ? { unsupportedReason } : {}),
           type,
         },
       ];
     }) as Prisma.InputJsonValue;
+  }
+
+  private templateExamples(value: Record<string, unknown>): Prisma.InputJsonValue {
+    const strings = (input: unknown) =>
+      Array.isArray(input)
+        ? input
+            .filter((v): v is string => typeof v === 'string')
+            .slice(0, 100)
+            .map((v) => v.slice(0, 1024))
+        : [];
+    return {
+      ...(Array.isArray(value.header_text) ? { header_text: strings(value.header_text) } : {}),
+      ...(Array.isArray(value.body_text)
+        ? { body_text: value.body_text.slice(0, 1).map(strings) }
+        : {}),
+    };
   }
 
   private parameterStyle(value: string | undefined): 'mixed' | 'named' | 'none' | 'positional' {

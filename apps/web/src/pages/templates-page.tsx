@@ -13,7 +13,7 @@ import {
   message,
 } from 'antd';
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { useParams, useSearchParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
 import { useMediaAssets } from '../media-api';
@@ -35,7 +35,9 @@ type TemplateFormInput = Omit<TemplateInput, 'inlineKeyboard'> & {
 export function TemplatesPage() {
   const { projectId } = useParams();
   const [view, setView] = useState<'active' | 'archived'>('active');
-  const [providerView, setProviderView] = useState<'OMNICUS' | 'WHATSAPP'>('OMNICUS');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const providerView = searchParams.get('provider') === 'WHATSAPP' ? 'WHATSAPP' : 'OMNICUS';
+  const setProviderView = (provider: 'OMNICUS' | 'WHATSAPP') => setSearchParams({ provider });
   const templates = useTemplates(projectId, view === 'archived');
   const assets = useMediaAssets(projectId);
   const access = useProjectAccess(projectId);
@@ -117,7 +119,10 @@ export function TemplatesPage() {
           ]}
           value={providerView}
         />
-        <WhatsAppTemplatesPanel canManage={canManage} projectId={projectId} />
+        <WhatsAppTemplatesPanel
+          canManage={hasProjectPermission(access.data, 'channels:manage')}
+          projectId={projectId}
+        />
       </section>
     );
   }

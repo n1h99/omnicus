@@ -31,6 +31,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
+import { WhatsAppChannelCenter } from '../whatsapp-channel-center';
 import {
   channelAccountLabel,
   channelProviderCopy,
@@ -743,6 +744,14 @@ export function ChannelDetailPage() {
         </div>
       ) : null}
 
+      {connection.type === 'WHATSAPP' ? (
+        <WhatsAppChannelCenter
+          key={connection.id}
+          projectId={projectId}
+          channel={connection}
+          canManage={canManage}
+        />
+      ) : null}
       <Card className="channel-overview-card" title="Connection overview">
         <Descriptions
           column={{ lg: 3, md: 2, xs: 1 }}

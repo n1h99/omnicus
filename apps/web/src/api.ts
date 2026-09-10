@@ -125,6 +125,17 @@ const codeReasons: Record<string, string> = {
   WHATSAPP_TEMPLATE_REQUIRED:
     'Choose an approved WhatsApp template for recipients outside their customer service window.',
   WHATSAPP_TEMPLATE_SYNC_FAILED: 'Check the channel token and try again.',
+  WHATSAPP_TEMPLATE_SAVE_FAILED:
+    'Meta did not confirm the submission. Sync templates to check the result before trying again.',
+  WHATSAPP_TEMPLATE_DELETE_FAILED:
+    'Meta did not confirm deletion. Refresh the template list and check its current status.',
+  WHATSAPP_TEMPLATE_NOT_FOUND: 'This template is no longer available for this channel.',
+  WHATSAPP_TEMPLATE_NOT_EDITABLE:
+    'Meta only permits editing approved, rejected or paused templates. Duplicate it to create a new template.',
+  WHATSAPP_TEMPLATE_IDENTITY_IMMUTABLE:
+    'Use Duplicate to change the template name, language or category.',
+  WHATSAPP_TEMPLATE_SAMPLE_INVALID:
+    'Use a valid JPG/PNG image (up to 5 MB), MP4 video or PDF (up to 16 MB). Check that the Meta app is configured.',
   WHATSAPP_MEDIA_UNAVAILABLE: 'This WhatsApp media file is no longer available from Meta.',
   WHATSAPP_WEBHOOK_CONNECT_FAILED: 'Meta could not connect this WhatsApp business account.',
   USER_EMAIL_EXISTS: 'A user with this email already exists.',

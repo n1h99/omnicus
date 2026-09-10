@@ -52,6 +52,7 @@ export type BroadcastRecipient = {
   lastError: string | null;
   contact: { displayName: string };
   channelIdentity: { username: string | null; externalUserId: string };
+  pricing?: { billable: boolean; category: string; type: string; pricingModel: string };
 };
 type Input = {
   name: string;

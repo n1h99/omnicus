@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 
 import type { ChannelAdapterDescriptor } from '@omnicus/channel-core';
+export * from './template-management';
+export * from './pricing';
 
 export const WHATSAPP_INBOUND_QUEUE_NAME = 'whatsapp-inbound';
 export const WHATSAPP_INBOUND_JOB_NAME = 'process-inbox-record';
@@ -302,6 +304,7 @@ export function assertWhatsAppReactionEmoji(value: unknown): asserts value is st
 export type WhatsAppTemplateDisabledReason =
   | 'WHATSAPP_AUTHENTICATION_TEMPLATE_UNSUPPORTED'
   | 'WHATSAPP_TEMPLATE_CATEGORY_UNSUPPORTED'
+  | 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED'
   | 'WHATSAPP_TEMPLATE_LOCATION_HEADER_UNSUPPORTED'
   | 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED'
   | 'WHATSAPP_TEMPLATE_NOT_APPROVED'
@@ -327,6 +330,7 @@ export function whatsAppTemplateDisabledReason(input: {
     const unsupportedReason = string(component?.unsupportedReason);
     if (
       unsupportedReason === 'WHATSAPP_TEMPLATE_LOCATION_HEADER_UNSUPPORTED' ||
+      unsupportedReason === 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED' ||
       unsupportedReason === 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED' ||
       unsupportedReason === 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED'
     )
@@ -764,14 +768,132 @@ export class WhatsAppCloudApi {
     const templates: JsonObject[] = [];
     for (let page = 0; url && page < 20 && templates.length < 2_000; page += 1) {
       const result = await this.json(url, { headers: this.auth(token), method: 'GET' });
-      if (Array.isArray(result.data))
-        templates.push(...result.data.flatMap((item) => (object(item) ? [object(item)!] : [])));
+      if (!Array.isArray(result.data)) throw new WhatsAppApiError(502);
+      templates.push(...result.data.flatMap((item) => (object(item) ? [object(item)!] : [])));
       const next = string(object(result.paging)?.next);
       url = next ? new URL(next) : undefined;
       if (url && (url.origin !== 'https://graph.facebook.com' || url.username || url.password))
         throw new WhatsAppApiError(502);
     }
-    return templates.slice(0, 2_000);
+    if (url) throw new WhatsAppApiError(502);
+    return templates;
+  }
+
+  async readFields(
+    token: string,
+    version: string,
+    nodeId: string,
+    fields: string,
+  ): Promise<JsonObject> {
+    const url = this.graphUrl(version, nodeId);
+    url.searchParams.set('fields', fields);
+    return this.json(url, { headers: this.auth(token), method: 'GET' });
+  }
+
+  async subscribedApps(token: string, version: string, wabaId: string): Promise<JsonObject[]> {
+    let url: URL | undefined = this.graphUrl(version, `${wabaId}/subscribed_apps`);
+    const apps: JsonObject[] = [];
+    for (let page = 0; url && page < 20; page++) {
+      const result = await this.json(url, { headers: this.auth(token), method: 'GET' });
+      if (!Array.isArray(result.data)) throw new WhatsAppApiError(502);
+      apps.push(...result.data.flatMap((item) => (object(item) ? [object(item)!] : [])));
+      const next = string(object(result.paging)?.next);
+      url = next ? new URL(next) : undefined;
+      if (url && (url.origin !== 'https://graph.facebook.com' || url.username || url.password))
+        throw new WhatsAppApiError(502);
+    }
+    if (url) throw new WhatsAppApiError(502);
+    return apps;
+  }
+
+  async inspectToken(
+    token: string,
+    version: string,
+    appId: string,
+    appSecret: string,
+  ): Promise<JsonObject> {
+    const url = this.graphUrl(version, 'debug_token');
+    url.searchParams.set('input_token', token);
+    const result = await this.json(url, {
+      headers: this.auth(`${appId}|${appSecret}`),
+      method: 'GET',
+    });
+    if (!object(result.data)) throw new WhatsAppApiError(502);
+    return object(result.data)!;
+  }
+
+  async createTemplate(
+    token: string,
+    version: string,
+    wabaId: string,
+    payload: JsonObject,
+  ): Promise<JsonObject> {
+    const result = await this.json(this.graphUrl(version, `${wabaId}/message_templates`), {
+      headers: { ...this.auth(token), 'Content-Type': 'application/json' },
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    if (!string(result.id)) throw new WhatsAppApiError(502);
+    return result;
+  }
+
+  async editTemplate(
+    token: string,
+    version: string,
+    templateId: string,
+    components: JsonObject[],
+  ): Promise<void> {
+    const result = await this.json(this.graphUrl(version, templateId), {
+      headers: { ...this.auth(token), 'Content-Type': 'application/json' },
+      method: 'POST',
+      body: JSON.stringify({ components }),
+    });
+    if (result.success !== true) throw new WhatsAppApiError(502);
+  }
+
+  async deleteTemplate(
+    token: string,
+    version: string,
+    wabaId: string,
+    templateId: string,
+    name: string,
+  ): Promise<void> {
+    const url = this.graphUrl(version, `${wabaId}/message_templates`);
+    url.searchParams.set('hsm_id', templateId);
+    url.searchParams.set('name', name);
+    const result = await this.json(url, { headers: this.auth(token), method: 'DELETE' });
+    if (result.success !== true) throw new WhatsAppApiError(502);
+  }
+
+  async uploadTemplateSample(input: {
+    token: string;
+    version: string;
+    appId: string;
+    bytes: Uint8Array;
+    filename: string;
+    contentType: string;
+  }): Promise<string> {
+    const url = this.graphUrl(input.version, `${input.appId}/uploads`);
+    url.searchParams.set('file_length', String(input.bytes.byteLength));
+    url.searchParams.set('file_type', input.contentType);
+    url.searchParams.set('file_name', input.filename);
+    const session = await this.json(url, { headers: this.auth(input.token), method: 'POST' });
+    const id = string(session.id);
+    if (!id?.startsWith('upload:') || /[\r\n#]/.test(id) || id.includes('/') || id.includes('\\'))
+      throw new WhatsAppApiError(502);
+    // Keep the upload ID's signed query as supplied by Meta, on our fixed Graph origin.
+    const result = await this.json(this.graphUrl(input.version, id), {
+      headers: {
+        Authorization: `OAuth ${input.token}`,
+        file_offset: '0',
+        'Content-Type': 'application/octet-stream',
+      },
+      method: 'POST',
+      body: new Uint8Array(input.bytes).buffer,
+    });
+    const handle = string(result.h);
+    if (!handle) throw new WhatsAppApiError(502);
+    return handle;
   }
 
   private messageBody(message: WhatsAppOutboundMessage): JsonObject {

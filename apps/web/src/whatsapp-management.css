@@ -1,0 +1,151 @@
+.wa-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr);
+  gap: 28px;
+}
+.wa-template-editor .ant-input-textarea-show-count {
+  margin-bottom: 22px;
+}
+.wa-form-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.wa-form-row > .ant-form-item {
+  flex: 1;
+  min-width: 160px;
+}
+.wa-form-row > .ant-btn {
+  margin-top: 29px;
+}
+.wa-preview-pane {
+  position: sticky;
+  top: 16px;
+  align-self: start;
+}
+.wa-preview-chat {
+  margin: 12px 0;
+  padding: 22px 16px;
+  background: #edf2ef;
+  border: 1px solid #dae5df;
+  border-radius: 16px;
+  min-height: 270px;
+}
+.wa-preview-bubble {
+  background: white;
+  border-radius: 4px 14px 14px;
+  padding: 16px;
+  box-shadow: 0 2px 8px #24332a10;
+  overflow-wrap: anywhere;
+}
+.wa-preview-bubble p {
+  white-space: pre-wrap;
+  margin: 12px 0;
+}
+.wa-preview-bubble small {
+  display: block;
+  color: #75837c;
+  margin-bottom: 10px;
+}
+.wa-preview-button {
+  border-top: 1px solid #e5ebe7;
+  color: #137558;
+  text-align: center;
+  padding: 10px 0 2px;
+  margin-top: 8px;
+}
+.wa-preview-media {
+  background: #e9f0ec;
+  padding: 28px 12px;
+  border-radius: 8px;
+  text-align: center;
+  color: #526c5d;
+}
+.wa-sample-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.wa-editor-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wa-editor-buttons > .ant-btn {
+  align-self: flex-start;
+}
+.wa-button-editor {
+  padding: 14px;
+  background: #f6f8f7;
+  border: 1px solid #e5ebe7;
+  border-radius: 12px;
+}
+.wa-template-filters {
+  margin: 0 0 16px;
+}
+.wa-channel-center {
+  margin-bottom: 24px;
+}
+.wa-health-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 18px 0;
+}
+.wa-health-tile {
+  padding: 16px;
+  border: 1px solid #e4e9e6;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.wa-health-tile > span:first-child {
+  color: #67766e;
+  font-size: 12px;
+}
+.wa-health-tile > strong {
+  font-size: 19px;
+  overflow-wrap: anywhere;
+}
+.wa-health-tile > small {
+  color: #67766e;
+}
+.wa-center-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.wa-center-details {
+  margin-top: 18px;
+}
+.wa-center-details .ant-alert {
+  margin-bottom: 10px;
+}
+.wa-billing-instructions {
+  margin: 18px 0;
+  padding-left: 24px;
+  line-height: 1.8;
+}
+.wa-cost-estimate {
+  margin-top: 20px;
+  margin-bottom: 20px;
+}
+.wa-cost-estimate .ant-table-wrapper {
+  margin: 16px 0;
+}
+@media (max-width: 760px) {
+  .wa-editor-grid {
+    grid-template-columns: 1fr;
+  }
+  .wa-preview-pane {
+    position: static;
+  }
+  .wa-health-grid {
+    grid-template-columns: 1fr;
+  }
+}

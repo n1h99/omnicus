@@ -18,6 +18,17 @@ interface HttpErrorResponse {
 }
 
 export const SAFE_API_CODE_MESSAGES: Readonly<Record<string, string>> = {
+  WHATSAPP_META_CONFIGURATION_REQUIRED:
+    'Configure the Meta application before uploading review samples',
+  WHATSAPP_TEMPLATE_INVALID: 'Check the template fields and provide examples for every variable',
+  WHATSAPP_TEMPLATE_IDENTITY_IMMUTABLE:
+    'Duplicate this template to change its name, language or purpose',
+  WHATSAPP_TEMPLATE_NOT_EDITABLE: 'This template cannot be edited in its current state',
+  WHATSAPP_TEMPLATE_NOT_FOUND: 'This WhatsApp template was not found in the selected channel',
+  WHATSAPP_TEMPLATE_SAMPLE_INVALID:
+    'The review sample could not be uploaded; check its type, size and Meta access',
+  WHATSAPP_TEMPLATE_SAVE_FAILED: 'Meta could not save the template; sync templates before retrying',
+  WHATSAPP_TEMPLATE_DELETE_FAILED: 'Meta could not delete this template',
   BROADCAST_CONTACTS_REQUIRED: 'This audience mode requires at least one contact',
   BROADCAST_CONTENT_INVALID: 'Choose a valid broadcast content format',
   BROADCAST_CONTENT_CHANNEL_MISMATCH: 'The message format does not match this channel',

@@ -68,8 +68,15 @@ export class BroadcastsController {
 
   @Post(':broadcastId/estimate')
   @RequireProjectPermission('broadcasts:read')
-  async estimate(@Param('projectId') projectId: string, @Param('broadcastId') broadcastId: string) {
-    return { data: await this.broadcasts.estimate(projectId, broadcastId), meta: {} };
+  async estimate(
+    @Param('projectId') projectId: string,
+    @Param('broadcastId') broadcastId: string,
+    @Query('currency') currency?: string,
+  ) {
+    return {
+      data: await this.broadcasts.estimate(projectId, broadcastId, currency ?? 'USD'),
+      meta: {},
+    };
   }
 
   @Post(':broadcastId/launch')

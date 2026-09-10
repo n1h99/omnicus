@@ -27,6 +27,13 @@ function template(
 }
 
 describe('WhatsApp template composer', () => {
+  it('blocks normalized unsupported Meta structures instead of sending a stripped template', () => {
+    expect(
+      whatsAppTemplateComposerIssue(
+        template([{ type: 'BODY', unsupportedReason: 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED' }]),
+      ),
+    ).toContain('not supported');
+  });
   it('maps safe text, media and quick-reply values into Meta component order', () => {
     const slots = whatsAppParameterSlots(
       template([

@@ -8,14 +8,17 @@ import { ChannelsService } from './channels.service';
 import { TelegramOutboundQueueService } from './telegram-outbound-queue.service';
 import { WhatsAppChannelsService } from './whatsapp-channels.service';
 import { WhatsAppOutboundQueueService } from './whatsapp-outbound-queue.service';
+import { WhatsAppManagementController } from './whatsapp-management.controller';
+import { WhatsAppManagementService } from './whatsapp-management.service';
 @Module({
-  controllers: [ChannelsController],
+  controllers: [ChannelsController, WhatsAppManagementController],
   imports: [AccessModule, AuditModule, DatabaseModule, JwtModule.register({})],
   providers: [
     ChannelsService,
     TelegramOutboundQueueService,
     WhatsAppChannelsService,
     WhatsAppOutboundQueueService,
+    WhatsAppManagementService,
   ],
   exports: [TelegramOutboundQueueService, WhatsAppOutboundQueueService],
 })

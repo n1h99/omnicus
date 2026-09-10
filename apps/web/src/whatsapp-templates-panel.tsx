@@ -1,5 +1,24 @@
-import { EyeOutlined, ReloadOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Empty, Modal, Select, Space, Table, Typography, message } from 'antd';
+import {
+  CopyOutlined,
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
+import {
+  Alert,
+  Button,
+  Card,
+  Empty,
+  Input,
+  Modal,
+  Select,
+  Space,
+  Table,
+  Typography,
+  message,
+} from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 
 import { getUserErrorMessage } from './api';
@@ -7,6 +26,7 @@ import { channelAccountLabel } from './channel-provider';
 import { useChannels } from './channels-api';
 import { humanizeStatus } from './humanize';
 import { StatusText } from './status-text';
+import { WhatsAppTemplateEditor } from './whatsapp-template-editor';
 import {
   type WhatsAppMessageTemplate,
   type WhatsAppTemplateComponent,
@@ -38,9 +58,22 @@ export function WhatsAppTemplatesPanel({
   );
   const [connectionId, setConnectionId] = useState<string>();
   const [previewing, setPreviewing] = useState<WhatsAppMessageTemplate>();
+  const [editing, setEditing] = useState<{
+    template?: WhatsAppMessageTemplate;
+    duplicate?: boolean;
+  }>();
+  const [deleting, setDeleting] = useState<WhatsAppMessageTemplate>();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>();
   const templates = useWhatsAppTemplates(projectId, connectionId);
   const mutations = useWhatsAppTemplateMutations(projectId, connectionId);
   const connection = whatsappChannels.find((channel) => channel.id === connectionId);
+
+  useEffect(() => {
+    setEditing(undefined);
+    setDeleting(undefined);
+    setPreviewing(undefined);
+  }, [projectId, connectionId]);
 
   useEffect(() => {
     if (!connectionId && whatsappChannels[0]) setConnectionId(whatsappChannels[0].id);
@@ -74,8 +107,8 @@ export function WhatsAppTemplatesPanel({
     <div className="whatsapp-template-workspace">
       <Alert
         className="channel-soft-notice"
-        description="Templates are created, reviewed and approved in WhatsApp Manager. Omnicus keeps a read-only synced copy for broadcasts and automations, so approval status is never guessed locally."
-        message="Meta owns WhatsApp template approval"
+        description="Create templates here and submit them to Meta. Once approved, they are available in broadcasts and automations. Templates are shared by all numbers in the same WhatsApp Business Account."
+        message="WhatsApp templates"
         showIcon
         type="info"
       />
@@ -85,6 +118,7 @@ export function WhatsAppTemplatesPanel({
           <Select
             loading={channels.isLoading}
             onChange={setConnectionId}
+            disabled={Boolean(editing || deleting)}
             optionFilterProp="label"
             options={whatsappChannels.map((channel) => ({
               label: `${channel.name} · ${channelAccountLabel(channel)}`,
@@ -96,24 +130,33 @@ export function WhatsAppTemplatesPanel({
           />
         </div>
         {canManage ? (
-          <Button
-            disabled={!connectionId || connection?.status !== 'ACTIVE'}
-            icon={<ReloadOutlined />}
-            loading={mutations.sync.isPending}
-            onClick={async () => {
-              try {
-                await mutations.sync.mutateAsync();
-                void message.success('WhatsApp templates synced from Meta.');
-              } catch (error) {
-                void message.error(
-                  getUserErrorMessage(error, 'WhatsApp templates could not be synced.'),
-                );
-              }
-            }}
-            type="primary"
-          >
-            Sync from Meta
-          </Button>
+          <Space wrap>
+            <Button
+              disabled={!connectionId || connection?.status !== 'ACTIVE'}
+              icon={<PlusOutlined />}
+              type="primary"
+              onClick={() => setEditing({})}
+            >
+              New template
+            </Button>
+            <Button
+              disabled={!connectionId || connection?.status !== 'ACTIVE'}
+              icon={<ReloadOutlined />}
+              loading={mutations.sync.isPending}
+              onClick={async () => {
+                try {
+                  await mutations.sync.mutateAsync();
+                  void message.success('WhatsApp templates synced from Meta.');
+                } catch (error) {
+                  void message.error(
+                    getUserErrorMessage(error, 'WhatsApp templates could not be synced.'),
+                  );
+                }
+              }}
+            >
+              Sync from Meta
+            </Button>
+          </Space>
         ) : null}
       </Card>
 
@@ -135,6 +178,26 @@ export function WhatsAppTemplatesPanel({
         />
       ) : null}
 
+      <Space wrap className="wa-template-filters">
+        <Input.Search
+          aria-label="Search WhatsApp templates"
+          placeholder="Search templates"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          allowClear
+        />
+        <Select
+          aria-label="Filter Meta status"
+          placeholder="All statuses"
+          allowClear
+          value={statusFilter}
+          onChange={setStatusFilter}
+          style={{ minWidth: 160 }}
+          options={['APPROVED', 'PENDING', 'REJECTED', 'PAUSED', 'DISABLED', 'UNKNOWN'].map(
+            (value) => ({ value, label: humanizeStatus(value) }),
+          )}
+        />
+      </Space>
       <Table<WhatsAppMessageTemplate>
         columns={[
           { dataIndex: 'name', ellipsis: true, title: 'Template', width: 250 },
@@ -147,7 +210,12 @@ export function WhatsAppTemplatesPanel({
           },
           {
             dataIndex: 'status',
-            render: (value: string) => <StatusText status={value} />,
+            render: (value: string) => (
+              <StatusText
+                status={value}
+                label={value === 'PENDING' ? 'Pending Meta review' : humanizeStatus(value)}
+              />
+            ),
             title: 'Meta status',
             width: 140,
           },
@@ -171,22 +239,65 @@ export function WhatsAppTemplatesPanel({
           {
             key: 'actions',
             render: (_, template) => (
-              <Button icon={<EyeOutlined />} onClick={() => setPreviewing(template)} size="small">
-                View
-              </Button>
+              <Space wrap>
+                <Button icon={<EyeOutlined />} onClick={() => setPreviewing(template)} size="small">
+                  View
+                </Button>
+                {canManage && connection?.status === 'ACTIVE' ? (
+                  <>
+                    {['MARKETING', 'UTILITY'].includes(template.category) &&
+                    !template.components.some(
+                      (c) => c.unsupportedReason || c.format === 'LOCATION',
+                    ) ? (
+                      <>
+                        <Button
+                          icon={<CopyOutlined />}
+                          size="small"
+                          onClick={() => setEditing({ template, duplicate: true })}
+                        >
+                          Duplicate
+                        </Button>
+                        {['APPROVED', 'REJECTED', 'PAUSED'].includes(template.status) ? (
+                          <Button
+                            icon={<EditOutlined />}
+                            size="small"
+                            onClick={() => setEditing({ template })}
+                          >
+                            Edit
+                          </Button>
+                        ) : null}
+                      </>
+                    ) : null}
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      size="small"
+                      onClick={() => setDeleting(template)}
+                    >
+                      Delete
+                    </Button>
+                  </>
+                ) : null}
+              </Space>
             ),
-            title: 'Content',
-            width: 100,
+            title: 'Actions',
+            width: 230,
           },
         ]}
-        dataSource={templates.data ?? []}
+        dataSource={(templates.data ?? []).filter(
+          (template) =>
+            (!statusFilter || template.status === statusFilter) &&
+            `${template.name} ${template.languageCode}`
+              .toLowerCase()
+              .includes(search.toLowerCase()),
+        )}
         loading={channels.isLoading || templates.isLoading}
         locale={{
           emptyText: connectionId
             ? 'No templates have been synced for this number yet'
             : 'Choose a WhatsApp channel',
         }}
-        pagination={false}
+        pagination={{ pageSize: 20, hideOnSinglePage: true }}
         rowKey="id"
         scroll={{ x: 1070 }}
         tableLayout="fixed"
@@ -202,7 +313,7 @@ export function WhatsAppTemplatesPanel({
         {previewing?.rejectionReasonCode ? (
           <Alert
             className="form-alert"
-            description="Open this template in WhatsApp Manager for the full review guidance."
+            description="This is the review reason returned by Meta. Update the template and resubmit, or open WhatsApp Manager for an appeal."
             message={`Meta review code: ${previewing.rejectionReasonCode}`}
             showIcon
             type="warning"
@@ -226,6 +337,41 @@ export function WhatsAppTemplatesPanel({
             </div>
           ))}
         </Space>
+      </Modal>
+      {editing && connectionId ? (
+        <WhatsAppTemplateEditor
+          key={`${connectionId}:${editing.template?.id ?? 'new'}:${editing.duplicate ?? false}`}
+          projectId={projectId}
+          connectionId={connectionId}
+          {...editing}
+          onClose={() => setEditing(undefined)}
+        />
+      ) : null}
+      <Modal
+        open={Boolean(deleting)}
+        title="Delete template from Meta?"
+        okText="Delete template"
+        okButtonProps={{ danger: true, loading: mutations.remove.isPending }}
+        onCancel={() => setDeleting(undefined)}
+        onOk={async () => {
+          if (!deleting) return;
+          try {
+            await mutations.remove.mutateAsync(deleting.id);
+            setDeleting(undefined);
+            void message.success('Template deleted from Meta.');
+          } catch (error) {
+            void message.error(getUserErrorMessage(error, 'Template could not be deleted.'));
+          }
+        }}
+      >
+        <Typography.Paragraph>
+          <strong>
+            {deleting?.name} · {deleting?.languageCode}
+          </strong>{' '}
+          will be deleted for every number in this WhatsApp Business Account. Broadcasts and
+          automations using it will no longer be able to send it. Existing message history is
+          retained.
+        </Typography.Paragraph>
       </Modal>
     </div>
   );

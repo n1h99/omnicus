@@ -35,6 +35,9 @@ export function whatsAppTemplateComposerIssue(
   ) {
     return 'Named Meta variables are not exposed by the current ordered-parameter contract';
   }
+  if (template.components.some((component) => component.unsupportedReason)) {
+    return 'This template contains components that are not supported by the current composer';
+  }
   return undefined;
 }
 
