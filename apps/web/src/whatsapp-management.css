@@ -105,7 +105,11 @@
   margin: 0 0 16px;
 }
 .wa-channel-center {
+  margin-top: 18px;
   margin-bottom: 24px;
+}
+.wa-channel-center .wa-center-actions + .form-alert {
+  margin-top: 16px;
 }
 .wa-health-grid {
   display: grid;
