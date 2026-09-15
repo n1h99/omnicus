@@ -1,0 +1,6 @@
+*.local.json
+*.plan.json
+*.receipt.json
+*.dump
+*.archive
+node_modules/

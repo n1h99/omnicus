@@ -1485,3 +1485,26 @@ forwarded through the CRM outbox.
 invitation/reset delivery is not implicitly coupled to marketing email. A
 campaign snapshot is recoverable and deduplicated, while provider acceptance,
 delivery and clicks remain distinct evidence.
+
+## ADR-059: Explicit test-data purge, never production CRM
+
+**Status:** Accepted scope, 2026-09-15; requested by the operator. Scripts are
+prepared locally; no live cleanup or deployment is implied.
+
+**Decision:** Provide standalone manual tooling in
+`scripts/test-data-cleanup/` to hard-delete contact/runtime data for one pinned
+Omnicus project and lead/runtime data in its pinned staging CRM database.
+This is a narrow operator-authorized test reset, not a replacement for normal
+audited archival, a public API or an automatic deployment migration.
+
+The selected project's execution/inbox/outbox history, audit and test email
+suppressions are in the explicit reset scope. User accounts, settings,
+definitions and other projects remain. CRM production is forbidden. Both
+sides require verified environment/database/pairing identities, disabled sync,
+stopped writers, a reviewed expiring dry-run, exact confirmation and a
+restore-tested backup. There is no cross-database atomic commit or blind retry.
+
+Storage objects, shared assets, provider copies, Redis and backup archives are
+not erased. The plan records known retained file keys for a separately approved
+storage review; a cloned staging record cannot authorize deletion from a shared
+production bucket. See [cleanup runbook](../scripts/test-data-cleanup/README.md).

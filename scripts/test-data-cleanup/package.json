@@ -1,0 +1,16 @@
+{
+  "name": "omnicus-test-data-cleanup",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "mongodb": "7.1.1",
+    "pg": "8.22.0"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
+    "mongodb-memory-server": "11.0.1"
+  }
+}

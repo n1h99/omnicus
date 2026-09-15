@@ -1,0 +1,22 @@
+{
+  "purpose": "ERASE_TEST_CONTACTS_AND_STAGING_LEADS",
+  "crm": {
+    "environmentName": "staging",
+    "railwayProjectId": "REPLACE_FROM_RAILWAY",
+    "railwayEnvironmentId": "REPLACE_FROM_RAILWAY",
+    "railwayServiceId": "REPLACE_CRM_BACKEND_SERVICE_ID",
+    "hosts": ["REPLACE_STAGING_MONGO_HOST:PORT"],
+    "database": "REPLACE_STAGING_DATABASE",
+    "baseUrl": "https://REPLACE_STAGING_CRM_HOST",
+    "crmProjectId": "REPLACE_PAIRING_PROJECT_ID"
+  },
+  "omnicus": {
+    "railwayProjectId": "REPLACE_FROM_RAILWAY",
+    "railwayEnvironmentId": "REPLACE_FROM_RAILWAY",
+    "railwayServiceId": "REPLACE_OMNICUS_API_SERVICE_ID",
+    "host": "REPLACE_OMNICUS_POSTGRES_HOST:PORT",
+    "database": "REPLACE_OMNICUS_DATABASE",
+    "projectId": "REPLACE_OMNICUS_PROJECT_UUID",
+    "projectName": "REPLACE_EXACT_PROJECT_NAME"
+  }
+}
