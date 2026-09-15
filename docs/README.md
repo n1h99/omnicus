@@ -7,6 +7,12 @@ Automation Activity.
 
 ## Current product status
 
+- Local update 2026-09-15: [Email Inbox](EMAIL_INBOX.md), ADR-060, adds project
+  domains/addresses, Gmail-style conversation navigation, private drafts, manual
+  replies/files, campaign/automation history and exact-thread email waits. New
+  permissions and migration are included. Deployment, provider DNS/Receiving and
+  live acceptance remain unverified; a Git push does not confirm Railway deployment.
+
 - Railway runs the web, API and worker services from `main`; deployments are
   automatic after a push.
 - All operator mutations expose action-specific success/failure feedback. Safe

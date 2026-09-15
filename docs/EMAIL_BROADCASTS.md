@@ -9,6 +9,14 @@ WhatsApp connection and does not depend on a chat identity.
 
 ## Product surface
 
+Local Email Inbox addition (2026-09-15, not deployed): campaign editor and test
+send use the selected/default configured mailbox. Send email automation pins a
+mailbox on its queued delivery. Their new messages and replies share Inbox history;
+manual replies remain private to authorized mailbox readers and are excluded from
+the legacy broadcast delivery/analytics endpoints. Existing legacy `EMAIL_FROM`
+works without a configured mailbox, but does not gain incoming history by itself.
+See [EMAIL_INBOX.md](EMAIL_INBOX.md) for the new permissions and setup.
+
 `Email & SMS Broadcast` contains:
 
 - Email/SMS channel switch. SMS is intentionally marked as under construction.

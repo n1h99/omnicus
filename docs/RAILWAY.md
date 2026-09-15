@@ -3,6 +3,17 @@
 Status reviewed: 2026-08-14. Omnicus is deployed on Railway from `main`; pushes
 to `origin/main` trigger the configured web, API and worker deployments.
 
+## Email Inbox release (2026-09-15, deployment unverified)
+
+The separate Email Inbox release (locally implemented 2026-09-15) **does** require
+new migration `20260915010000_email_inbox` and `RESEND_API_KEY` on API as well as
+worker. Keep `RESEND_WEBHOOK_SECRET` only on API and private storage on both.
+Deploy compatible web/API/worker artifacts through the authorized release path.
+Verify Omnicus API → Settings → Deploy → Pre-deploy Command contains
+`pnpm db:migrate:deploy`: this is an operator-managed setting, not present in the
+tracked API railway.toml. Only one service runs migrations. The checklist is in
+[EMAIL_INBOX.md](EMAIL_INBOX.md); a Git push does not verify successful deployment.
+
 ## Services
 
 All three services use the repository root and the same lockfile:

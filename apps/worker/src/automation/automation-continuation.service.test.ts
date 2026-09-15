@@ -24,7 +24,11 @@ describe('AutomationContinuationService', () => {
     expect(timeoutWait).toHaveBeenCalledWith('wait-a');
     expect(delayedAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { nextAttemptAt: { lte: expect.any(Date) }, status: 'PENDING' },
+        where: {
+          nextAttemptAt: { lte: expect.any(Date) },
+          status: 'PENDING',
+          execution: { project: { status: 'ACTIVE' } },
+        },
       }),
     );
   });

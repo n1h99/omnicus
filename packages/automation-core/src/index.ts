@@ -395,6 +395,19 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
       if (!criteria.success) {
         errors.push(`Wait for Reply node ${node.id} has invalid reply criteria`);
       }
+      if (
+        node.config.replyChannel !== undefined &&
+        !['EMAIL', 'INCOMING_CONVERSATION'].includes(String(node.config.replyChannel))
+      )
+        errors.push(`Wait for Reply node ${node.id} has an unsupported reply channel`);
+      if (
+        node.config.replyChannel === 'EMAIL' &&
+        criteria.success &&
+        !['ANY', 'TEXT'].includes(criteria.data.kind)
+      )
+        errors.push(
+          `Email Wait for Reply node ${node.id} supports any reply or text criteria only`,
+        );
     }
     if (
       (node.type === 'ADD_TAG' || node.type === 'REMOVE_TAG') &&
@@ -585,7 +598,12 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
       const triggerType =
         typeof node.config.triggerType === 'string' ? node.config.triggerType : 'INCOMING_MESSAGE';
       if (
-        !['INCOMING_MESSAGE', 'WEBSITE_REGISTRATION', 'TELEGRAM_DEEP_LINK'].includes(triggerType)
+        ![
+          'INCOMING_MESSAGE',
+          'WEBSITE_REGISTRATION',
+          'TELEGRAM_DEEP_LINK',
+          'EMAIL_RECEIVED',
+        ].includes(triggerType)
       ) {
         errors.push(`Incoming Message node ${node.id} has an unsupported trigger type`);
       }

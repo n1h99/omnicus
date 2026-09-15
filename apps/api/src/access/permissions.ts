@@ -8,6 +8,9 @@ export const globalPermissions = [
 
 export const projectPermissions = [
   'project:read',
+  'email:read',
+  'email:send',
+  'email:manage',
   'project:manage',
   'members:manage',
   'contacts:read',
@@ -44,6 +47,9 @@ export const systemProjectRoles = [
     normalizedName: 'project-admin',
     permissions: [
       'project:read',
+      'email:read',
+      'email:send',
+      'email:manage',
       'project:manage',
       'members:manage',
       'contacts:read',

@@ -2,6 +2,37 @@
 
 Status reviewed: 2026-08-14.
 
+## Email Inbox local checks — 2026-09-15
+
+`pnpm lint`, `pnpm typecheck`, `pnpm db:validate` and root `pnpm test` passed for
+ADR-060 (36 successful test/build tasks, unchanged packages may use Turbo cache).
+API: 189 unit tests; worker: 141; web: 59; database: 31; email-core: 10.
+The API integration suite: 6 passed and 1 explicitly skipped
+external-service test. Actual ordered SQL migrations also passed in disposable
+PGlite PostgreSQL, including tenant/default mailbox/wait/deduplication constraints.
+
+Focused coverage includes signed/tampered webhook ingestion, exact reply routing,
+private draft access, unchanged manual-send replay, suppressed recipients,
+sender snapshots, incoming content, automatic-reply exclusion, wait/timeout
+ordering, unknown delivery cutoff and reordered delivery events.
+
+`pnpm exec playwright test e2e/email-inbox.spec.ts`: 5 passed on the production
+web bundle. Desktop/mobile, onboarding, thread reply, private drafts, same-key
+network retry and isolated HTML were checked with mocked provider/API data.
+Manual Chrome inspection also verified the local three-pane layout. These are
+not real Resend delivery or DNS checks. Rollout and live checklist:
+[EMAIL_INBOX.md](EMAIL_INBOX.md).
+
+Final regression: all 14 Playwright tests passed, including existing WhatsApp,
+Telegram/account layouts and Automation Studio. Production web server: 10 passed.
+Format check, SQL invariant review, workspace boundaries and `git diff --check`
+passed. `pnpm build` produced all three minimal runtime artifacts and passed the
+web bundle budget. API production-artifact smoke passed with an intentionally
+unavailable local database/Redis (safe 503, not live database readiness).
+Windows packaging reported optional bin-link warnings; the runtime checks passed.
+Worker production-artifact smoke also passed its expected safe-failure path with
+intentionally unavailable local dependencies; it does not assert a live ready worker.
+
 ## Local quality gate
 
 Run with the pinned Node/Corepack toolchain:

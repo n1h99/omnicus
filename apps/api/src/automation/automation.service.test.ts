@@ -7,6 +7,7 @@ describe('AutomationService lifecycle', () => {
   it('validates clear custom field references inside the active project', async () => {
     const findMany = vi.fn().mockResolvedValue([]);
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       { record: vi.fn() } as never,
       { client: { customFieldDefinition: { findMany } } } as never,
     ) as unknown as {
@@ -41,6 +42,7 @@ describe('AutomationService lifecycle', () => {
     const update = vi.fn().mockResolvedValue({ id: 'scenario-a', status: 'ARCHIVED' });
     const audit = { record: vi.fn() };
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       audit as never,
       {
         client: { scenario: { findUnique, update } },
@@ -79,6 +81,7 @@ describe('AutomationService lifecycle', () => {
       ],
     };
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       { record: vi.fn() } as never,
       {
         client: {
@@ -112,7 +115,11 @@ describe('AutomationService lifecycle', () => {
   });
 
   it('runs a side-effect-free graph simulation without requiring a persisted scenario', async () => {
-    const service = new AutomationService({ record: vi.fn() } as never, { client: {} } as never);
+    const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
+      { record: vi.fn() } as never,
+      { client: {} } as never,
+    );
 
     await expect(
       service.testRun('project-a', {
@@ -149,6 +156,7 @@ describe('AutomationService lifecycle', () => {
     };
     const audit = { record: vi.fn() };
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       audit as never,
       {
         client: {
@@ -206,6 +214,7 @@ describe('AutomationService lifecycle', () => {
       scenarioVersion: { update: vi.fn() },
     };
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       { record: vi.fn() } as never,
       {
         client: {
@@ -241,6 +250,7 @@ describe('AutomationService lifecycle', () => {
 
   it('enriches send steps with current Telegram delivery status', async () => {
     const service = new AutomationService(
+      { sender: vi.fn(), assertMailbox: vi.fn() } as never,
       { record: vi.fn() } as never,
       {
         client: {

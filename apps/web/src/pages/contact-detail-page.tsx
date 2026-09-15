@@ -17,7 +17,7 @@ import {
 } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
 import { apiRequest, getUserErrorMessage } from '../api';
 import { useAuth } from '../auth';
@@ -174,6 +174,11 @@ export function ContactDetailPage() {
       <div className="entity-hero">
         <div className="entity-hero-copy">
           <Typography.Title level={2}>{value.displayName}</Typography.Title>
+          {hasProjectPermission(access.data, 'email:read') && (
+            <Link to={`/projects/${projectId}/email-inbox?folder=all&contactId=${value.id}`}>
+              View email conversations
+            </Link>
+          )}
         </div>
       </div>
 

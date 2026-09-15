@@ -145,6 +145,13 @@ export function ProjectDetailPage() {
       visible: hasProjectPermission(access.data, 'broadcasts:read'),
     },
     {
+      description: 'Incoming email, conversations and sender addresses',
+      icon: <MailOutlined />,
+      label: 'Email Inbox',
+      path: `/projects/${project.id}/email-inbox`,
+      visible: hasProjectPermission(access.data, 'email:read'),
+    },
+    {
       description: 'Delivery journals, recovery and audit',
       icon: <ToolOutlined />,
       label: 'Operations',

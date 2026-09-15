@@ -6,6 +6,9 @@ export const seedProjectRoles = [
     'project-admin',
     [
       'project:read',
+      'email:read',
+      'email:send',
+      'email:manage',
       'project:manage',
       'members:manage',
       'contacts:read',

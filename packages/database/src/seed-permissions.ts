@@ -8,6 +8,9 @@ export const seedGlobalPermissions = [
 
 export const seedProjectPermissions = [
   'project:read',
+  'email:read',
+  'email:send',
+  'email:manage',
   'project:manage',
   'members:manage',
   'contacts:read',

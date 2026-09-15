@@ -16,6 +16,7 @@ import { AuditService } from '../audit/audit.service';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DatabaseService } from '../database/database.service';
+import { EmailInboxService } from '../email-inbox/email-inbox.service';
 import type {
   CreateEmailCampaignDto,
   CreateEmailSuppressionDto,
@@ -50,6 +51,7 @@ export class EmailService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
+    @Inject(EmailInboxService) private readonly inbox: EmailInboxService,
   ) {}
 
   async listCampaigns(projectId: string) {
@@ -67,12 +69,14 @@ export class EmailService {
     context: RequestSecurityContext,
   ) {
     const design = this.design(input.design);
+    const mailboxId = await this.inbox.sender(projectId, input.mailboxId, actor);
     const audience = this.audience(input.audience);
     const references = await this.assertAssets(projectId, design);
     try {
       const campaign = await this.database.client.emailCampaign.create({
         data: {
           audience: this.json(audience),
+          mailboxId,
           createdById: actor.userId,
           design: this.json(design),
           name: input.name.trim(),
@@ -111,6 +115,7 @@ export class EmailService {
     context: RequestSecurityContext,
   ) {
     const current = await this.campaign(projectId, campaignId);
+    if (input.mailboxId !== undefined) await this.inbox.sender(projectId, input.mailboxId, actor);
     if (current.status !== 'DRAFT')
       throw new ConflictException({
         code: 'EMAIL_CAMPAIGN_NOT_EDITABLE',
@@ -127,6 +132,7 @@ export class EmailService {
           audience: this.json(audience),
           design: this.json(design),
           ...(input.name === undefined ? {} : { name: input.name.trim() }),
+          ...(input.mailboxId === undefined ? {} : { mailboxId: input.mailboxId }),
           ...(input.preheader === undefined ? {} : { preheader: input.preheader?.trim() || null }),
           ...(input.scheduledAt === undefined
             ? {}
@@ -197,6 +203,7 @@ export class EmailService {
     context: RequestSecurityContext,
   ) {
     const campaign = await this.campaign(projectId, campaignId);
+    const mailboxId = await this.inbox.sender(projectId, campaign.mailboxId, actor);
     if (!['DRAFT', 'FAILED'].includes(campaign.status))
       throw new ConflictException({
         code: 'EMAIL_CAMPAIGN_CANNOT_LAUNCH',
@@ -213,6 +220,7 @@ export class EmailService {
     const updated = await this.database.client.emailCampaign.update({
       data: {
         completedAt: null,
+        mailboxId,
         errorCode: null,
         failedAt: null,
         status: scheduled ? 'SCHEDULED' : 'PREPARING',
@@ -358,7 +366,10 @@ export class EmailService {
     const pageSize = Number.isFinite(parsedPageSize)
       ? Math.min(100, Math.max(10, parsedPageSize))
       : 25;
-    const where = { projectId };
+    const where: Prisma.EmailEventWhereInput = {
+      projectId,
+      delivery: { source: { not: 'MANUAL' } },
+    };
     const [events, total] = await this.database.client.$transaction([
       this.database.client.emailEvent.findMany({
         include: {
@@ -415,7 +426,7 @@ export class EmailService {
       include: { events: { orderBy: { occurredAt: 'desc' } } },
       where: { projectId_id: { id: deliveryId, projectId } },
     });
-    if (!delivery)
+    if (!delivery || delivery.source === 'MANUAL')
       throw new NotFoundException({
         code: 'EMAIL_DELIVERY_NOT_FOUND',
         message: 'Email delivery was not found',
@@ -429,6 +440,7 @@ export class EmailService {
     actor: AuthenticatedUser,
     context: RequestSecurityContext,
   ) {
+    const mailboxId = await this.inbox.sender(projectId, input.mailboxId, actor);
     const design = this.design(input.design);
     const references = await this.assertAssets(projectId, design);
     const email = this.normalizeEmail(input.to);
@@ -437,6 +449,7 @@ export class EmailService {
         attachmentAssetIds: this.json(references.map((reference) => reference.assetId)),
         designSnapshot: this.json(design),
         normalizedEmail: email,
+        mailboxId,
         preheader: input.preheader?.trim() || null,
         projectId,
         source: 'TEST',

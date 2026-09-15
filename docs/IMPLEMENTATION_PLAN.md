@@ -745,3 +745,15 @@ the final combined user verification stage.
   events and tracked URLs update Omnicus analytics and linked CRM lead history.
 - SMS, Zoom attendance and Instagram remain outside the implemented provider
   scope. Link clicks can be measured; webinar attendance cannot yet be claimed.
+
+## Email Inbox — implemented locally 2026-09-15, rollout pending
+
+1. Project-scoped schema, provider contracts and mailbox permissions.
+2. Durable receiving, outgoing conversations, attachments and exact thread routing.
+3. Inbox UI, private drafts, sender/domain settings and campaign integration.
+4. Existing automation Send email/Wait for reply and Email received trigger.
+5. Migration, API/runtime/security/UI tests and operator setup documentation.
+
+Steps 1–5 are implemented. Code/local checks do not authorize or confirm a Git push,
+Railway rollout, paid subscription or DNS change. Source of scope and the separate
+operator rollout/live acceptance gates: [EMAIL_INBOX.md](EMAIL_INBOX.md).

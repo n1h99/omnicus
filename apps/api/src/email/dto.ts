@@ -11,6 +11,7 @@ import {
 } from 'class-validator';
 
 export class CreateEmailCampaignDto {
+  @IsOptional() @IsUUID() mailboxId?: string | null;
   @IsString()
   @MinLength(1)
   @MaxLength(160)
@@ -35,6 +36,7 @@ export class CreateEmailCampaignDto {
 }
 
 export class UpdateEmailCampaignDto {
+  @IsOptional() @IsUUID() mailboxId?: string | null;
   @IsOptional()
   @IsString()
   @MinLength(1)
@@ -104,6 +106,9 @@ export class UpdateEmailTemplateDraftDto {
 }
 
 export class TestEmailDto {
+  @IsOptional()
+  @IsUUID()
+  mailboxId?: string | null;
   @IsEmail()
   @MaxLength(320)
   to!: string;

@@ -48,6 +48,7 @@ async function bootstrap(): Promise<void> {
     app.set('trust proxy', parseTrustProxy(config.get('TRUST_PROXY', { infer: true })));
     app.enableCors({
       credentials: true,
+      exposedHeaders: ['Content-Disposition'],
       origin: parseCorsOrigins(config.get('CORS_ALLOWED_ORIGINS', { infer: true })),
     });
     app.enableShutdownHooks();

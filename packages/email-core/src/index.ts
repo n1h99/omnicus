@@ -1,4 +1,5 @@
 import { z } from 'zod';
+export * from './mailbox';
 
 const colorSchema = z.string().regex(/^#[0-9a-f]{6}$/i);
 const alignmentSchema = z.enum(['left', 'center', 'right']);
@@ -279,6 +280,18 @@ export function emailAssetReferences(documentInput: unknown): EmailAssetReferenc
       references.set(block.assetId, { assetId: block.assetId, usage: 'ATTACHMENT' });
   }
   return [...references.values()];
+}
+
+/** Manual correspondence is literal text, never a personalization template. */
+export function renderPlainEmail(text: string): RenderedEmail {
+  return {
+    html:
+      '<!doctype html><html><body><div style="font:14px/1.6 Arial,sans-serif">' +
+      escapeHtml(text).replace(/\n/g, '<br>') +
+      '</div></body></html>',
+    text,
+    missingVariables: [],
+  };
 }
 
 function align(value: 'left' | 'center' | 'right'): string {

@@ -45,6 +45,7 @@ import {
 } from './automation-studio';
 import type { MessageTemplate } from './templates-api';
 import type { EmailTemplate } from './email-api';
+import { MailboxSelect } from './mailbox-select';
 import {
   assetKindForWhatsAppSlot,
   whatsAppParameterSlots,
@@ -178,7 +179,9 @@ function telegramMediaGroupCompatibilityIssue(kinds: MediaKind[]): string | unde
   if (photoOrVideoGroup || singleKindGroup) return undefined;
   return `Selected types: ${uniqueKinds
     .map((kind) => kind.replaceAll('_', ' ').toLowerCase())
-    .join(', ')}. Telegram can group photos and videos together, documents only with documents, or audio only with audio.`;
+    .join(
+      ', ',
+    )}. Telegram can group photos and videos together, documents only with documents, or audio only with audio.`;
 }
 
 export function AutomationNodeConfig({
@@ -364,8 +367,8 @@ export function AutomationNodeConfig({
     return (
       <Space direction="vertical" size={16} style={{ width: '100%' }}>
         <Form.Item label="Starts when" style={{ marginBottom: 0 }}>
-          <Segmented
-            block
+          <Select
+            style={{ width: '100%' }}
             onChange={(value) => {
               if (value === 'WEBSITE_REGISTRATION') {
                 updateConfig({
@@ -394,11 +397,30 @@ export function AutomationNodeConfig({
               { label: 'Incoming message', value: 'INCOMING_MESSAGE' },
               { label: 'Website registration', value: 'WEBSITE_REGISTRATION' },
               { label: 'Telegram link', value: 'TELEGRAM_DEEP_LINK' },
+              { label: 'Email received', value: 'EMAIL_RECEIVED' },
             ]}
             value={triggerType}
           />
         </Form.Item>
 
+        {triggerType === 'EMAIL_RECEIVED' && (
+          <>
+            <Form.Item label="Receiving address">
+              <MailboxSelect
+                projectId={projectId}
+                receiving
+                value={typeof config.mailboxId === 'string' ? config.mailboxId : null}
+                onChange={(value) => set('mailboxId', value)}
+              />
+            </Form.Item>
+            <Alert
+              type="info"
+              showIcon
+              title="Starts for a recognized contact"
+              description="Incoming email must match one active contact by email. Automatic replies and delivery reports do not start scenarios. Unknown senders remain available in Email Inbox for a manual reply."
+            />
+          </>
+        )}
         {triggerType === 'WEBSITE_REGISTRATION' ? (
           <>
             <Form.Item label="Source key" style={{ marginBottom: 0 }}>
@@ -1041,6 +1063,16 @@ export function AutomationNodeConfig({
           type="info"
         />
         <Form.Item
+          label="From address"
+          extra="A reply stays in the current email conversation when its address matches. Otherwise a new conversation is created."
+        >
+          <MailboxSelect
+            projectId={projectId}
+            value={typeof config.mailboxId === 'string' ? config.mailboxId : null}
+            onChange={(value) => set('mailboxId', value)}
+          />
+        </Form.Item>
+        <Form.Item
           extra="Create and publish reusable designs in Email & SMS Broadcast."
           label="Published email template"
         >
@@ -1336,7 +1368,25 @@ export function AutomationNodeConfig({
           seconds={config[key]}
         />
         {nodeType === 'WAIT_FOR_REPLY' ? (
+          <Form.Item
+            label="Wait for a reply via"
+            extra="Email uses the conversation from the preceding Send email step or email trigger. Configure receiving for that address first."
+          >
+            <Select
+              value={config.replyChannel === 'EMAIL' ? 'EMAIL' : 'INCOMING_CONVERSATION'}
+              onChange={(value: string) =>
+                updateConfig({ replyChannel: value, criteria: { kind: 'ANY' } })
+              }
+              options={[
+                { value: 'INCOMING_CONVERSATION', label: 'Incoming chat (Telegram / WhatsApp)' },
+                { value: 'EMAIL', label: 'Email conversation' },
+              ]}
+            />
+          </Form.Item>
+        ) : null}
+        {nodeType === 'WAIT_FOR_REPLY' ? (
           <WaitCriteriaFields
+            email={config.replyChannel === 'EMAIL'}
             criteria={record(config.criteria)}
             onChange={(criteria) => set('criteria', criteria)}
           />
@@ -2025,9 +2075,11 @@ function DurationField({
 }
 
 function WaitCriteriaFields({
+  email = false,
   criteria,
   onChange,
 }: {
+  email?: boolean;
   criteria: Record<string, unknown>;
   onChange(criteria: Record<string, unknown>): void;
 }) {
@@ -2051,8 +2103,12 @@ function WaitCriteriaFields({
           options={[
             { label: 'Any supported customer reply', value: 'ANY' },
             { label: 'Text message', value: 'TEXT' },
-            { label: 'Button callback', value: 'CALLBACK' },
-            { label: 'Selected media types', value: 'MEDIA' },
+            ...(!email
+              ? [
+                  { label: 'Button callback', value: 'CALLBACK' },
+                  { label: 'Selected media types', value: 'MEDIA' },
+                ]
+              : []),
           ]}
           value={kind}
         />

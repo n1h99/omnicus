@@ -4,6 +4,14 @@ Status reviewed: 2026-08-14.
 
 ## Runtime topology
 
+Email Inbox (ADR-060, local implementation 2026-09-15) uses the same services:
+API authenticates signed receiving events and saves receipts; worker imports
+bounded mail/attachments and dispatches continuations; web renders an isolated
+sanitized reader. `email-core` provides provider validation, while its `/server`
+export provides the fixed-origin Resend read client. The database helper links
+queued EmailDelivery and EmailMessage atomically. No second mail server, queue
+authority or automation engine is introduced. See [EMAIL_INBOX.md](EMAIL_INBOX.md).
+
 Omnicus is a pnpm/Turborepo monorepo deployed to Railway as three services:
 
 - `apps/web`: React/Vite SPA plus a hardened Node static server and same-origin

@@ -16,6 +16,7 @@ export type EmailCampaignStatus =
   'DRAFT' | 'SCHEDULED' | 'PREPARING' | 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
 
 export type EmailCampaign = {
+  mailboxId: string | null;
   audience: EmailAudience;
   completedAt: string | null;
   createdAt: string;
@@ -118,6 +119,7 @@ export type EmailAnalyticsPage = {
 };
 
 export type EmailCampaignInput = {
+  mailboxId?: string | null;
   audience: EmailAudience;
   design: EmailDocument;
   name: string;
@@ -288,6 +290,7 @@ export function useEmailMutations(projectId?: string) {
     }),
     testSend: useMutation({
       mutationFn: (input: {
+        mailboxId?: string | null;
         design: EmailDocument;
         preheader?: string | null;
         subject: string;

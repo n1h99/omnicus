@@ -4,6 +4,29 @@ Status reviewed: 2026-08-14. The generic outbox machine applies to Telegram,
 WhatsApp, CRM, Automation Studio 2.2 HTTP operations and email/attribution side
 effects.
 
+## Email Inbox addition — ADR-060 (2026-09-15)
+
+Durable receipt: `PENDING → PROCESSING → COMPLETED | RETRY | FAILED`.
+Only the current lease owner finalizes work; expired leases return to RETRY.
+Manager retry of FAILED resets attempts with audit, without creating a second mail.
+
+Message automation: `AWAITING_CONTENT → NONE` for automatic replies, otherwise
+`AWAITING_CONTENT → PENDING → PROCESSING → COMPLETED`. Failed dispatch is visible
+as FAILED and supports audited manager retry. Content/attachment import finishes
+before scenario dispatch. Processing transitions are transactional.
+
+Email WAITING resolves only against its execution/contact/exact mailbox/thread;
+it becomes RESOLVED with an email message ID or TIMED_OUT. A thread advisory lock
+serializes reply/timeout. Already imported qualifying early replies are considered
+before timeout; durable in-progress receipts prevent premature timeout. No reply
+branch means completion, not restarting the graph. Automatic messages cannot resolve waits.
+
+EmailDelivery adds MANUAL source and terminal UNKNOWN. Immutable sender/body/headers
+and the same provider idempotency key survive retry. Stop ambiguous sends after
+23 hours or exhausted attempts; late signed provider events may still reconcile them.
+Never retry UNKNOWN blindly. These extensions do not change Telegram/WhatsApp state
+ownership. See [EMAIL_INBOX.md](EMAIL_INBOX.md) for paused/disabled route behavior.
+
 ## Общие правила
 
 - Status изменяется только через перечисленные events.

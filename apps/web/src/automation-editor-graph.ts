@@ -69,7 +69,7 @@ export function automationNodePreview(type: string, config: Record<string, unkno
   if (type === 'DELAY' && typeof value.delaySeconds === 'number')
     return `Wait ${value.delaySeconds}s`;
   if (type === 'WAIT_FOR_REPLY' && typeof value.timeoutSeconds === 'number')
-    return `Timeout ${value.timeoutSeconds}s`;
+    return `${value.replyChannel === 'EMAIL' ? 'Email · ' : ''}Timeout ${value.timeoutSeconds}s`;
   if (type === 'CONDITION')
     return compactPreview(
       [value.field, value.operator, value.value].filter((part) => part !== undefined).join(' '),
@@ -77,6 +77,8 @@ export function automationNodePreview(type: string, config: Record<string, unkno
   if (type === 'INCOMING_MESSAGE' && value.triggerType === 'WEBSITE_REGISTRATION')
     return compactPreview(`Website: ${String(value.sourceKey ?? '')}`);
   if (type === 'SEND_EMAIL') return 'Published email template';
+  if (type === 'INCOMING_MESSAGE' && value.triggerType === 'EMAIL_RECEIVED')
+    return 'Incoming email from a known contact';
   if (type === 'SEND_TEMPLATE') return 'Published message template';
   return undefined;
 }
@@ -98,11 +100,11 @@ export function scenarioGraphToFlow(graph: ScenarioGraph): { edges: Edge[]; node
     nodes: graph.nodes.map((node) => {
       const preview = automationNodePreview(node.type, node.config);
       return {
-      data: {
-        config: node.config ?? {},
-        label: node.type,
-        ...(preview ? { preview } : {}),
-      },
+        data: {
+          config: node.config ?? {},
+          label: node.type,
+          ...(preview ? { preview } : {}),
+        },
         id: node.id,
         position: node.position ?? { x: 0, y: 0 },
         type: 'default',

@@ -24,6 +24,7 @@ import type { AuthenticatedUser } from '../auth/auth.types';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import { AuditService } from '../audit/audit.service';
 import { DatabaseService } from '../database/database.service';
+import { EmailInboxService } from '../email-inbox/email-inbox.service';
 import type {
   CreateScenarioDto,
   DuplicateScenarioDto,
@@ -34,6 +35,7 @@ import type {
 @Injectable()
 export class AutomationService {
   constructor(
+    @Inject(EmailInboxService) private readonly inbox: EmailInboxService,
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(DatabaseService) private readonly database: DatabaseService,
   ) {}
@@ -355,6 +357,26 @@ export class AutomationService {
     const draftVersion = scenario.draftVersion;
     const validation = this.assertValidGraph(draftVersion.graph);
     await this.assertReferencedResources(projectId, draftVersion.graph);
+    const mailGraph = scenarioGraphSchema.parse(draftVersion.graph);
+    for (const node of mailGraph.nodes) {
+      if (
+        node.type === 'SEND_EMAIL' ||
+        (node.type === 'INCOMING_MESSAGE' && node.config.triggerType === 'EMAIL_RECEIVED')
+      ) {
+        const mailboxId =
+          typeof node.config.mailboxId === 'string' && node.config.mailboxId
+            ? node.config.mailboxId
+            : null;
+        await this.inbox.sender(projectId, mailboxId, actor);
+        if (node.config.triggerType === 'EMAIL_RECEIVED') {
+          if (!mailboxId)
+            throw new BadRequestException('automation_email_trigger_mailbox_required');
+          const mailbox = await this.inbox.assertMailbox(projectId, mailboxId, actor);
+          if (mailbox.mode !== 'TWO_WAY' || !mailbox.domain.receivingReady)
+            throw new BadRequestException('automation_email_receiving_not_ready');
+        }
+      }
+    }
     await this.assertPinnedTemplates(projectId, draftVersion.graph);
     await this.assertPinnedSubflows(projectId, scenarioId, draftVersion.graph);
     await this.assertAutomationSecrets(projectId, draftVersion.graph);

@@ -6,6 +6,7 @@ import { Resend } from 'resend';
 
 import { DatabaseService } from '../database/database.service';
 import { EmailService } from './email.service';
+import { EmailInboxService } from '../email-inbox/email-inbox.service';
 
 const EVENT_MAP = {
   'email.bounced': { status: 'BOUNCED', type: 'BOUNCED' },
@@ -45,6 +46,7 @@ export class EmailWebhooksService {
     @Inject(ConfigService) private readonly config: ConfigService<ApiEnvironment, true>,
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(EmailService) private readonly email: EmailService,
+    @Inject(EmailInboxService) private readonly inbox: EmailInboxService,
   ) {
     this.resend = new Resend('re_webhook_verification_only');
   }
@@ -64,11 +66,20 @@ export class EmailWebhooksService {
       throw new UnauthorizedException('resend_webhook_signature_invalid');
     }
 
+    if (
+      verified &&
+      typeof verified === 'object' &&
+      'type' in verified &&
+      verified.type === 'email.received'
+    )
+      return this.inbox.receive(verified, headers.id);
+
     const event = verified as {
       created_at?: string;
       data?: {
         click?: { link?: string };
         email_id?: string;
+        message_id?: string;
         error?: { message?: string } | string;
         tags?: Record<string, string>;
       };
@@ -95,10 +106,26 @@ export class EmailWebhooksService {
     const terminal = ['BOUNCED', 'COMPLAINED', 'FAILED', 'SUPPRESSED'].includes(mapped.status);
 
     await this.database.client.$transaction(async (transaction) => {
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${delivery.id}), 90402)`;
+      const currentDelivery = await transaction.emailDelivery.findUniqueOrThrow({
+        where: { id: delivery.id },
+      });
       const existing = await transaction.emailEvent.findUnique({
         where: { providerEventId: headers.id },
       });
       if (existing) return;
+      const rfcMessageId = event.data?.message_id;
+      // eslint-disable-next-line no-control-regex -- Reject control characters in untrusted email headers.
+      if (rfcMessageId && /^<[^<>\s\x00-\x1f]{1,900}>$/.test(rfcMessageId)) {
+        await transaction.emailDelivery.update({
+          where: { id: delivery.id },
+          data: { rfcMessageId },
+        });
+        await transaction.emailMessage.updateMany({
+          where: { projectId: delivery.projectId, deliveryId: delivery.id },
+          data: { rfcMessageId, providerEmailId },
+        });
+      }
       const localSent =
         mapped.type === 'SENT'
           ? await transaction.emailEvent.findUnique({
@@ -118,7 +145,7 @@ export class EmailWebhooksService {
         },
       });
 
-      if ((STATUS_PRIORITY[mapped.status] ?? 0) >= (STATUS_PRIORITY[delivery.status] ?? 0)) {
+      if ((STATUS_PRIORITY[mapped.status] ?? 0) >= (STATUS_PRIORITY[currentDelivery.status] ?? 0)) {
         await transaction.emailDelivery.update({
           data: {
             ...(terminal ? { completedAt: occurredAt } : {}),

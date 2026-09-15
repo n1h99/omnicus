@@ -1,5 +1,11 @@
 # Omnicus
 
+Feature update, 2026-09-15: [Email Inbox](docs/EMAIL_INBOX.md) adds a
+Resend-backed conversation workspace, multiple sender addresses, private drafts,
+attachments and email reply waits in Automation. Deployment and live acceptance
+remain unverified; it requires its new migration and Receiving DNS/webhook
+setup. The deployed baseline described below remains separate.
+
 Omnicus is a production-deployed omnichannel automation platform built as a
 `pnpm`/Turborepo monorepo. The current release includes Auth/RBAC, projects,
 contacts and segmentation, Telegram messaging, official WhatsApp Business

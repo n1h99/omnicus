@@ -21,25 +21,27 @@
     "@nestjs/common": "11.1.28",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.1.28",
+    "@nestjs/platform-express": "11.1.28",
     "@omnicus/automation-core": "workspace:*",
     "@omnicus/automation-http": "workspace:*",
-    "@nestjs/platform-express": "11.1.28",
     "@omnicus/channel-secrets": "workspace:*",
     "@omnicus/channel-telegram": "workspace:*",
     "@omnicus/channel-whatsapp": "workspace:*",
-    "@omnicus/crm-core": "workspace:*",
     "@omnicus/config": "workspace:*",
     "@omnicus/contracts": "workspace:*",
+    "@omnicus/crm-core": "workspace:*",
     "@omnicus/database": "workspace:*",
     "@omnicus/email-core": "workspace:*",
     "@omnicus/media-core": "workspace:*",
     "bullmq": "5.81.1",
+    "html-to-text": "10.0.1",
     "reflect-metadata": "0.2.2",
     "resend": "6.12.4",
     "rxjs": "7.8.2"
   },
   "devDependencies": {
     "@omnicus/test-fixtures": "workspace:*",
-    "@types/express": "5.0.6"
+    "@types/express": "5.0.6",
+    "@types/html-to-text": "9.0.4"
   }
 }

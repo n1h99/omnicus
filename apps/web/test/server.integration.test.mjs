@@ -117,7 +117,7 @@ test('allows only the bounded Meta origins required by WhatsApp Embedded Signup'
   assert.match(policy, /script-src 'self' https:\/\/connect\.facebook\.net(?:;|$)/);
   assert.match(
     policy,
-    /frame-src https:\/\/www\.facebook\.com https:\/\/web\.facebook\.com(?:;|$)/,
+    /frame-src 'self' https:\/\/www\.facebook\.com https:\/\/web\.facebook\.com(?:;|$)/,
   );
   assert.match(policy, /connect-src [^;]*https:\/\/graph\.facebook\.com(?:;|$)/);
   assert.doesNotMatch(policy, /https:\/\/\*\.facebook\.com/);

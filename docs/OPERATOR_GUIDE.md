@@ -5,6 +5,13 @@ Status reviewed: 2026-08-14.
 This guide describes the current deployed workflows. Provider restrictions are
 part of the product contract; a queued operation is not delivery evidence.
 
+## Email Inbox — local addition, rollout pending
+
+For the locally implemented Email Inbox, use [EMAIL_INBOX.md](EMAIL_INBOX.md)
+for rollout, domain/MX setup, sender assignments, Compose/Drafts and
+Send email → Wait for reply examples. This addition is not yet deployed.
+The customer pays Resend directly; Omnicus does not collect cards or maintain a balance.
+
 ## Website registration and automatic follow-up
 
 1. Open a project and create an Automation Studio scenario.

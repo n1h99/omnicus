@@ -66,7 +66,9 @@ async function mockApp(
   page: Page,
   options: { manager?: boolean; analyticsFailure?: boolean } = {},
 ) {
-  let templates = [initialTemplate];
+  let templates: Array<
+    Omit<typeof initialTemplate, 'components'> & { components: Array<Record<string, unknown>> }
+  > = [initialTemplate];
   const mutations: { method: string; body: Record<string, unknown> | null }[] = [];
   let billingRequests = 0;
   await page.addInitScript(

@@ -207,10 +207,12 @@ enum EmailDeliverySource {
   CAMPAIGN
   AUTOMATION
   TEST
+  MANUAL
 }
 
 enum EmailDeliveryStatus {
   PENDING
+  UNKNOWN
   PROCESSING
   RETRY
   SENT
@@ -468,6 +470,8 @@ model User {
   segmentsCreated         Segment[]
   broadcastsCreated       Broadcast[]
   messageTemplatesCreated MessageTemplate[]
+  emailDrafts             EmailDraft[]
+  emailThreadStates       EmailThreadUserState[]
 
   @@map("users")
 }
@@ -608,6 +612,7 @@ model ProjectMembership {
   user          User             @relation("ProjectMembershipUser", fields: [userId], references: [id], onDelete: Cascade)
   projectRole   ProjectRole      @relation(fields: [projectId, projectRoleId], references: [projectId, id], onDelete: Restrict)
   createdBy     User?            @relation("ProjectMembershipCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  emailMailboxes EmailMailboxMember[]
 
   @@unique([projectId, id])
   @@unique([projectId, userId])
@@ -737,6 +742,9 @@ model Project {
   emailCampaigns           EmailCampaign[]
   emailDeliveries          EmailDelivery[]
   emailSuppressions        EmailSuppression[]
+  emailDomains             EmailDomain[]
+  emailMailboxes           EmailMailbox[]
+  emailThreads             EmailThread[]
 
   @@index([status, createdAt])
   @@map("projects")
@@ -785,6 +793,7 @@ model Contact {
   scheduledMessages   ScheduledMessage[]
   telegramMediaGroups TelegramMediaGroup[]
   emailDeliveries      EmailDelivery[]
+  emailThreads         EmailThread[]
   mergedInto          Contact?                  @relation("ContactMerge", fields: [projectId, mergedIntoContactId], references: [projectId, id], onDelete: Restrict)
   mergedContacts      Contact[]                 @relation("ContactMerge")
 
@@ -1003,6 +1012,7 @@ model ScenarioExecution {
   scenarioVersionId       String
   contactId               String
   conversationId          String?
+  emailThreadId           String?
   triggerEventId          String?
   triggerKey              String
   conversationSequence    BigInt?
@@ -1033,6 +1043,7 @@ model ScenarioExecution {
   parentExecution         ScenarioExecution?      @relation("ScenarioExecutionSubflow", fields: [projectId, parentExecutionId], references: [projectId, id], onDelete: Restrict)
   childExecutions         ScenarioExecution[]     @relation("ScenarioExecutionSubflow")
   externalHttpOperations  ExternalHttpOperation[]
+  emailThread             EmailThread? @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, scenarioId, triggerKey])
@@ -1134,7 +1145,9 @@ model WaitState {
   scenarioExecutionId String
   scenarioId          String
   scenarioVersionId   String
-  conversationId      String
+  conversationId      String?
+  emailThreadId       String?
+  resolvedByEmailMessageId String?
   nodeId              String
   status              WaitStateStatus   @default(ACTIVE)
   criteria            Json              @default("{}")
@@ -1149,12 +1162,15 @@ model WaitState {
   execution           ScenarioExecution @relation(fields: [projectId, scenarioExecutionId], references: [projectId, id], onDelete: Cascade)
   scenario            Scenario          @relation(fields: [projectId, scenarioId], references: [projectId, id], onDelete: Restrict)
   scenarioVersion     ScenarioVersion   @relation(fields: [projectId, scenarioId, scenarioVersionId], references: [projectId, scenarioId, id], onDelete: Restrict)
-  conversation        Conversation      @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
+  conversation        Conversation?     @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
+  emailThread         EmailThread?      @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
+  resolvedByEmailMessage EmailMessage? @relation(fields: [projectId, resolvedByEmailMessageId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, scenarioExecutionId, nodeId])
   @@index([projectId, conversationId, scenarioId, status])
   @@index([status, expiresAt])
+  @@index([projectId, emailThreadId, status])
   @@map("wait_states")
 }
 
@@ -1449,6 +1465,218 @@ model MediaAsset {
   @@map("media_assets")
 }
 
+model EmailDomain {
+  id               String @id @default(uuid())
+  projectId        String
+  providerDomainId String @unique
+  name             String @unique
+  status           String @default("not_started")
+  sendingEnabled   Boolean @default(false)
+  receivingEnabled Boolean @default(false)
+  receivingReady   Boolean @default(false)
+  region           String?
+  dnsRecords       Json @default("[]")
+  lastCheckedAt    DateTime? @db.Timestamptz(3)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  mailboxes        EmailMailbox[]
+
+  @@unique([projectId, id])
+  @@map("email_domains")
+}
+
+model EmailMailbox {
+  id               String @id @default(uuid())
+  projectId        String
+  domainId         String
+  address          String @unique
+  displayName      String
+  signature        String @default("")
+  mode             String @default("TWO_WAY")
+  status           String @default("ACTIVE")
+  shared           Boolean @default(true)
+  isDefault        Boolean @default(false)
+  createdAt        DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
+  project          Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  domain           EmailDomain @relation(fields: [projectId, domainId], references: [projectId, id], onDelete: Restrict)
+  members          EmailMailboxMember[]
+  threads          EmailThread[]
+  inboundReceipts  EmailInboundReceipt[]
+  drafts           EmailDraft[]
+  campaigns        EmailCampaign[]
+  deliveries       EmailDelivery[]
+
+  @@unique([projectId, id])
+  @@index([projectId, status])
+  @@map("email_mailboxes")
+}
+
+model EmailMailboxMember {
+  projectId String
+  mailboxId String
+  userId    String
+  mailbox   EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Cascade)
+  membership ProjectMembership @relation(fields: [projectId, userId], references: [projectId, userId], onDelete: Cascade)
+
+  @@id([projectId, mailboxId, userId])
+  @@map("email_mailbox_members")
+}
+
+model EmailThread {
+  id             String @id @default(uuid())
+  projectId      String
+  mailboxId      String
+  contactId      String?
+  peerEmail      String
+  subject        String
+  replyToken     String @unique
+  preview        String @default("")
+  messageCount   Int @default(0)
+  lastMessageAt  DateTime @default(now()) @db.Timestamptz(3)
+  lastInboundAt  DateTime? @db.Timestamptz(3)
+  lastOutboundAt DateTime? @db.Timestamptz(3)
+  createdAt      DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  project        Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  mailbox        EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  contact        Contact? @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  messages       EmailMessage[]
+  userStates     EmailThreadUserState[]
+  drafts         EmailDraft[]
+  executions     ScenarioExecution[]
+  waits          WaitState[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, mailboxId, id])
+  @@index([projectId, mailboxId, lastMessageAt])
+  @@index([projectId, contactId, lastMessageAt])
+  @@map("email_threads")
+}
+
+model EmailMessage {
+  id                 String @id @default(uuid())
+  projectId          String
+  mailboxId          String
+  threadId           String
+  deliveryId         String? @unique
+  providerEmailId    String?
+  rfcMessageId       String?
+  inReplyTo          String?
+  referencesHeader   String?
+  direction          String
+  fromAddress        String
+  toAddress          String
+  replyToAddress     String?
+  subject            String
+  textBody           String @default("")
+  htmlBody           String @default("")
+  source             String
+  requestKey         String?
+  requestHash        String?
+  isAutomatic        Boolean @default(false)
+  automationStatus   String @default("NONE")
+  automationError    String?
+  occurredAt         DateTime @default(now()) @db.Timestamptz(3)
+  createdAt          DateTime @default(now()) @db.Timestamptz(3)
+  thread             EmailThread @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
+  delivery           EmailDelivery? @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Restrict)
+  attachments        EmailAttachment[]
+  resolvedWaits      WaitState[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, deliveryId])
+  @@unique([projectId, requestKey])
+  @@unique([mailboxId, direction, providerEmailId])
+  @@index([projectId, mailboxId, rfcMessageId])
+  @@index([projectId, threadId, occurredAt])
+  @@index([automationStatus, occurredAt])
+  @@map("email_messages")
+}
+
+model EmailInboundReceipt {
+  id              String @id @default(uuid())
+  projectId       String
+  mailboxId       String
+  providerEmailId String
+  providerEventId String
+  recipient       String
+  occurredAt      DateTime @db.Timestamptz(3)
+  status          String @default("PENDING")
+  attempts        Int @default(0)
+  nextAttemptAt   DateTime @default(now()) @db.Timestamptz(3)
+  lockedAt        DateTime? @db.Timestamptz(3)
+  lockedBy        String?
+  lastError       String?
+  processedAt     DateTime? @db.Timestamptz(3)
+  createdAt       DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  mailbox         EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, id])
+  @@unique([mailboxId, providerEmailId])
+  @@index([status, nextAttemptAt])
+  @@map("email_inbound_receipts")
+}
+
+model EmailThreadUserState {
+  projectId  String
+  threadId   String
+  userId     String
+  readAt     DateTime? @db.Timestamptz(3)
+  archivedAt DateTime? @db.Timestamptz(3)
+  starred    Boolean @default(false)
+  thread     EmailThread @relation(fields: [projectId, threadId], references: [projectId, id], onDelete: Cascade)
+  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, threadId, userId])
+  @@map("email_thread_user_states")
+}
+
+model EmailDraft {
+  id           String @id @default(uuid())
+  projectId    String
+  mailboxId    String
+  userId       String
+  threadId     String?
+  toEmail      String @default("")
+  subject      String @default("")
+  textBody     String @default("")
+  assetIds     Json @default("[]")
+  revision     Int @default(1)
+  createdAt    DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
+  mailbox      EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  thread       EmailThread? @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
+  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, id])
+  @@index([projectId, userId, updatedAt])
+  @@map("email_drafts")
+}
+
+model EmailAttachment {
+  id                   String @id @default(uuid())
+  projectId            String
+  messageId            String
+  providerAttachmentId String
+  filename             String
+  contentType          String
+  contentId            String?
+  sizeBytes            Int
+  bucketKey            String?
+  status               String @default("PENDING")
+  errorCode            String?
+  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  message              EmailMessage @relation(fields: [projectId, messageId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, id])
+  @@unique([projectId, messageId, providerAttachmentId])
+  @@index([projectId, messageId])
+  @@map("email_attachments")
+}
+
 model EmailTemplate {
   id              String              @id @default(uuid())
   projectId       String
@@ -1500,6 +1728,7 @@ model EmailCampaign {
   design                  Json
   audience                Json
   sourceTemplateVersionId String?
+  mailboxId               String?
   scheduledAt             DateTime?           @db.Timestamptz(3)
   startedAt               DateTime?           @db.Timestamptz(3)
   completedAt             DateTime?           @db.Timestamptz(3)
@@ -1513,6 +1742,7 @@ model EmailCampaign {
   updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
   project                 Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   deliveries              EmailDelivery[]
+  mailbox                 EmailMailbox? @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, name])
@@ -1528,6 +1758,14 @@ model EmailDelivery {
   templateVersionId     String?
   scenarioExecutionId   String?
   nodeId                String?
+  mailboxId             String?
+  senderSnapshot        String?
+  replyToSnapshot       String?
+  headersSnapshot       Json?
+  renderedHtml          String?
+  renderedText          String?
+  rfcMessageId          String?
+  firstAttemptAt        DateTime? @db.Timestamptz(3)
   source                EmailDeliverySource
   toEmail               String
   normalizedEmail       String
@@ -1560,6 +1798,8 @@ model EmailDelivery {
   campaign              EmailCampaign?      @relation(fields: [projectId, campaignId], references: [projectId, id], onDelete: Restrict)
   contact               Contact?            @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
   events                EmailEvent[]
+  mailbox               EmailMailbox? @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  message               EmailMessage?
 
   @@unique([projectId, id])
   @@unique([projectId, campaignId, contactId])

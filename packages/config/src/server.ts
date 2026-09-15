@@ -204,6 +204,7 @@ export const apiEnvironmentSchema = serviceEnvironmentSchema
     CRM_INBOUND_AUTH_TOKEN: z.string().min(32).optional(),
     CRM_INBOUND_ENABLED: booleanEnvironmentSchema.default(false),
     RESEND_WEBHOOK_SECRET: z.string().startsWith('whsec_').optional(),
+    RESEND_API_KEY: z.string().trim().startsWith('re_').optional(),
     REFRESH_TOKEN_TTL_DAYS: positiveIntegerSchema.max(90).default(30),
     SWAGGER_ENABLED: booleanEnvironmentSchema.default(false),
     TRUST_PROXY: trustProxySchema,

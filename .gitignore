@@ -31,4 +31,5 @@ test-results/
 packages/database/src/generated/
 
 # Documentation (local only)
-docs/
+docs/*
+!docs/EMAIL_INBOX.md

@@ -53,13 +53,21 @@ export class AutomationContinuationService
           orderBy: { nextAttemptAt: 'asc' },
           select: { id: true },
           take,
-          where: { nextAttemptAt: { lte: now }, status: 'PENDING' },
+          where: {
+            nextAttemptAt: { lte: now },
+            status: 'PENDING',
+            execution: { project: { status: 'ACTIVE' } },
+          },
         }),
         this.database.client.waitState.findMany({
           orderBy: { expiresAt: 'asc' },
           select: { id: true },
           take,
-          where: { expiresAt: { lte: now }, status: 'ACTIVE' },
+          where: {
+            expiresAt: { lte: now },
+            status: 'ACTIVE',
+            execution: { project: { status: 'ACTIVE' } },
+          },
         }),
       ]);
       let failures = 0;

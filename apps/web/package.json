@@ -26,6 +26,7 @@
     "@xyflow/react": "12.10.0",
     "antd": "6.5.2",
     "dayjs": "^1.11.21",
+    "dompurify": "3.4.15",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-redux": "9.3.0",

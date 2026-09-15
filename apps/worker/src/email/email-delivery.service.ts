@@ -9,9 +9,10 @@ import {
   emailDocumentSchema,
   renderEmailDocument,
   renderEmailTemplate,
+  renderPlainEmail,
   type EmailDocument,
 } from '@omnicus/email-core';
-import type { Prisma } from '@omnicus/database';
+import { attachMailboxDelivery, MailboxDeliveryError, type Prisma } from '@omnicus/database';
 import { S3MediaStorage } from '@omnicus/media-core';
 import { Resend } from 'resend';
 
@@ -46,8 +47,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     @Inject(DatabaseService) private readonly database: DatabaseService,
   ) {
     const apiKey = config.get('RESEND_API_KEY', { infer: true });
-    const from = config.get('EMAIL_FROM', { infer: true });
-    if (apiKey && from) this.resend = new Resend(apiKey);
+    if (apiKey) this.resend = new Resend(apiKey);
     if (config.get('MEDIA_STORAGE_ENABLED', { infer: true }))
       this.storage = new S3MediaStorage({
         accessKeyId: config.get('MEDIA_BUCKET_ACCESS_KEY_ID', { infer: true })!,
@@ -61,22 +61,20 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
 
   onApplicationBootstrap() {
     if (!this.resend) {
-      this.logger.warn('Email delivery is disabled: RESEND_API_KEY or EMAIL_FROM is missing');
+      this.logger.warn('Email delivery is disabled: RESEND_API_KEY is missing');
       return;
     }
     const interval = this.config.get('EMAIL_DELIVERY_INTERVAL_MS', { infer: true });
     this.timer = setInterval(() => void this.drain(), interval);
     this.timer.unref();
-    void this.recoverAndDrain().catch((error) =>
-      this.logger.error(error instanceof Error ? error.stack : String(error)),
-    );
+    void this.drain();
   }
 
   onApplicationShutdown() {
     if (this.timer) clearInterval(this.timer);
   }
 
-  private async recoverAndDrain() {
+  private async recoverStaleWork() {
     const expired = new Date(
       Date.now() - this.config.get('EMAIL_DELIVERY_LEASE_MS', { infer: true }),
     );
@@ -105,13 +103,13 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
         status: 'RUNNING',
       },
     });
-    await this.drain();
   }
 
   private async drain() {
     if (this.draining || !this.resend) return;
     this.draining = true;
     try {
+      await this.recoverStaleWork();
       await this.promoteScheduledCampaigns();
       await this.prepareCampaigns();
       const batchSize = this.config.get('EMAIL_DELIVERY_BATCH_SIZE', { infer: true });
@@ -121,7 +119,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
         await this.processDelivery(delivery.id);
       }
     } catch (error) {
-      this.logger.error(error instanceof Error ? error.stack : String(error));
+      this.logger.error(this.message(error));
     } finally {
       this.draining = false;
     }
@@ -130,7 +128,11 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   private async promoteScheduledCampaigns() {
     await this.database.client.emailCampaign.updateMany({
       data: { startedAt: new Date(), status: 'PREPARING' },
-      where: { scheduledAt: { lte: new Date() }, status: 'SCHEDULED' },
+      where: {
+        scheduledAt: { lte: new Date() },
+        status: 'SCHEDULED',
+        project: { status: 'ACTIVE' },
+      },
     });
   }
 
@@ -138,7 +140,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     for (;;) {
       const campaign = await this.database.client.emailCampaign.findFirst({
         orderBy: { createdAt: 'asc' },
-        where: { status: 'PREPARING' },
+        where: { status: 'PREPARING', project: { status: 'ACTIVE' } },
       });
       if (!campaign) return;
       const claimed = await this.database.client.emailCampaign.updateMany({
@@ -196,6 +198,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       rows.push({
         attachmentAssetIds: this.json(attachmentAssetIds),
         campaignId: campaign.id,
+        mailboxId: campaign.mailboxId,
         contactId: contact.id,
         designSnapshot: this.json(design),
         normalizedEmail: contact.normalizedEmail,
@@ -222,6 +225,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       where: {
         OR: [{ campaignId: null }, { campaign: { is: { status: 'RUNNING' } } }],
         nextAttemptAt: { lte: new Date() },
+        project: { status: 'ACTIVE' },
         status: { in: ['PENDING', 'RETRY'] },
       },
     });
@@ -240,34 +244,90 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   }
 
   private async processDelivery(deliveryId: string) {
-    const delivery = await this.database.client.emailDelivery.findUnique({
+    let delivery = await this.database.client.emailDelivery.findUnique({
       include: { contact: true },
       where: { id: deliveryId },
     });
     if (!delivery) return;
+    const heartbeat = setInterval(
+      () => {
+        void this.database.client.emailDelivery
+          .updateMany({
+            where: { id: deliveryId, status: 'PROCESSING', lockedBy: this.workerId },
+            data: { lockedAt: new Date() },
+          })
+          .catch(() => undefined);
+      },
+      Math.max(
+        1000,
+        Math.min(
+          10_000,
+          (this.config.get('EMAIL_DELIVERY_LEASE_MS', { infer: true }) || 60_000) / 3,
+        ),
+      ),
+    );
+    heartbeat.unref();
     try {
+      if (
+        delivery.firstAttemptAt &&
+        Date.now() - delivery.firstAttemptAt.getTime() >= 23 * 60 * 60_000
+      )
+        throw new UnknownEmailError();
+      await this.database.client.$transaction((transaction) =>
+        attachMailboxDelivery(transaction, deliveryId, { projectId: delivery!.projectId }),
+      );
+      delivery = await this.database.client.emailDelivery.findUniqueOrThrow({
+        include: { contact: true },
+        where: { id: deliveryId },
+      });
+      const project = await this.database.client.project.findUnique({
+        where: { id: delivery.projectId },
+        select: { status: true },
+      });
+      if (project?.status !== 'ACTIVE') throw new Error('email_project_paused');
+      if (delivery.mailboxId) {
+        const mailbox = await this.database.client.emailMailbox.findFirst({
+          where: { id: delivery.mailboxId, projectId: delivery.projectId },
+          include: { domain: true },
+        });
+        if (
+          mailbox?.status !== 'ACTIVE' ||
+          mailbox.domain.status !== 'verified' ||
+          !mailbox.domain.sendingEnabled
+        )
+          throw new PermanentEmailError('email_sender_not_ready');
+      }
       if (delivery.source !== 'TEST') await this.assertEligible(delivery);
       const design = emailDocumentSchema.parse(delivery.designSnapshot);
       const { attachments, contentIds } = await this.attachments(delivery.projectId, design);
       const variables = this.variables(delivery.contact, delivery.toEmail);
-      const subject = renderEmailTemplate(delivery.subject, variables).output.trim();
+      const subject =
+        delivery.source === 'MANUAL'
+          ? delivery.subject
+          : renderEmailTemplate(delivery.subject, variables).output.trim();
       const preheader = delivery.preheader
         ? renderEmailTemplate(delivery.preheader, variables).output
         : undefined;
       const unsubscribeUrl =
-        delivery.source === 'TEST'
+        delivery.source === 'TEST' || delivery.source === 'MANUAL'
           ? undefined
           : this.publicApiUrl() + '/api/v1/public/email/unsubscribe/' + delivery.unsubscribeToken;
-      const rendered = renderEmailDocument(design, variables, {
-        assetContentIds: contentIds,
-        preheader,
-        unsubscribeUrl,
-      });
-      const result = await this.resend!.emails.send(
-        {
-          attachments,
-          from: this.config.get('EMAIL_FROM', { infer: true })!,
-          headers: {
+      const rendered =
+        delivery.source === 'MANUAL'
+          ? renderPlainEmail(
+              design.blocks.map((block) => (block.type === 'TEXT' ? block.content : '')).join(''),
+            )
+          : renderEmailDocument(design, variables, {
+              assetContentIds: contentIds,
+              preheader,
+              unsubscribeUrl,
+            });
+      const from = delivery.senderSnapshot ?? this.config.get('EMAIL_FROM', { infer: true });
+      if (!from) throw new PermanentEmailError('email_sender_not_ready');
+      const headers = delivery.firstAttemptAt
+        ? ((delivery.headersSnapshot ?? {}) as Record<string, string>)
+        : {
+            ...((delivery.headersSnapshot as Record<string, string> | null) ?? {}),
             ...(unsubscribeUrl
               ? {
                   'List-Unsubscribe': '<' + unsubscribeUrl + '>',
@@ -275,23 +335,64 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
                 }
               : {}),
             'X-Omnicus-Delivery-Id': delivery.id,
-          },
-          html: rendered.html,
-          ...(this.config.get('EMAIL_REPLY_TO', { infer: true })
-            ? { replyTo: this.config.get('EMAIL_REPLY_TO', { infer: true }) }
-            : {}),
-          subject: subject || 'Omnicus message',
+          };
+      const replyTo = delivery.mailboxId
+        ? delivery.replyToSnapshot
+        : this.config.get('EMAIL_REPLY_TO', { infer: true });
+      const html = delivery.renderedHtml ?? rendered.html;
+      const text = delivery.renderedText ?? rendered.text;
+      const sentSubject = delivery.firstAttemptAt ? delivery.subject : subject || 'Omnicus message';
+      const lease = await this.database.client.emailDelivery.updateMany({
+        where: { id: deliveryId, status: 'PROCESSING', lockedBy: this.workerId },
+        data: { lockedAt: new Date() },
+      });
+      if (!lease.count) return;
+      if (!delivery.firstAttemptAt) {
+        await this.database.client.$transaction(async (transaction) => {
+          await transaction.emailDelivery.update({
+            where: { id: deliveryId },
+            data: {
+              firstAttemptAt: new Date(),
+              senderSnapshot: from,
+              replyToSnapshot: replyTo ?? null,
+              headersSnapshot: headers,
+              renderedHtml: html,
+              renderedText: text,
+              subject: sentSubject,
+            },
+          });
+          await transaction.emailMessage.updateMany({
+            where: { deliveryId, projectId: delivery!.projectId },
+            data: { htmlBody: html, textBody: text, subject: sentSubject },
+          });
+        });
+      }
+      // The installed SDK forwards PostOptions to fetch, including these fetch options.
+      const requestOptions = {
+        idempotencyKey: delivery.id,
+        signal: AbortSignal.timeout(30_000),
+        redirect: 'error' as const,
+      };
+      const result = await this.resend!.emails.send(
+        {
+          attachments,
+          from,
+          headers,
+          html,
+          ...(replyTo ? { replyTo } : {}),
+          subject: sentSubject,
           tags: [{ name: 'omnicus_delivery_id', value: delivery.id }],
-          text: rendered.text,
+          text,
           to: [delivery.toEmail],
         },
-        { idempotencyKey: delivery.id },
+        requestOptions,
       );
       if (result.error || !result.data?.id) throw result.error ?? new Error('resend_missing_id');
       await this.markSent(delivery, result.data.id);
     } catch (error) {
       await this.failDelivery(delivery, error);
     } finally {
+      clearInterval(heartbeat);
       if (delivery.campaignId) await this.finishCampaignIfComplete(delivery.campaignId);
     }
   }
@@ -300,8 +401,12 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     contact: { normalizedEmail: string | null } | null;
     normalizedEmail: string;
     projectId: string;
+    source: string;
   }) {
-    if (!delivery.contact || delivery.contact.normalizedEmail !== delivery.normalizedEmail)
+    if (
+      delivery.source !== 'MANUAL' &&
+      (!delivery.contact || delivery.contact.normalizedEmail !== delivery.normalizedEmail)
+    )
       throw new PermanentEmailError('email_contact_unavailable', 'SUPPRESSED');
     const suppression = await this.database.client.emailSuppression.findUnique({
       where: {
@@ -364,17 +469,27 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   ) {
     const now = new Date();
     await this.database.client.$transaction(async (transaction) => {
+      await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${delivery.id}), 90402)`;
+      const current = await transaction.emailDelivery.findUniqueOrThrow({
+        where: { id: delivery.id },
+      });
       await transaction.emailDelivery.update({
         data: {
           lastError: null,
           lockedAt: null,
           lockedBy: null,
           providerEmailId,
-          providerLastEventAt: now,
-          sentAt: now,
-          status: 'SENT',
+          providerLastEventAt: current.providerLastEventAt ?? now,
+          sentAt: current.sentAt ?? now,
+          status: ['PENDING', 'PROCESSING', 'RETRY', 'UNKNOWN'].includes(current.status)
+            ? 'SENT'
+            : current.status,
         },
         where: { id: delivery.id },
+      });
+      await transaction.emailMessage.updateMany({
+        where: { deliveryId: delivery.id, projectId: delivery.projectId },
+        data: { providerEmailId, rfcMessageId: current.rfcMessageId },
       });
       const event = await transaction.emailEvent.upsert({
         create: {
@@ -419,11 +534,27 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     const message = this.message(error);
     const permanent =
       error instanceof PermanentEmailError ||
+      error instanceof MailboxDeliveryError ||
       this.permanentProviderError(error) ||
       delivery.attempts >= delivery.maxAttempts;
-    const status =
-      error instanceof PermanentEmailError ? error.status : permanent ? 'FAILED' : 'RETRY';
-    await this.database.client.emailDelivery.update({
+    const current = await this.database.client.emailDelivery.findUniqueOrThrow({
+      where: { id: delivery.id },
+    });
+    const unknown =
+      error instanceof UnknownEmailError ||
+      (permanent &&
+        !!current.firstAttemptAt &&
+        !this.permanentProviderError(error) &&
+        !(error instanceof PermanentEmailError) &&
+        !(error instanceof MailboxDeliveryError));
+    const status = unknown
+      ? 'UNKNOWN'
+      : error instanceof PermanentEmailError
+        ? error.status
+        : permanent
+          ? 'FAILED'
+          : 'RETRY';
+    await this.database.client.emailDelivery.updateMany({
       data: {
         ...(permanent ? { completedAt: new Date() } : {}),
         lastError: message,
@@ -434,7 +565,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
         ),
         status,
       },
-      where: { id: delivery.id },
+      where: { id: delivery.id, status: 'PROCESSING', lockedBy: this.workerId },
     });
     if (permanent) this.logger.warn(`Email delivery ${delivery.id} failed: ${message}`);
   }
@@ -449,7 +580,7 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
     });
     if (remaining) return;
     const failed = await this.database.client.emailDelivery.count({
-      where: { campaignId, status: 'FAILED' },
+      where: { campaignId, status: { in: ['FAILED', 'UNKNOWN'] } },
     });
     await this.database.client.emailCampaign.update({
       data: {
@@ -630,9 +761,9 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
   }
 
   private message(error: unknown) {
-    if (error instanceof Error) return error.message.slice(0, 1_000);
-    if (error && typeof error === 'object' && 'message' in error)
-      return String((error as { message: unknown }).message).slice(0, 1_000);
+    if (error instanceof Error && /^(email|resend)_[a-z0-9_]+$/.test(error.message))
+      return error.message;
+    if (this.permanentProviderError(error)) return 'email_provider_rejected_request';
     return 'email_delivery_failed';
   }
 
@@ -655,5 +786,11 @@ class PermanentEmailError extends Error {
     readonly status: 'FAILED' | 'SUPPRESSED' = 'FAILED',
   ) {
     super(message);
+  }
+}
+
+class UnknownEmailError extends Error {
+  constructor() {
+    super('email_delivery_unknown_reconcile_before_retry');
   }
 }

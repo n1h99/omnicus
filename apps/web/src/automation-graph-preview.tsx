@@ -79,10 +79,7 @@ function previewLayout(graph: ScenarioGraph, compact: boolean) {
   const widestLayer = Math.max(1, ...[...layers.values()].map((layer) => layer.length));
   const availableNodeWidth =
     (width - paddingX * 2 - horizontalGap * (widestLayer - 1)) / widestLayer;
-  const nodeWidth = Math.max(
-    compact ? 10 : 56,
-    Math.min(compact ? 30 : 140, availableNodeWidth),
-  );
+  const nodeWidth = Math.max(compact ? 10 : 56, Math.min(compact ? 30 : 140, availableNodeWidth));
   const verticalRange = height - paddingY * 2 - nodeHeight;
   const placement = new Map<string, PreviewPoint>();
 
@@ -90,7 +87,9 @@ function previewLayout(graph: ScenarioGraph, compact: boolean) {
     const layerWidth = layer.length * nodeWidth + Math.max(0, layer.length - 1) * horizontalGap;
     const startX = (width - layerWidth) / 2;
     const top =
-      maximumDepth === 0 ? (height - nodeHeight) / 2 : paddingY + (depth / maximumDepth) * verticalRange;
+      maximumDepth === 0
+        ? (height - nodeHeight) / 2
+        : paddingY + (depth / maximumDepth) * verticalRange;
     layer.forEach((node, index) => {
       placement.set(node.id, {
         left: startX + index * (nodeWidth + horizontalGap),

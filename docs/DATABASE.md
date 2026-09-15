@@ -1,6 +1,24 @@
 # OMNICUS — Prisma schema and migration design
 
-Current status (reviewed 2026-08-14):
+## Email Inbox extension — ADR-060, locally implemented (2026-09-15)
+
+Reviewed schema intent: EmailDomain, EmailMailbox, EmailMailboxMember, EmailThread,
+EmailMessage, EmailInboundReceipt, EmailThreadUserState, EmailDraft and
+EmailAttachment. Domain/provider IDs and mailbox addresses are globally unique
+for unambiguous inbound routing; all content/access references additionally carry
+project-scoped FKs. Preserve message chronology and private per-user drafts/state.
+Extend EmailDelivery/EmailCampaign with mailbox selection and immutable message
+metadata, MANUAL source and UNKNOWN outcome. Extend WaitState with nullable chat
+conversation and email-thread alternatives (exactly one target), and ScenarioExecution
+with an email-thread context. No existing channel or history is converted to email.
+Additive migration `20260915010000_email_inbox` was applied with all previous
+migrations in disposable PGlite PostgreSQL, including actual constraint checks.
+It has not been applied to the live database. Partial uniqueness allows only one
+default mailbox per project, which must be shared. WaitState enforces exactly one
+chat/email target; private drafts carry optimistic revisions and composite owner FKs.
+See [EMAIL_INBOX.md](EMAIL_INBOX.md) for lifecycle and provider gates.
+
+Historical deployed baseline (reviewed 2026-08-14; the local extension above adds nine models):
 `packages/database/prisma/schema.prisma` is the executable platform schema with
 62 models. Reviewed ordered migrations cover Auth/RBAC, contacts, Telegram
 inbox/outbox and chat v3.3, automation and continuations, CRM, broadcasts,

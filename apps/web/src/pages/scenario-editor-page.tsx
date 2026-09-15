@@ -237,9 +237,13 @@ function AutomationCanvasNode({ data, selected }: NodeProps<AutomationCanvasNode
         <span className="automation-node-icon">{automationNodeIcon(type)}</span>
         <span className="automation-node-heading">
           <small>
-            {isMessage ? automationDeliveryLabel(config.deliveryTarget) : automationNodeCategory(type)}
+            {isMessage
+              ? automationDeliveryLabel(config.deliveryTarget)
+              : automationNodeCategory(type)}
           </small>
-          <strong>{isTrigger ? 'When...' : paletteLabels.get(type) ?? automationNodeLabel(type)}</strong>
+          <strong>
+            {isTrigger ? 'When...' : (paletteLabels.get(type) ?? automationNodeLabel(type))}
+          </strong>
         </span>
       </header>
 
@@ -351,9 +355,7 @@ function automationMessageButtons(config: Record<string, unknown>): AutomationMe
 function automationMediaIds(config: Record<string, unknown>): string[] {
   const ids = [
     automationConfigText(config.mediaAssetId),
-    ...(Array.isArray(config.mediaAssetIds)
-      ? config.mediaAssetIds.map(automationConfigText)
-      : []),
+    ...(Array.isArray(config.mediaAssetIds) ? config.mediaAssetIds.map(automationConfigText) : []),
   ].filter(Boolean);
   return [...new Set(ids)];
 }
@@ -389,7 +391,11 @@ function AutomationNodeMediaPreview({
   return (
     <div className={`automation-node-media${previewUrl ? ' has-image' : ''}`}>
       {previewUrl ? (
-        <img alt={asset?.originalFilename ?? 'Message attachment'} draggable={false} src={previewUrl} />
+        <img
+          alt={asset?.originalFilename ?? 'Message attachment'}
+          draggable={false}
+          src={previewUrl}
+        />
       ) : (
         <div className="automation-node-media-placeholder">
           <span>{asset?.kind ?? 'MEDIA'}</span>

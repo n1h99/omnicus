@@ -9,11 +9,18 @@ import { EmailPublicController } from './email-public.controller';
 import { EmailWebhooksController } from './email-webhooks.controller';
 import { EmailWebhooksService } from './email-webhooks.service';
 import { EmailService } from './email.service';
+import { EmailInboxController } from '../email-inbox/email-inbox.controller';
+import { EmailInboxService } from '../email-inbox/email-inbox.service';
 
 @Module({
-  controllers: [EmailController, EmailPublicController, EmailWebhooksController],
-  exports: [EmailService],
+  controllers: [
+    EmailController,
+    EmailPublicController,
+    EmailWebhooksController,
+    EmailInboxController,
+  ],
+  exports: [EmailService, EmailInboxService],
   imports: [AccessModule, AuditModule, DatabaseModule, JwtModule.register({})],
-  providers: [EmailService, EmailWebhooksService],
+  providers: [EmailService, EmailWebhooksService, EmailInboxService],
 })
 export class EmailModule {}

@@ -15,7 +15,12 @@ import {
   type ScenarioGraphEdge,
   type ScenarioGraphNode,
 } from '@omnicus/automation-core';
-import { Prisma, type CustomFieldType } from '@omnicus/database';
+import {
+  Prisma,
+  attachMailboxDelivery,
+  MailboxDeliveryError,
+  type CustomFieldType,
+} from '@omnicus/database';
 import {
   assertWhatsAppTemplateComponents,
   whatsAppTemplateDisabledReason,
@@ -31,6 +36,8 @@ export interface AutomationTriggerInput {
   conversationId: string;
   normalizedEventId: string;
   projectId: string;
+  emailThreadId?: string | null;
+  emailPayload?: Prisma.JsonValue;
 }
 
 type RuntimeTransaction = Prisma.TransactionClient;
@@ -61,6 +68,175 @@ export class AutomationRuntimeService {
     await this.database.client.$transaction((transaction) =>
       this.triggerInTransaction(transaction, input),
     );
+  }
+
+  /** Runs after durable email storage, never inside the provider webhook. */
+  async processInboundEmail(messageId: string): Promise<void> {
+    await this.database.client.$transaction(
+      async (tx) => {
+        const message = await tx.emailMessage.findUnique({
+          where: { id: messageId },
+          include: { thread: { include: { contact: true, mailbox: true, project: true } } },
+        });
+        if (
+          !message ||
+          message.automationStatus !== 'PENDING' ||
+          message.thread.project.status !== 'ACTIVE' ||
+          message.thread.mailbox.status !== 'ACTIVE'
+        )
+          return;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${message.threadId}), 90403)`;
+        const won = await tx.emailMessage.updateMany({
+          where: { id: messageId, automationStatus: 'PENDING' },
+          data: { automationStatus: 'PROCESSING' },
+        });
+        if (!won.count) return;
+        const contact = message.thread.contact;
+        if (
+          contact?.status === 'ACTIVE' &&
+          contact.automationMode === 'ENABLED' &&
+          !message.isAutomatic
+        ) {
+          const payload = this.emailPayload(message);
+          const input: AutomationTriggerInput = {
+            projectId: message.projectId,
+            contactId: contact.id,
+            conversationId: '',
+            connectionId: '',
+            normalizedEventId: '',
+            emailThreadId: message.threadId,
+            emailPayload: payload,
+          };
+          const waits = await tx.waitState.findMany({
+            where: {
+              projectId: message.projectId,
+              emailThreadId: message.threadId,
+              status: 'ACTIVE',
+              expiresAt: { gte: message.occurredAt },
+              execution: { contactId: contact.id, status: 'WAITING' },
+            },
+          });
+          for (const wait of waits) {
+            if (!matchesWaitForReplyCriteria(wait.criteria, payload)) continue;
+            const sent = await tx.emailMessage.findFirst({
+              where: {
+                projectId: message.projectId,
+                threadId: message.threadId,
+                direction: 'OUTBOUND',
+                delivery: { scenarioExecutionId: wait.scenarioExecutionId },
+              },
+              orderBy: { occurredAt: 'desc' },
+            });
+            if (message.occurredAt < (sent?.occurredAt ?? wait.createdAt)) continue;
+            const used = await tx.waitState.findFirst({
+              where: {
+                projectId: message.projectId,
+                scenarioExecutionId: wait.scenarioExecutionId,
+                resolvedByEmailMessageId: message.id,
+              },
+            });
+            if (used) continue;
+            const resolved = await tx.waitState.updateMany({
+              where: { id: wait.id, status: 'ACTIVE' },
+              data: {
+                status: 'RESOLVED',
+                resolvedAt: new Date(),
+                resolvedByEmailMessageId: message.id,
+              },
+            });
+            if (resolved.count) {
+              if (wait.successNodeId)
+                await this.resumeExecutionInTransaction(
+                  tx,
+                  wait.scenarioExecutionId,
+                  message.projectId,
+                  wait.successNodeId,
+                  input,
+                );
+              else
+                await tx.scenarioExecution.update({
+                  where: { id: wait.scenarioExecutionId },
+                  data: { status: 'COMPLETED', completedAt: new Date() },
+                });
+            }
+          }
+          const scenarios = await tx.scenario.findMany({
+            where: { projectId: message.projectId, status: 'PUBLISHED' },
+            include: { activeVersion: true },
+          });
+          for (const scenario of scenarios) {
+            const version = scenario.activeVersion;
+            const graph = scenarioGraphSchema.safeParse(version?.compiledDefinition);
+            if (!version || !graph.success) continue;
+            const trigger = graph.data.nodes.find((node) => node.type === 'INCOMING_MESSAGE');
+            if (
+              trigger?.config.triggerType !== 'EMAIL_RECEIVED' ||
+              (trigger.config.mailboxId && trigger.config.mailboxId !== message.mailboxId)
+            )
+              continue;
+            const triggerKey = 'email:' + message.id;
+            const existing = await tx.scenarioExecution.findUnique({
+              where: {
+                projectId_scenarioId_triggerKey: {
+                  projectId: message.projectId,
+                  scenarioId: scenario.id,
+                  triggerKey,
+                },
+              },
+            });
+            if (existing) continue;
+            const execution = await tx.scenarioExecution.create({
+              data: {
+                projectId: message.projectId,
+                scenarioId: scenario.id,
+                scenarioVersionId: version.id,
+                contactId: contact.id,
+                emailThreadId: message.threadId,
+                triggerType: 'EMAIL_RECEIVED',
+                triggerKey,
+                triggerPayload: payload as Prisma.InputJsonValue,
+                correlationId: triggerKey,
+                startedAt: new Date(),
+                status: 'RUNNING',
+              },
+            });
+            await this.executeGraph(tx, graph.data, execution.id, {
+              ...input,
+              eventPayload: payload,
+              contactVariables: this.contactVariables(contact),
+              customFields: contact.customFields,
+              variables: {},
+              subflowDepth: 0,
+            });
+          }
+        }
+        await tx.emailMessage.update({
+          where: { id: messageId },
+          data: { automationStatus: 'COMPLETED', automationError: null },
+        });
+      },
+      { timeout: 30_000 },
+    );
+  }
+
+  private emailPayload(message: {
+    id: string;
+    threadId: string;
+    fromAddress: string;
+    subject: string;
+    textBody: string;
+  }): Prisma.JsonValue {
+    return {
+      type: 'MESSAGE',
+      channel: 'EMAIL',
+      content: { text: message.textBody.slice(0, 100_000) },
+      email: {
+        messageId: message.id,
+        threadId: message.threadId,
+        from: message.fromAddress,
+        subject: message.subject,
+      },
+    };
   }
 
   async triggerLeadCapture(eventId: string): Promise<void> {
@@ -338,11 +514,98 @@ export class AutomationRuntimeService {
     await this.database.client.$transaction(async (transaction) => {
       const wait = await transaction.waitState.findUnique({ where: { id: waitId } });
       if (!wait || wait.status !== 'ACTIVE' || wait.expiresAt > new Date()) return;
+      if (wait.emailThreadId) {
+        const thread = await transaction.emailThread.findFirst({
+          where: {
+            id: wait.emailThreadId,
+            projectId: wait.projectId,
+            project: { status: 'ACTIVE' },
+            mailbox: { status: 'ACTIVE' },
+          },
+        });
+        if (!thread) return;
+        await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${wait.emailThreadId}), 90403)`;
+        const outgoing = await transaction.emailMessage.findFirst({
+          where: {
+            projectId: wait.projectId,
+            threadId: thread.id,
+            direction: 'OUTBOUND',
+            delivery: { scenarioExecutionId: wait.scenarioExecutionId },
+          },
+          orderBy: { occurredAt: 'desc' },
+        });
+        const since = outgoing?.occurredAt ?? wait.createdAt;
+        const replies = await transaction.emailMessage.findMany({
+          where: {
+            projectId: wait.projectId,
+            threadId: thread.id,
+            direction: 'INBOUND',
+            isAutomatic: false,
+            automationStatus: { in: ['PENDING', 'PROCESSING', 'COMPLETED'] },
+            occurredAt: { gte: since, lte: wait.expiresAt },
+            resolvedWaits: { none: { scenarioExecutionId: wait.scenarioExecutionId } },
+          },
+          orderBy: { occurredAt: 'asc' },
+          take: 100,
+        });
+        const reply = replies.find((item) =>
+          matchesWaitForReplyCriteria(wait.criteria, this.emailPayload(item)),
+        );
+        if (reply) {
+          const won = await transaction.waitState.updateMany({
+            where: { id: wait.id, status: 'ACTIVE' },
+            data: {
+              status: 'RESOLVED',
+              resolvedAt: new Date(),
+              resolvedByEmailMessageId: reply.id,
+            },
+          });
+          if (won.count && wait.successNodeId)
+            await this.resumeExecutionInTransaction(
+              transaction,
+              wait.scenarioExecutionId,
+              wait.projectId,
+              wait.successNodeId,
+              {
+                projectId: wait.projectId,
+                emailThreadId: thread.id,
+                emailPayload: this.emailPayload(reply),
+                contactId: thread.contactId ?? '',
+                connectionId: '',
+                conversationId: '',
+                normalizedEventId: '',
+              },
+            );
+          else if (won.count)
+            await transaction.scenarioExecution.update({
+              where: { id: wait.scenarioExecutionId },
+              data: { status: 'COMPLETED', completedAt: new Date() },
+            });
+          return;
+        }
+        // A webhook received before the deadline wins over the timeout once its body is imported.
+        const importing = await transaction.emailInboundReceipt.count({
+          where: {
+            projectId: wait.projectId,
+            mailboxId: thread.mailboxId,
+            occurredAt: { gte: since, lte: wait.expiresAt },
+            status: { in: ['PENDING', 'PROCESSING', 'RETRY'] },
+          },
+        });
+        if (importing) return;
+      }
       const won = await transaction.waitState.updateMany({
         data: { resolvedAt: new Date(), status: 'TIMED_OUT' },
         where: { id: wait.id, status: 'ACTIVE' },
       });
       if (won.count === 1) {
+        if (wait.emailThreadId && !wait.timeoutNodeId) {
+          await transaction.scenarioExecution.update({
+            where: { id: wait.scenarioExecutionId },
+            data: { status: 'COMPLETED', completedAt: new Date() },
+          });
+          return;
+        }
         await this.resumeExecutionInTransaction(
           transaction,
           wait.scenarioExecutionId,
@@ -388,10 +651,16 @@ export class AutomationRuntimeService {
           })
         : Promise.resolve(null),
     ]);
-    if (!contact || (!event && execution.triggerPayload === null))
+    if (!contact || (!event && execution.triggerPayload === null && !eventOverride?.emailPayload))
       throw new Error('automation_execution_context_missing');
     await transaction.scenarioExecution.update({
-      data: { currentNodeId: startNodeId ?? null, status: 'RUNNING' },
+      data: {
+        currentNodeId: startNodeId ?? null,
+        status: 'RUNNING',
+        ...(eventOverride?.emailPayload
+          ? { triggerPayload: eventOverride.emailPayload as Prisma.InputJsonValue }
+          : {}),
+      },
       where: { projectId_id: { id: executionId, projectId } },
     });
     await this.executeGraph(
@@ -404,9 +673,12 @@ export class AutomationRuntimeService {
         contactVariables: this.contactVariables(contact),
         conversationId: execution.conversationId ?? '',
         customFields: contact.customFields,
-        eventPayload: event
-          ? this.automationEventPayload(event.type, event.payload)
-          : (execution.triggerPayload ?? {}),
+        emailThreadId: eventOverride?.emailThreadId ?? execution.emailThreadId,
+        eventPayload:
+          eventOverride?.emailPayload ??
+          (event
+            ? this.automationEventPayload(event.type, event.payload)
+            : (execution.triggerPayload ?? {})),
         normalizedEventId: eventId ?? '',
         projectId,
         subflowDepth: 0,
@@ -594,9 +866,28 @@ export class AutomationRuntimeService {
       const timeoutEdge = edges.find((edge) => edge.output === 'timeout');
       const criteria = waitForReplyCriteriaSchema.safeParse(node.config.criteria ?? {});
       if (!criteria.success) throw new Error('automation_wait_criteria_invalid');
-      await transaction.waitState.upsert({
+      const emailThreadId =
+        node.config.replyChannel === 'EMAIL'
+          ? (context.emailThreadId ?? execution.emailThreadId)
+          : null;
+      if (node.config.replyChannel === 'EMAIL') {
+        if (!emailThreadId || !['ANY', 'TEXT'].includes(criteria.data.kind))
+          throw new Error('automation_email_wait_context_missing');
+        const thread = await transaction.emailThread.findFirst({
+          where: {
+            id: emailThreadId,
+            projectId: context.projectId,
+            contactId: context.contactId,
+            mailbox: { status: 'ACTIVE', mode: 'TWO_WAY', domain: { receivingReady: true } },
+          },
+        });
+        if (!thread) throw new Error('automation_email_receiving_not_ready');
+        await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${emailThreadId}), 90403)`;
+      } else if (!context.conversationId) throw new Error('automation_wait_conversation_missing');
+      const wait = await transaction.waitState.upsert({
         create: {
-          conversationId: context.conversationId,
+          conversationId: emailThreadId ? null : context.conversationId,
+          emailThreadId,
           criteria: criteria.data as Prisma.InputJsonValue,
           expiresAt: new Date(Date.now() + seconds * 1_000),
           nodeId: node.id,
@@ -616,6 +907,51 @@ export class AutomationRuntimeService {
           },
         },
       });
+      if (emailThreadId) {
+        const outgoing = await transaction.emailMessage.findFirst({
+          where: {
+            projectId: context.projectId,
+            threadId: emailThreadId,
+            direction: 'OUTBOUND',
+            delivery: { scenarioExecutionId: executionId },
+          },
+          orderBy: { occurredAt: 'desc' },
+        });
+        if (outgoing) {
+          const earlyReplies = await transaction.emailMessage.findMany({
+            where: {
+              projectId: context.projectId,
+              threadId: emailThreadId,
+              direction: 'INBOUND',
+              isAutomatic: false,
+              automationStatus: { in: ['PENDING', 'PROCESSING', 'COMPLETED'] },
+              occurredAt: { gte: outgoing.occurredAt, lte: wait.expiresAt },
+              resolvedWaits: { none: { scenarioExecutionId: executionId } },
+            },
+            orderBy: { occurredAt: 'asc' },
+            take: 100,
+          });
+          const early = earlyReplies.find((reply) =>
+            matchesWaitForReplyCriteria(wait.criteria, this.emailPayload(reply)),
+          );
+          if (early) {
+            await transaction.waitState.update({
+              where: { id: wait.id },
+              data: {
+                status: 'RESOLVED',
+                resolvedAt: new Date(),
+                resolvedByEmailMessageId: early.id,
+              },
+            });
+            context.eventPayload = this.emailPayload(early);
+            await transaction.scenarioExecution.update({
+              where: { id: executionId },
+              data: { triggerPayload: context.eventPayload as Prisma.InputJsonValue },
+            });
+            return { next: replyEdge };
+          }
+        }
+      }
       await transaction.scenarioExecution.update({
         data: { currentNodeId: node.id, status: 'WAITING' },
         where: { projectId_id: { id: executionId, projectId: context.projectId } },
@@ -647,7 +983,8 @@ export class AutomationRuntimeService {
       const child = await transaction.scenarioExecution.upsert({
         create: {
           contactId: context.contactId,
-          conversationId: context.conversationId,
+          conversationId: context.conversationId || null,
+          emailThreadId: context.emailThreadId ?? null,
           conversationSequence: BigInt(0),
           correlationId: `subflow:${executionId}:${node.id}`,
           parentExecutionId: executionId,
@@ -1003,12 +1340,17 @@ export class AutomationRuntimeService {
     const existing = await transaction.emailDelivery.findFirst({
       where: { nodeId: node.id, projectId: context.projectId, scenarioExecutionId: executionId },
     });
-    if (existing)
+    if (existing) {
+      const message = await transaction.emailMessage.findFirst({
+        where: { projectId: context.projectId, deliveryId: existing.id },
+      });
+      if (message) context.emailThreadId = message.threadId;
       return {
         emailDeliveryId: existing.id,
         emailTemplateId: templateId,
         emailTemplateVersionId: templateVersionId,
       };
+    }
     const design = emailDocumentSchema.parse(version.design);
     const delivery = await transaction.emailDelivery.create({
       data: {
@@ -1028,6 +1370,43 @@ export class AutomationRuntimeService {
         toEmail: contact.email,
       },
     });
+    const mailboxId =
+      typeof node.config.mailboxId === 'string' && node.config.mailboxId
+        ? node.config.mailboxId
+        : null;
+    const previousThread = context.emailThreadId
+      ? await transaction.emailThread.findFirst({
+          where: {
+            id: context.emailThreadId,
+            projectId: context.projectId,
+            peerEmail: contact.normalizedEmail,
+            ...(mailboxId ? { mailboxId } : {}),
+          },
+        })
+      : null;
+    try {
+      const message = await attachMailboxDelivery(transaction, delivery.id, {
+        projectId: context.projectId,
+        mailboxId: mailboxId ?? previousThread?.mailboxId ?? null,
+        threadId: previousThread?.id ?? null,
+      });
+      if (message) {
+        context.emailThreadId = message.threadId;
+        await transaction.scenarioExecution.update({
+          where: { id: executionId },
+          data: { emailThreadId: message.threadId },
+        });
+      }
+    } catch (error) {
+      if (error instanceof MailboxDeliveryError) {
+        await transaction.emailDelivery.update({
+          where: { id: delivery.id },
+          data: { status: 'FAILED', lastError: error.message, completedAt: new Date() },
+        });
+        throw new Error('automation_email_sender_not_ready');
+      }
+      throw error;
+    }
     return {
       emailDeliveryId: delivery.id,
       emailTemplateId: templateId,

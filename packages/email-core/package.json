@@ -5,6 +5,11 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
+    "./server": {
+      "types": "./dist/resend-mail-client.d.ts",
+      "require": "./dist/resend-mail-client.js",
+      "default": "./dist/resend-mail-client.js"
+    },
     ".": {
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",

@@ -133,8 +133,11 @@ function ActionConfirmModal({
   );
 }
 
+import { MailboxSelect } from '../mailbox-select';
+
 function campaignInput(campaign: EmailCampaign): EmailCampaignInput {
   return {
+    mailboxId: campaign.mailboxId,
     audience: campaign.audience,
     design: campaign.design,
     name: campaign.name,
@@ -891,6 +894,15 @@ function CampaignEditor({
       <div className="email-campaign-settings">
         <div className="email-settings-primary">
           <label>
+            From address
+            <MailboxSelect
+              projectId={projectId}
+              disabled={!editable}
+              value={draft.mailboxId ?? null}
+              onChange={(mailboxId) => setDraft({ ...draft, mailboxId })}
+            />
+          </label>
+          <label>
             Internal campaign name
             <Input
               disabled={!editable}
@@ -976,6 +988,7 @@ function CampaignEditor({
         onOk={async () => {
           try {
             await mutations.testSend.mutateAsync({
+              mailboxId: draft.mailboxId ?? null,
               design: draft.design,
               preheader: draft.preheader ?? null,
               subject: draft.subject,

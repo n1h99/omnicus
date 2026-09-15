@@ -76,6 +76,7 @@ const EmailSmsBroadcastPage = lazyPage(
   () => import('./pages/email-sms-broadcast-page'),
   'EmailSmsBroadcastPage',
 );
+const EmailInboxPage = lazyPage(() => import('./pages/email-inbox-page'), 'EmailInboxPage');
 const MediaAssetsPage = lazyPage(() => import('./pages/media-assets-page'), 'MediaAssetsPage');
 const TemplatesPage = lazyPage(() => import('./pages/templates-page'), 'TemplatesPage');
 const OperationsPage = lazyPage(() => import('./pages/operations-page'), 'OperationsPage');
@@ -164,6 +165,9 @@ export function App() {
                   path="/projects/:projectId/broadcasts/new"
                 />
               </Route>
+            </Route>
+            <Route element={<ProjectPermissionRoute permission="email:read" />}>
+              <Route element={<EmailInboxPage />} path="/projects/:projectId/email-inbox" />
             </Route>
             <Route element={<ProjectPermissionRoute permission="templates:read" />}>
               <Route element={<TemplatesPage />} path="/projects/:projectId/templates" />

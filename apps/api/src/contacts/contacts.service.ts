@@ -945,9 +945,14 @@ export class ContactsService {
         }),
       ]);
       const mergedFields = {
+        // Thread peer addresses and immutable sent snapshots are not rewritten by a merge.
         ...this.jsonObject(secondary.customFields),
         ...this.jsonObject(primary.customFields),
       };
+      await transaction.emailThread.updateMany({
+        where: { projectId, contactId: secondary.id },
+        data: { contactId: primary.id },
+      });
       const whatsAppConsentStatus =
         primary.whatsAppConsentStatus === 'REVOKED' || secondary.whatsAppConsentStatus === 'REVOKED'
           ? 'REVOKED'

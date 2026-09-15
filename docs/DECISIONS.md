@@ -1508,3 +1508,20 @@ Storage objects, shared assets, provider copies, Redis and backup archives are
 not erased. The plan records known retained file keys for a separately approved
 storage review; a cloned staging record cannot authorize deletion from a shared
 production bucket. See [cleanup runbook](../scripts/test-data-cleanup/README.md).
+
+## ADR-060 — Resend-backed email inbox and conversations
+
+**Status:** Accepted and implemented locally, 2026-09-15; rollout/live provider acceptance pending.
+
+**Decision:** Add project-owned domains/mailboxes, assigned-user access, email
+threads/messages, durable inbound receipts, private drafts and per-user thread
+state. Reuse EmailDelivery for manual/campaign/automation outbound mail; persist
+immutable actual sender/body/headers and RFC message identifiers. Extend existing
+WAIT_FOR_REPLY with exact email-thread waits and timeout/reply handling, without
+creating a second automation runtime or emulating Telegram identities.
+
+New project-scoped FKs, worker leases, deduplication, bounded private attachments,
+safe HTML and UNKNOWN/no-blind-retry semantics are required. Global provider domain
+binding requires system-admin authority; mailbox access is additionally scoped by
+assignment. DNS, billing, production migration and live acceptance remain explicit
+operator steps. Full scope and current provider sources: [EMAIL_INBOX.md](EMAIL_INBOX.md).

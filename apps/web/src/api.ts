@@ -31,6 +31,21 @@ const statusReasons: Record<number, string> = {
 };
 
 const codeReasons: Record<string, string> = {
+  email_sender_not_ready:
+    'Verify the sender domain and enable this address in Email Inbox settings.',
+  email_sender_access_denied:
+    'Ask the project administrator for email sending permission and access to this address.',
+  email_default_must_be_shared:
+    'The project default sender must be a shared address. Clear Default before restricting access.',
+  email_draft_changed:
+    'This draft was changed in another tab. Reopen the latest saved draft before sending.',
+  email_address_suppressed:
+    'This recipient is suppressed. Review the suppression list before sending.',
+  email_project_not_active: 'Activate the project before sending email.',
+  email_request_id_reused: 'Check Sent for the previous attempt before sending another copy.',
+  email_attachments_too_large: 'Keep the combined attachments under 25 MB.',
+  email_thread_recipient_mismatch:
+    'A reply must use the same sender address and recipient as its conversation.',
   AUTOMATION_SECRET_IN_USE: 'This secret is still used by a published scenario.',
   BROADCAST_CANNOT_CANCEL: 'This broadcast can no longer be cancelled.',
   BROADCAST_CANNOT_LAUNCH: 'This broadcast is not ready to launch.',
@@ -175,6 +190,7 @@ export function getUserErrorMessage(
   }
   const reason =
     codeReasons[error.code] ??
+    codeReasons[error.message] ??
     (error.code === 'VALIDATION_ERROR' ? validationReason(error.details) : undefined) ??
     (error.status < 500 ? safeApiReason(error.message) : undefined) ??
     statusReasons[error.status];

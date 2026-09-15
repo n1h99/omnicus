@@ -10,6 +10,7 @@ const sectionLabels: Record<string, string> = {
   'crm-config': 'CRM integration',
   'custom-fields': 'Custom fields',
   'email-sms-broadcast': 'Email & SMS Broadcast',
+  'email-inbox': 'Email Inbox',
   'media-assets': 'Media',
   members: 'Members',
   operations: 'Operations & audit',

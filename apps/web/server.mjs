@@ -50,7 +50,7 @@ function createSecurityHeaders(apiOrigin) {
       "font-src 'self' data:",
       "form-action 'self'",
       "frame-ancestors 'none'",
-      'frame-src https://www.facebook.com https://web.facebook.com',
+      "frame-src 'self' https://www.facebook.com https://web.facebook.com",
       "img-src 'self' data: https:",
       "object-src 'none'",
       "script-src 'self' https://connect.facebook.net",

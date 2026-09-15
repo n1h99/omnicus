@@ -3008,7 +3008,9 @@ button:disabled,
 .automation-flow-node.is-selected {
   border-color: var(--node-accent);
   outline: none;
-  box-shadow: 0 0 0 3px var(--node-soft), 0 12px 30px rgba(15, 23, 42, 0.1);
+  box-shadow:
+    0 0 0 3px var(--node-soft),
+    0 12px 30px rgba(15, 23, 42, 0.1);
 }
 
 .scenario-canvas .react-flow__node:focus,
@@ -5266,7 +5268,10 @@ button:disabled,
   background: #ffffff;
   box-shadow: 0 8px 24px rgba(24, 45, 72, 0.1);
   color: #172033;
-  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
 }
 
 .automation-flow-node::before {
@@ -5298,7 +5303,9 @@ button:disabled,
 
 .automation-flow-node.is-selected {
   border-color: #5266dc;
-  box-shadow: 0 0 0 3px rgba(82, 102, 220, 0.14), 0 14px 32px rgba(24, 45, 72, 0.16);
+  box-shadow:
+    0 0 0 3px rgba(82, 102, 220, 0.14),
+    0 14px 32px rgba(24, 45, 72, 0.16);
 }
 
 .automation-node-header {

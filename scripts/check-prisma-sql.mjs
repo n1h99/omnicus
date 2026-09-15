@@ -108,6 +108,15 @@ const expectedTables = new Set([
   'email_events',
   'email_suppressions',
   'email_asset_references',
+  'email_domains',
+  'email_mailboxes',
+  'email_mailbox_members',
+  'email_threads',
+  'email_messages',
+  'email_inbound_receipts',
+  'email_thread_user_states',
+  'email_drafts',
+  'email_attachments',
 ]);
 const generatedTables = new Set(
   [...sql.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => match[1]),
