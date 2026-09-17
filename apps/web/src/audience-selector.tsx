@@ -74,7 +74,6 @@ export function AudienceSelector({
               onChange={(contactIds) => onChange({ ...value, contactIds })}
               optionFilterProp="label"
               options={(options?.contacts ?? []).map((item) => ({
-                disabled: item.eligible === false,
                 label: contactLabel(item),
                 ...(item.eligibilityReason ? { title: item.eligibilityReason } : {}),
                 value: item.id,
