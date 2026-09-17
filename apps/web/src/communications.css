@@ -190,16 +190,26 @@
 }
 
 .communications-channel-tabs > .ant-tabs-content-holder {
+  position: relative;
   flex: 1;
-  height: auto;
   min-height: 0;
   overflow: hidden;
+}
+
+.communications-channel-tabs > .ant-tabs-content-holder > .ant-tabs-content {
+  position: absolute;
+  inset: 0;
+  min-width: 0;
 }
 
 .communications-channel-tabs > .ant-tabs-content-holder > .ant-tabs-content,
 .communications-channel-tabs .ant-tabs-tabpane {
   height: 100%;
   min-height: 0;
+}
+
+.communications-channel-tabs .ant-tabs-tabpane-active {
+  overflow: hidden;
 }
 
 .communications-tab-label {
@@ -209,10 +219,16 @@
 }
 
 .communications-messenger {
-  display: flex;
+  display: grid;
   height: 100%;
   min-height: 0;
-  flex-direction: column;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+}
+
+.communications-messenger-header {
+  min-width: 0;
+  min-height: 0;
 }
 
 .communications-channel-toolbar {
@@ -267,7 +283,6 @@
 }
 
 .communications-message-scroll {
-  flex: 1 1 auto;
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
@@ -447,9 +462,9 @@
 }
 
 .communications-composer {
-  flex: 0 0 auto;
   min-width: 0;
-  max-height: 48%;
+  min-height: 0;
+  max-height: min(42vh, 340px);
   padding: 10px 14px 14px;
   overflow-y: auto;
   background: var(--surface);

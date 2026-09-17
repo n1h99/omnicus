@@ -414,7 +414,8 @@ function MessengerPanel({
 
   return (
     <div className="communications-messenger">
-      <div className="communications-channel-toolbar">
+      <div className="communications-messenger-header">
+        <div className="communications-channel-toolbar">
         <div>
           <strong>{channel === 'WHATSAPP' ? 'WhatsApp Business' : 'Telegram'}</strong>
           <small>
@@ -442,10 +443,10 @@ function MessengerPanel({
             />
           ) : null}
         </Space>
-      </div>
+        </div>
 
-      {channel === 'WHATSAPP' && identity ? (
-        <div className={`communications-window ${serviceWindowOpen ? 'is-open' : 'is-closed'}`}>
+        {channel === 'WHATSAPP' && identity ? (
+          <div className={`communications-window ${serviceWindowOpen ? 'is-open' : 'is-closed'}`}>
           <ClockCircleOutlined />
           <span>
             <strong>
@@ -459,8 +460,9 @@ function MessengerPanel({
                 : 'Use an approved Meta template to start or reopen the conversation.'}
             </small>
           </span>
-        </div>
-      ) : null}
+          </div>
+        ) : null}
+      </div>
 
       <div className="communications-message-scroll">
         {!identity ? (
