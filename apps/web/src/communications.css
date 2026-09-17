@@ -10,7 +10,7 @@
   display: grid;
   grid-template-columns: minmax(280px, 22%) minmax(0, 1fr);
   height: calc(100vh - 208px);
-  min-height: 620px;
+  min-height: 480px;
   overflow: hidden;
 }
 
@@ -267,7 +267,7 @@
 }
 
 .communications-message-scroll {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
@@ -350,6 +350,76 @@
   font-size: 10px;
 }
 
+.communications-message-reply-reference {
+  display: grid;
+  max-width: 100%;
+  gap: 1px;
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  overflow: hidden;
+  color: var(--text-muted);
+  background: rgba(15, 118, 110, 0.06);
+  border-left: 2px solid var(--primary);
+  border-radius: 5px;
+}
+
+.communications-message-reply-reference small {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.communications-message-reply-reference span {
+  overflow: hidden;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.communications-interactive-message,
+.communications-poll-message {
+  display: grid;
+  min-width: min(280px, 55vw);
+  gap: 6px;
+}
+
+.communications-interactive-message > p {
+  margin: 0;
+}
+
+.communications-interactive-message > small {
+  color: var(--text-muted);
+}
+
+.communications-shared-card {
+  display: flex;
+  min-width: min(240px, 52vw);
+  align-items: center;
+  gap: 10px;
+  padding: 5px 2px;
+}
+
+.communications-shared-card > .anticon {
+  color: var(--primary);
+  font-size: 24px;
+}
+
+.communications-shared-card > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.communications-shared-card small {
+  color: var(--text-muted);
+}
+
+.communications-poll-message span {
+  padding: 5px 8px;
+  color: var(--primary);
+  background: rgba(15, 118, 110, 0.07);
+  border-radius: 7px;
+}
+
 .communications-message footer {
   display: flex;
   align-items: center;
@@ -378,7 +448,10 @@
 
 .communications-composer {
   flex: 0 0 auto;
+  min-width: 0;
+  max-height: 48%;
   padding: 10px 14px 14px;
+  overflow-y: auto;
   background: var(--surface);
   border-top: 1px solid var(--border);
 }
@@ -407,15 +480,119 @@
 
 .communications-reply-preview > span {
   display: grid;
+  flex: 1;
   min-width: 0;
   gap: 1px;
 }
 
+.communications-reply-preview strong,
 .communications-reply-preview small {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
+  color: var(--text-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.communications-reply-preview strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.communications-format-toolbar {
+  display: flex;
+  min-height: 28px;
+  align-items: center;
+  gap: 2px;
+  margin-bottom: 5px;
+}
+
+.communications-format-toolbar:empty {
+  display: none;
+}
+
+.communications-format-toolbar .ant-btn {
+  color: var(--text-muted);
+}
+
+.communications-composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.communications-composer-tools .ant-btn {
+  flex: 0 0 auto;
+}
+
+.communications-quick-replies {
+  display: grid;
+  width: min(360px, 75vw);
+  gap: 8px;
+}
+
+.communications-quick-replies > small,
+.communications-structured-modal small {
+  color: var(--text-muted);
+}
+
+.communications-quick-replies > div {
+  display: grid;
+  max-height: 260px;
+  gap: 4px;
+  overflow-y: auto;
+}
+
+.communications-quick-replies > div > button {
+  display: grid;
+  gap: 2px;
+  padding: 9px 10px;
+  color: var(--text-soft);
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+.communications-quick-replies > div > button:hover,
+.communications-quick-replies > div > button:focus-visible {
+  background: var(--surface-muted);
+  outline: none;
+}
+
+.communications-quick-replies > div > button small {
   overflow: hidden;
   color: var(--text-muted);
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+
+.communications-structured-modal {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+
+.communications-structured-modal label {
+  display: grid;
+  gap: 6px;
+}
+
+.communications-structured-modal label > span {
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.communications-structured-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .communications-state,
@@ -665,6 +842,10 @@
 
   .communications-message > div {
     max-width: 90%;
+  }
+
+  .communications-structured-grid {
+    grid-template-columns: 1fr;
   }
 
   .communications-email {

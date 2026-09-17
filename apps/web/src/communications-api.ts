@@ -113,10 +113,17 @@ export type SendCommunicationInput = {
   channel: 'TELEGRAM' | 'WHATSAPP';
   clientRequestId: string;
   connectionId?: string;
+  disableNotification?: boolean;
+  hasSpoiler?: boolean;
   identityId?: string;
+  inlineKeyboard?: unknown[][];
   interactive?: Record<string, unknown>;
+  linkPreviewOptions?: Record<string, unknown>;
   media?: { kind: MediaKind; mediaAssetId: string };
+  protectContent?: boolean;
   replyToMessageId?: string;
+  replyMarkup?: Record<string, unknown>;
+  richMessage?: Record<string, unknown>;
   structured?: Record<string, unknown>;
   template?: {
     components?: WhatsAppTemplateComponentInput[];
