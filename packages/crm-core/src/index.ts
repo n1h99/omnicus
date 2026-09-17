@@ -131,6 +131,7 @@ export interface CrmReactionActorInput {
 export interface CreateOrUpdateLeadInput {
   contactId: string;
   contactStatus?: string;
+  crmLeadId?: string;
   customFields: Record<string, unknown>;
   displayName?: string;
   email?: string;
@@ -423,6 +424,7 @@ export class HttpCrmClient implements CrmClient {
   ): Promise<CrmResult> {
     const payload = {
       contactStatus: input.contactStatus,
+      crmLeadId: input.crmLeadId,
       crmProjectId: context.crmProjectId,
       customFields: input.customFields,
       email: input.email,

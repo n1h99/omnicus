@@ -16,6 +16,7 @@ const context = {
 
 const leadInput: CreateOrUpdateLeadInput = {
   contactId: 'contact-a',
+  crmLeadId: 'crm-lead-a',
   customFields: { interests: ['cars', { source: 'telegram' }] },
   displayName: 'Test',
   identity: {
@@ -79,6 +80,7 @@ describe('HttpCrmClient', () => {
     );
     const request = fetchImplementation.mock.calls[0]?.[1] as RequestInit;
     expect(JSON.parse(String(request.body))).toMatchObject({
+      crmLeadId: 'crm-lead-a',
       crmProjectId: 'cyber-pulse-staging',
       customFields: leadInput.customFields,
       omnicusContactId: 'contact-a',

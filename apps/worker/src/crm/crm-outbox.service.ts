@@ -408,6 +408,7 @@ export class CrmOutboxService implements OnApplicationBootstrap, OnApplicationSh
         result = await this.client.createOrUpdateLead(context, {
           contactId: operation.contact.id,
           contactStatus: operation.contact.status,
+          ...(operation.contact.crmLeadId ? { crmLeadId: operation.contact.crmLeadId } : {}),
           customFields: this.customFields(operation.contact),
           displayName: operation.contact.displayName,
           ...(operation.contact.email ? { email: operation.contact.email } : {}),

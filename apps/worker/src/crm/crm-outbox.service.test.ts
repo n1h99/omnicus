@@ -247,6 +247,7 @@ describe('CrmOutboxService', () => {
     expect(client.createOrUpdateLead).toHaveBeenCalledWith(
       expect.objectContaining({ correlationId: 'manual-contact-update-a' }),
       expect.objectContaining({
+        crmLeadId: 'crm-lead-a',
         identity: expect.objectContaining({
           channel: 'telegram',
           channelIdentityId: 'identity-a',
