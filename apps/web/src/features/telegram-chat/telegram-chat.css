@@ -449,12 +449,18 @@
 }
 
 .chat-message-actions .ant-btn {
-  width: 34px;
-  height: 34px;
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  min-height: 28px;
   padding: 0;
   color: var(--text-muted);
-  border-radius: 9px !important;
-  font-size: 17px;
+  border-radius: 7px !important;
+  font-size: 14px;
+}
+
+.chat-message-actions .ant-btn .anticon {
+  font-size: 14px;
 }
 
 .chat-message-actions .ant-btn:hover {
@@ -1909,7 +1915,8 @@
   white-space: nowrap;
 }
 
-.chat-protect-toggle {
+.chat-protect-toggle,
+.chat-silent-toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
