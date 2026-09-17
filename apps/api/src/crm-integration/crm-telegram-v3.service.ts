@@ -864,8 +864,10 @@ export class CrmTelegramV3Service {
                 hasSpoiler: item.hasSpoiler ?? false,
                 disableNotification: dto.disableNotification ?? false,
                 protectContent: dto.protectContent ?? false,
-                ...(item.entities ? { entities: item.entities } : {}),
-              } as Prisma.InputJsonObject,
+                ...(item.entities
+                  ? { entities: item.entities.map((entity) => ({ ...entity })) }
+                  : {}),
+              } satisfies Prisma.InputJsonObject,
             },
           });
         }
