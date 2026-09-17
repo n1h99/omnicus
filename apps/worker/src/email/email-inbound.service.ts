@@ -12,6 +12,7 @@ import type { WorkerEnvironment } from '@omnicus/config/server';
 import {
   blockedMailAttachment,
   isAutomaticMail,
+  mailboxAddressesEquivalent,
   mailAttachmentLimit,
   mailHeader,
   mailMessageIds,
@@ -181,16 +182,20 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
       });
       if (existing) return existing;
       const token = replyAliasToken(receipt.recipient);
-      let thread = token
-        ? await tx.emailThread.findFirst({
+      const tokenThreads = token
+        ? await tx.emailThread.findMany({
             where: {
               projectId: receipt.projectId,
               mailboxId: receipt.mailboxId,
               replyToken: token,
-              peerEmail: sender,
             },
+            take: 5,
           })
-        : null;
+        : [];
+      let thread =
+        tokenThreads.find((candidate) =>
+          mailboxAddressesEquivalent(candidate.peerEmail, sender),
+        ) ?? null;
       const referenceIds = [
         ...mailMessageIds(mailHeader(incoming.headers, 'in-reply-to')),
         ...mailMessageIds(mailHeader(incoming.headers, 'references')).reverse(),
@@ -201,14 +206,20 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
             projectId: receipt.projectId,
             mailboxId: receipt.mailboxId,
             rfcMessageId: { in: referenceIds },
-            thread: { peerEmail: sender },
           },
           include: { thread: true },
           take: 30,
         });
         thread =
           referenceIds
-            .map((id) => candidates.find((candidate) => candidate.rfcMessageId === id)?.thread)
+            .map(
+              (id) =>
+                candidates.find(
+                  (candidate) =>
+                    candidate.rfcMessageId === id &&
+                    mailboxAddressesEquivalent(candidate.thread.peerEmail, sender),
+                )?.thread,
+            )
             .find(Boolean) ?? null;
       }
       if (!thread) {

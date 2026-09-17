@@ -33,6 +33,26 @@ export function parseMailAddress(input: string): string | null {
   return result.success ? result.data : null;
 }
 
+function gmailMailboxKey(address: string): string | null {
+  const parsed = mailboxAddressSchema.safeParse(address);
+  if (!parsed.success) return null;
+  const separator = parsed.data.lastIndexOf('@');
+  const domain = parsed.data.slice(separator + 1);
+  if (domain !== 'gmail.com' && domain !== 'googlemail.com') return null;
+  const localPart = parsed.data.slice(0, separator).split('+', 1)[0]!.replaceAll('.', '');
+  return localPart ? localPart + '@gmail.com' : null;
+}
+
+/** Gmail replies from the base account even when the original recipient used a +tag alias. */
+export function mailboxAddressesEquivalent(left: string, right: string): boolean {
+  const normalizedLeft = mailboxAddressSchema.safeParse(left);
+  const normalizedRight = mailboxAddressSchema.safeParse(right);
+  if (!normalizedLeft.success || !normalizedRight.success) return false;
+  if (normalizedLeft.data === normalizedRight.data) return true;
+  const leftGmail = gmailMailboxKey(normalizedLeft.data);
+  return leftGmail !== null && leftGmail === gmailMailboxKey(normalizedRight.data);
+}
+
 export function mailHeader(headers: Record<string, string>, name: string): string {
   return (
     Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase())?.[1] ?? ''

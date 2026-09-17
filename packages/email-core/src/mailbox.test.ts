@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   blockedMailAttachment,
   isAutomaticMail,
+  mailboxAddressesEquivalent,
   mailboxAddressSchema,
   mailboxLocalPartSchema,
   mailMessageIds,
@@ -32,6 +33,16 @@ describe('mailbox boundaries', () => {
     ).toEqual(['first@example.com', 'second@example.com'].map((id) => '<' + id + '>'));
     expect(mailMessageIds('<bad\r\nmessage@example.com>')).toEqual([]);
     expect(replySubject('Re: Existing')).toBe('Re: Existing');
+  });
+  it('recognizes Gmail aliases as the same reply participant without weakening other domains', () => {
+    expect(
+      mailboxAddressesEquivalent(
+        'pirmammadov.eldar+9@gmail.com',
+        'pirmammadoveldar@googlemail.com',
+      ),
+    ).toBe(true);
+    expect(mailboxAddressesEquivalent('alice+sales@example.com', 'alice@example.com')).toBe(false);
+    expect(mailboxAddressesEquivalent('alice@gmail.com', 'bob@gmail.com')).toBe(false);
   });
   it('does not confuse sending verification with receiving readiness', () => {
     const domain = {
