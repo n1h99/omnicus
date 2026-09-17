@@ -4,6 +4,7 @@ import {
   DatabaseOutlined,
   FileImageOutlined,
   MailOutlined,
+  MessageOutlined,
   RobotOutlined,
   SendOutlined,
   SettingOutlined,
@@ -75,6 +76,13 @@ export function ProjectDetailPage() {
       icon: <ContactsOutlined />,
       label: 'Contacts',
       path: `/projects/${project.id}/contacts`,
+    },
+    {
+      description: 'Email, WhatsApp and Telegram conversations',
+      icon: <MessageOutlined />,
+      label: 'Communications',
+      path: `/projects/${project.id}/communications`,
+      visible: hasProjectPermission(access.data, 'communications:read'),
     },
     {
       description: 'Project-specific contact labels',

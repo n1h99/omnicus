@@ -14,6 +14,8 @@ describe('seed project role backfill', () => {
         'contacts:update',
         'contacts:export',
         'contacts:merge',
+        'communications:read',
+        'communications:send',
         'tags:read',
         'tags:manage',
         'automation:read',

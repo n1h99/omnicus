@@ -39,6 +39,12 @@ export interface CrmOutboundStatusResult {
   status: 'FAILED' | 'PROCESSING' | 'QUEUED' | 'SENT' | 'SUCCEEDED' | 'UNKNOWN';
 }
 
+export interface OutboundRequestContext {
+  actorEmail?: string;
+  actorUserId?: string;
+  source?: 'crm' | 'omnicus';
+}
+
 @Injectable()
 export class CrmOutboundService {
   private readonly logger = new Logger(CrmOutboundService.name);
@@ -92,7 +98,9 @@ export class CrmOutboundService {
     idempotencyKey: string,
     correlationId: string,
     authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
   ): Promise<CrmOutboundQueuedResult> {
+    const source = requestContext.source ?? 'crm';
     const structured = this.structured(dto.structured);
     const richMessage = this.richMessage(dto.richMessage);
     const providerKind = dto.identity.channel === 'whatsapp' ? 'WHATSAPP' : 'TELEGRAM';
@@ -171,8 +179,8 @@ export class CrmOutboundService {
       (authenticatedProjectId !== undefined && authenticatedProjectId !== dto.omnicusProjectId) ||
       !project ||
       project.status !== 'ACTIVE' ||
-      !project.crmConfig?.enabled ||
-      project.crmConfig.crmProjectId !== dto.crmProjectId
+      (source === 'crm' &&
+        (!project.crmConfig?.enabled || project.crmConfig.crmProjectId !== dto.crmProjectId))
     )
       throw new NotFoundException({
         code: 'CRM_PROJECT_ROUTE_NOT_FOUND',
@@ -225,11 +233,16 @@ export class CrmOutboundService {
         message: 'CRM lead mapping does not match',
       });
 
-    const idempotencyScope = schedule
-      ? providerKind === 'WHATSAPP'
-        ? 'crm-scheduled-whatsapp'
-        : 'crm-scheduled'
-      : 'crm-to-telegram';
+    const idempotencyScope =
+      source === 'omnicus'
+        ? schedule
+          ? 'omnicus-scheduled'
+          : 'omnicus-to-telegram'
+        : schedule
+          ? providerKind === 'WHATSAPP'
+            ? 'crm-scheduled-whatsapp'
+            : 'crm-scheduled'
+          : 'crm-to-telegram';
     const storedKey = `${idempotencyScope}-${idempotencyKey}`;
     const existing = await this.existing(dto.omnicusProjectId, storedKey);
     if (existing) return { ...existing, replayed: true };
@@ -386,7 +399,8 @@ export class CrmOutboundService {
               replyToMessageId: providerReplyMessageId ?? null,
               ...(dto.quote ? { quote: dto.quote } : {}),
               ...(dto.quotePosition === undefined ? {} : { quotePosition: dto.quotePosition }),
-              source: 'crm',
+              ...(requestContext.actorUserId ? { actorUserId: requestContext.actorUserId } : {}),
+              source,
             } as unknown as Prisma.InputJsonValue,
             projectId: dto.omnicusProjectId,
             status: 'QUEUED',
@@ -442,11 +456,16 @@ export class CrmOutboundService {
         });
         await transaction.auditLog.create({
           data: {
-            action: 'crm.outbound_message.queued',
-            actorType: 'SERVICE',
+            action:
+              source === 'omnicus'
+                ? 'communications.outbound_message.queued'
+                : 'crm.outbound_message.queued',
+            actorEmailSnapshot: requestContext.actorEmail ?? null,
+            actorType: source === 'omnicus' ? 'USER' : 'SERVICE',
+            actorUserId: requestContext.actorUserId ?? null,
             afterSafeJson: {
               connectionId: identity.connectionId,
-              crmProjectId: dto.crmProjectId,
+              ...(source === 'crm' ? { crmProjectId: dto.crmProjectId } : { source }),
             },
             correlationId,
             entityId: outbox.id,

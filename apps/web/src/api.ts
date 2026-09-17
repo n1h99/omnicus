@@ -74,7 +74,30 @@ const codeReasons: Record<string, string> = {
     'Choose a WhatsApp template that is still approved for this business number.',
   BROADCAST_WHATSAPP_TEMPLATE_REQUIRED: 'WhatsApp broadcasts must use an approved Meta template.',
   CHANNEL_NOT_ACTIVE: 'Activate this channel before continuing.',
+  COMMUNICATION_CONTACT_UNAVAILABLE: 'Only active contacts can receive new messages.',
+  COMMUNICATION_IDENTITY_CHANNEL_MISMATCH:
+    'Choose an identity that belongs to the selected channel.',
+  COMMUNICATION_IDENTITY_NOT_FOUND: 'This contact is no longer connected to the selected channel.',
+  COMMUNICATION_IDENTITY_REQUIRED:
+    'Choose an existing channel identity before sending this message.',
+  COMMUNICATION_WHATSAPP_CONSENT_REQUIRED:
+    'Record granted WhatsApp consent on the contact before sending an official template.',
+  COMMUNICATION_WHATSAPP_IDENTITY_CONFLICT:
+    'This WhatsApp number is already linked to another contact in the project.',
+  COMMUNICATION_WHATSAPP_PHONE_REQUIRED:
+    'Add a valid phone number to the contact before starting a WhatsApp conversation.',
+  COMMUNICATION_WHATSAPP_RECIPIENT_BLOCKED:
+    'This recipient is marked as unavailable for WhatsApp delivery.',
   CRM_CONNECTION_NOT_PAIRED: 'Pair this CRM project before continuing.',
+  CRM_WHATSAPP_TEMPLATE_REQUIRED:
+    'Use an approved Meta template outside the WhatsApp customer service window.',
+  CRM_WHATSAPP_TEMPLATE_COMPONENTS_INVALID:
+    'Complete every required value defined by the approved Meta template.',
+  CRM_WHATSAPP_TEMPLATE_INVALID: 'Choose a valid approved Meta template.',
+  CRM_WHATSAPP_TEMPLATE_NOT_APPROVED:
+    'This Meta template is no longer approved for the selected business number.',
+  CRM_WHATSAPP_TEMPLATE_UNSUPPORTED:
+    'This Meta template contains a component that is not supported for sending yet.',
   CUSTOM_FIELD_KEY_EXISTS: 'A custom field with this key already exists.',
   GLOBAL_ROLE_NOT_FOUND: 'The selected global role is no longer available.',
   MEDIA_ASSET_NOT_FOUND: 'This media file no longer exists in the project library.',

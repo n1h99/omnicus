@@ -5,9 +5,27 @@ import { validateSync } from 'class-validator';
 import { describe, expect, it, vi } from 'vitest';
 
 import { CrmIntegrationController } from './crm-integration.controller';
-import { CrmMediaUploadDto } from './dto';
+import { CrmContactUpsertDto, CrmMediaUploadDto } from './dto';
 
 describe('CrmIntegrationController DTO metadata', () => {
+  it('validates a complete CRM contact snapshot', () => {
+    expect(
+      validateSync(
+        plainToInstance(CrmContactUpsertDto, {
+          crmLeadId: 'lead-a',
+          crmProjectId: 'crm-a',
+          displayName: null,
+          email: null,
+          omnicusProjectId: 'project-a',
+          phone: null,
+          sourceUpdatedAt: '2026-09-17T09:00:00.000Z',
+          status: 'ACTIVE',
+          username: null,
+        }),
+      ),
+    ).toHaveLength(0);
+  });
+
   it('preserves the multipart media DTO as a runtime class', () => {
     const parameterTypes = Reflect.getMetadata(
       'design:paramtypes',
@@ -33,6 +51,7 @@ describe('CrmIntegrationController DTO metadata', () => {
     const whatsapp = { retry: vi.fn().mockResolvedValue({ status: 'QUEUED' }) };
     const controller = new CrmIntegrationController(
       outbound as never,
+      {} as never,
       {} as never,
       telegram as never,
       whatsapp as never,

@@ -21,6 +21,7 @@ import type {
   CrmTelegramScopeDto,
   CrmWhatsAppTemplateQueryDto,
 } from './dto';
+import type { OutboundRequestContext } from './crm-outbound.service';
 
 interface WhatsAppRoute {
   connectionId: string;
@@ -54,8 +55,17 @@ export class CrmWhatsAppV4Service {
     this.maximumUploadBytes = config.get('MEDIA_MAX_UPLOAD_BYTES', { infer: true });
   }
 
-  async capabilities(query: CrmCapabilitiesQueryDto, authenticatedProjectId?: string) {
-    await this.assertProject(query.crmProjectId, query.omnicusProjectId, authenticatedProjectId);
+  async capabilities(
+    query: CrmCapabilitiesQueryDto,
+    authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
+  ) {
+    await this.assertProject(
+      query.crmProjectId,
+      query.omnicusProjectId,
+      authenticatedProjectId,
+      requestContext,
+    );
     const connection = await this.database.client.channelConnection.findUnique({
       where: {
         projectId_id: { id: query.connectionId, projectId: query.omnicusProjectId },
@@ -216,7 +226,11 @@ export class CrmWhatsAppV4Service {
     };
   }
 
-  async templates(query: CrmWhatsAppTemplateQueryDto, authenticatedProjectId?: string) {
+  async templates(
+    query: CrmWhatsAppTemplateQueryDto,
+    authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
+  ) {
     await this.resolveIdentity(
       {
         crmProjectId: query.crmProjectId,
@@ -229,6 +243,7 @@ export class CrmWhatsAppV4Service {
         omnicusProjectId: query.omnicusProjectId,
       },
       authenticatedProjectId,
+      requestContext,
     );
     const data = await this.database.client.whatsAppMessageTemplate.findMany({
       orderBy: [{ name: 'asc' }, { languageCode: 'asc' }],
@@ -260,11 +275,13 @@ export class CrmWhatsAppV4Service {
     idempotencyKey: string,
     correlationId: string,
     authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
   ): Promise<CrmWhatsAppQueuedResult> {
     if ('scheduledAt' in dto)
       throw new ConflictException({ code: 'WHATSAPP_SCHEDULING_UNSUPPORTED' });
     this.assertNoTelegramOnlyFields(dto);
-    const route = await this.resolveIdentity(dto, authenticatedProjectId);
+    const source = requestContext.source ?? 'crm';
+    const route = await this.resolveIdentity(dto, authenticatedProjectId, requestContext);
     const contact = await this.database.client.contact.findUnique({
       select: { crmLeadId: true },
       where: { projectId_id: { id: route.contactId, projectId: route.projectId } },
@@ -298,7 +315,7 @@ export class CrmWhatsAppV4Service {
       throw new ConflictException({ code: 'CRM_STICKER_CAPTION_UNSUPPORTED' });
 
     const requestHash = this.requestHash(dto);
-    const storedKey = `crm-to-whatsapp-${idempotencyKey}`;
+    const storedKey = `${source === 'omnicus' ? 'omnicus' : 'crm'}-to-whatsapp-${idempotencyKey}`;
     const replay = await this.existing(route.projectId, storedKey, requestHash);
     if (replay) return { ...replay, replayed: true };
 
@@ -394,7 +411,8 @@ export class CrmWhatsAppV4Service {
                   ? !dto.linkPreviewOptions.isDisabled
                   : true,
               ...(dto.replyToMessageId ? { replyToMessageId: dto.replyToMessageId } : {}),
-              source: 'crm',
+              ...(requestContext.actorUserId ? { actorUserId: requestContext.actorUserId } : {}),
+              source,
             },
             projectId: route.projectId,
             status: 'QUEUED',
@@ -416,13 +434,25 @@ export class CrmWhatsAppV4Service {
           },
         });
         await transaction.idempotencyRecord.create({
-          data: { key: idempotencyKey, projectId: route.projectId, scope: 'crm-to-whatsapp' },
+          data: {
+            key: idempotencyKey,
+            projectId: route.projectId,
+            scope: source === 'omnicus' ? 'omnicus-to-whatsapp' : 'crm-to-whatsapp',
+          },
         });
         await transaction.auditLog.create({
           data: {
-            action: 'crm.whatsapp_outbound_message.queued',
-            actorType: 'SERVICE',
-            afterSafeJson: { connectionId: route.connectionId, crmProjectId: dto.crmProjectId },
+            action:
+              source === 'omnicus'
+                ? 'communications.whatsapp_outbound_message.queued'
+                : 'crm.whatsapp_outbound_message.queued',
+            actorEmailSnapshot: requestContext.actorEmail ?? null,
+            actorType: source === 'omnicus' ? 'USER' : 'SERVICE',
+            actorUserId: requestContext.actorUserId ?? null,
+            afterSafeJson: {
+              connectionId: route.connectionId,
+              ...(source === 'crm' ? { crmProjectId: dto.crmProjectId } : { source }),
+            },
             correlationId,
             entityId: outbox.id,
             entityType: 'OutboxRecord',
@@ -769,8 +799,14 @@ export class CrmWhatsAppV4Service {
   private async resolveIdentity(
     dto: CrmTelegramScopeDto,
     authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
   ): Promise<WhatsAppRoute> {
-    await this.assertProject(dto.crmProjectId, dto.omnicusProjectId, authenticatedProjectId);
+    await this.assertProject(
+      dto.crmProjectId,
+      dto.omnicusProjectId,
+      authenticatedProjectId,
+      requestContext,
+    );
     if (dto.identity.channel !== 'whatsapp')
       throw new NotFoundException({ code: 'CHANNEL_IDENTITY_NOT_FOUND' });
     const identity = await this.database.client.channelIdentity.findUnique({
@@ -1059,6 +1095,7 @@ export class CrmWhatsAppV4Service {
     crmProjectId: string,
     omnicusProjectId: string,
     authenticatedProjectId?: string,
+    requestContext: OutboundRequestContext = {},
   ) {
     const project = await this.database.client.project.findUnique({
       include: { crmConfig: true },
@@ -1068,8 +1105,8 @@ export class CrmWhatsAppV4Service {
       (authenticatedProjectId && authenticatedProjectId !== omnicusProjectId) ||
       !project ||
       project.status !== 'ACTIVE' ||
-      !project.crmConfig?.enabled ||
-      project.crmConfig.crmProjectId !== crmProjectId
+      ((requestContext.source ?? 'crm') === 'crm' &&
+        (!project.crmConfig?.enabled || project.crmConfig.crmProjectId !== crmProjectId))
     )
       throw new NotFoundException({ code: 'CRM_PROJECT_ROUTE_NOT_FOUND' });
   }

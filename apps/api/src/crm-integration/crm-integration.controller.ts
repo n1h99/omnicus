@@ -34,6 +34,7 @@ import {
   CrmIntegrationAuthGuard,
   type AuthenticatedCrmIntegrationRequest,
 } from './crm-integration-auth.guard';
+import { CrmContactSyncService } from './crm-contact-sync.service';
 import { CrmOutboundService } from './crm-outbound.service';
 import { CrmTelegramV3Service } from './crm-telegram-v3.service';
 import { CrmWhatsAppV4Service } from './crm-whatsapp-v4.service';
@@ -44,6 +45,7 @@ import {
   CrmBotInterfaceQueryDto,
   CrmCapabilitiesQueryDto,
   CrmChatActionDto,
+  CrmContactUpsertDto,
   CrmDraftDto,
   CrmMediaUploadDto,
   CrmMediaGroupDto,
@@ -69,6 +71,7 @@ import {
   CrmBotInterfaceQueryDto,
   CrmCapabilitiesQueryDto,
   CrmChatActionDto,
+  CrmContactUpsertDto,
   CrmDraftDto,
   CrmMediaUploadDto,
   CrmMediaGroupDto,
@@ -88,10 +91,32 @@ import {
 export class CrmIntegrationController {
   constructor(
     @Inject(CrmOutboundService) private readonly outbound: CrmOutboundService,
+    @Inject(CrmContactSyncService) private readonly contactSync: CrmContactSyncService,
     @Inject(MediaService) private readonly media: MediaService,
     @Inject(CrmTelegramV3Service) private readonly telegramV3: CrmTelegramV3Service,
     @Inject(CrmWhatsAppV4Service) private readonly whatsappV4: CrmWhatsAppV4Service,
   ) {}
+
+  @Post('contacts/upsert')
+  @HttpCode(200)
+  @ApiBody({ type: CrmContactUpsertDto })
+  @ApiHeader({ name: 'Idempotency-Key', required: true })
+  @ApiHeader({ name: 'X-Correlation-Id', required: true })
+  @ApiOkResponse({ description: 'CRM lead profile idempotently synchronized to a contact' })
+  upsertContact(
+    @Body() dto: CrmContactUpsertDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    this.assertHeaders(idempotencyKey, correlationId);
+    return this.contactSync.upsert(
+      dto,
+      idempotencyKey!,
+      correlationId!,
+      request.crmIntegration?.projectId,
+    );
+  }
 
   @Get('capabilities')
   @ApiOkResponse({ description: 'Connection-scoped channel capability matrix' })

@@ -17,6 +17,8 @@ describe('ProjectRolesService', () => {
           { code: 'contacts:update', id: 'permission-contacts-update' },
           { code: 'contacts:export', id: 'permission-contacts-export' },
           { code: 'contacts:merge', id: 'permission-contacts-merge' },
+          { code: 'communications:read', id: 'permission-communications-read' },
+          { code: 'communications:send', id: 'permission-communications-send' },
           { code: 'tags:read', id: 'permission-tags-read' },
           { code: 'tags:manage', id: 'permission-tags-manage' },
           { code: 'automation:read', id: 'permission-automation-read' },
@@ -55,6 +57,8 @@ describe('ProjectRolesService', () => {
         'permission-channels-rotate',
         'permission-broadcasts-read',
         'permission-broadcasts-launch',
+        'permission-communications-read',
+        'permission-communications-send',
       ]),
     );
   });

@@ -6,6 +6,36 @@ info:
 security:
   - serviceBearer: []
 paths:
+  /integrations/v1/crm/contacts/upsert:
+    post:
+      operationId: upsertCrmLeadContact
+      summary: Idempotently synchronize the latest CRM lead profile to an Omnicus contact
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/CorrelationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CrmContactSnapshot'
+      responses:
+        '200':
+          description: The snapshot was applied or safely ignored because a newer version exists.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CrmContactUpsertResult'
+        '400':
+          $ref: '#/components/responses/SafeError'
+        '401':
+          $ref: '#/components/responses/SafeError'
+        '404':
+          $ref: '#/components/responses/SafeError'
+        '409':
+          $ref: '#/components/responses/SafeError'
+        '503':
+          $ref: '#/components/responses/SafeError'
   /integrations/v1/crm/media:
     post:
       operationId: uploadCrmOutboundMedia
@@ -688,6 +718,57 @@ components:
       required: false
       schema: { type: string, minLength: 1, maxLength: 128 }
   schemas:
+    CrmContactSnapshot:
+      type: object
+      additionalProperties: false
+      required: [crmProjectId, omnicusProjectId, crmLeadId, sourceUpdatedAt]
+      properties:
+        crmProjectId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        omnicusProjectId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        crmLeadId:
+          type: string
+          minLength: 1
+          maxLength: 128
+        sourceUpdatedAt:
+          type: string
+          format: date-time
+        displayName:
+          type: [string, 'null']
+          maxLength: 200
+        phone:
+          type: [string, 'null']
+          maxLength: 64
+        email:
+          type: [string, 'null']
+          format: email
+        username:
+          type: [string, 'null']
+          maxLength: 128
+        status:
+          type: string
+          enum: [ACTIVE, ARCHIVED]
+          default: ACTIVE
+    CrmContactUpsertResult:
+      type: object
+      additionalProperties: false
+      required: [applied, contactId, created, sourceUpdatedAt]
+      properties:
+        applied:
+          type: boolean
+        contactId:
+          type: string
+          format: uuid
+        created:
+          type: boolean
+        sourceUpdatedAt:
+          type: string
+          format: date-time
     Identity:
       type: object
       additionalProperties: false

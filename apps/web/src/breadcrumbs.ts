@@ -6,6 +6,7 @@ export interface AppBreadcrumb {
 const sectionLabels: Record<string, string> = {
   broadcasts: 'Broadcasts',
   channels: 'Channels',
+  communications: 'Communications',
   contacts: 'Contacts',
   'crm-config': 'CRM integration',
   'custom-fields': 'Custom fields',

@@ -772,6 +772,7 @@ model Contact {
   status              ContactStatus             @default(ACTIVE)
   automationMode      AutomationMode            @default(ENABLED)
   crmLeadId           String?
+  crmSourceUpdatedAt  DateTime?                 @db.Timestamptz(3)
   crmContactId        String?
   crmManagerId        String?
   customFields        Json                      @default("{}")

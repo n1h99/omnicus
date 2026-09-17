@@ -32,4 +32,12 @@ describe('breadcrumbsFor', () => {
       { label: 'Omnicus Local' },
     ]);
   });
+
+  it('labels the unified communications workspace', () => {
+    expect(breadcrumbsFor('/projects/project-a/communications', 'Omnicus Local')).toEqual([
+      { label: 'Projects', path: '/projects' },
+      { label: 'Omnicus Local', path: '/projects/project-a' },
+      { label: 'Communications' },
+    ]);
+  });
 });

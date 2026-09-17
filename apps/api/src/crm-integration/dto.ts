@@ -6,6 +6,7 @@ import {
   ArrayMinSize,
   IsBoolean,
   IsDateString,
+  IsEmail,
   IsInt,
   IsIn,
   IsObject,
@@ -17,6 +18,55 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
+
+export class CrmContactUpsertDto {
+  @ApiProperty({ type: String })
+  @IsString()
+  @Length(1, 128)
+  crmProjectId!: string;
+
+  @ApiProperty({ type: String })
+  @IsString()
+  @Length(1, 128)
+  omnicusProjectId!: string;
+
+  @ApiProperty({ type: String })
+  @IsString()
+  @Length(1, 128)
+  crmLeadId!: string;
+
+  @ApiProperty({ format: 'date-time', type: String })
+  @IsDateString()
+  sourceUpdatedAt!: string;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @Length(0, 200)
+  displayName?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @Length(0, 64)
+  phone?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsEmail()
+  email?: string | null;
+
+  @ApiPropertyOptional({ nullable: true, type: String })
+  @IsOptional()
+  @IsString()
+  @Length(0, 128)
+  username?: string | null;
+
+  @ApiPropertyOptional({ enum: ['ACTIVE', 'ARCHIVED'] })
+  @IsOptional()
+  @IsIn(['ACTIVE', 'ARCHIVED'])
+  status?: 'ACTIVE' | 'ARCHIVED';
+}
 
 export class CrmOutboundIdentityDto {
   @ApiProperty({ type: String })

@@ -1,6 +1,6 @@
 # Cyber Pulse CRM integration
 
-Status reviewed: 2026-08-29. Telegram Chat v3.3 is implemented and its core
+Status reviewed: 2026-09-17. Telegram Chat v3.3 is implemented and its core
 live acceptance is complete. Channel-aware contract 4.0.0 adds WhatsApp Cloud
 API in both directions. The connected WhatsApp test route has passed
 open-window automation, interactive reply and CRM-history checks; approved
@@ -46,6 +46,20 @@ CRM implementation and deployment requirements for outbound history are in
 
 Every request uses service Bearer authentication and a correlation ID. Mutating
 requests also include the durable Omnicus outbox ID as `Idempotency-Key`.
+
+## Direction: CRM lead profile to Omnicus contact
+
+Creating, editing, archiving or restoring a lead in Cyber Pulse stores the
+latest contact snapshot in a MongoDB-backed delivery queue. CRM then calls
+`POST /integrations/v1/crm/contacts/upsert`; Omnicus resolves the contact only
+by the exact project-scoped `crmLeadId`, never by fuzzy name, email or phone
+matching. Empty contact fields are accepted, with a deterministic fallback
+display name, so an incompletely filled lead still appears in Omnicus.
+
+Snapshots carry the CRM lead `updatedAt` value. Omnicus ignores an older
+snapshot that arrives after a newer one and replays the same idempotency key
+without creating a duplicate. Temporary connection failures do not roll back
+the manager's lead change: the CRM queue retries them in the background.
 
 The adapter sends normalized Omnicus data, never Telegram/Meta webhook payloads,
 provider credentials or encrypted secret envelopes. When an inbound channel

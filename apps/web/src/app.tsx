@@ -37,6 +37,10 @@ const ProjectDetailPage = lazyPage(
 const ProjectsPage = lazyPage(() => import('./pages/projects-page'), 'ProjectsPage');
 const UsersPage = lazyPage(() => import('./pages/users-page'), 'UsersPage');
 const ContactsPage = lazyPage(() => import('./pages/contacts-page'), 'ContactsPage');
+const CommunicationsPage = lazyPage(
+  () => import('./pages/communications-page'),
+  'CommunicationsPage',
+);
 const ContactDetailPage = lazyPage(
   () => import('./pages/contact-detail-page'),
   'ContactDetailPage',
@@ -116,6 +120,9 @@ export function App() {
               <Route element={<ProjectSettingsPage />} path="/projects/:projectId/settings" />
             </Route>
             <Route element={<ContactsPage />} path="/projects/:projectId/contacts" />
+            <Route element={<ProjectPermissionRoute permission="communications:read" />}>
+              <Route element={<CommunicationsPage />} path="/projects/:projectId/communications" />
+            </Route>
             <Route
               element={<ContactDetailPage />}
               path="/projects/:projectId/contacts/:contactId"
