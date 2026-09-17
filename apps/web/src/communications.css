@@ -176,8 +176,11 @@
 }
 
 .communications-channel-tabs {
+  display: flex;
   flex: 1;
   min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .communications-channel-tabs > .ant-tabs-nav {
@@ -186,7 +189,13 @@
   padding-inline: 20px;
 }
 
-.communications-channel-tabs > .ant-tabs-content-holder,
+.communications-channel-tabs > .ant-tabs-content-holder {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .communications-channel-tabs > .ant-tabs-content-holder > .ant-tabs-content,
 .communications-channel-tabs .ant-tabs-tabpane {
   height: 100%;
@@ -200,9 +209,10 @@
 }
 
 .communications-messenger {
-  display: grid;
+  display: flex;
   height: 100%;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-height: 0;
+  flex-direction: column;
 }
 
 .communications-channel-toolbar {
@@ -257,6 +267,7 @@
 }
 
 .communications-message-scroll {
+  flex: 1;
   min-height: 0;
   padding: 22px;
   overflow-y: auto;
@@ -296,6 +307,49 @@
   overflow-wrap: anywhere;
 }
 
+.communications-template-message {
+  display: grid;
+  min-width: min(360px, 60vw);
+  gap: 6px;
+}
+
+.communications-template-message > .ant-tag {
+  width: fit-content;
+  margin: 0;
+}
+
+.communications-template-message > strong {
+  color: var(--text);
+  font-size: 14px;
+}
+
+.communications-template-message > p {
+  margin: 0;
+}
+
+.communications-template-message > small {
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.communications-template-buttons {
+  display: grid;
+  gap: 4px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(15, 118, 110, 0.14);
+}
+
+.communications-template-buttons span {
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.communications-template-meta {
+  font-size: 10px;
+}
+
 .communications-message footer {
   display: flex;
   align-items: center;
@@ -323,6 +377,7 @@
 }
 
 .communications-composer {
+  flex: 0 0 auto;
   padding: 10px 14px 14px;
   background: var(--surface);
   border-top: 1px solid var(--border);

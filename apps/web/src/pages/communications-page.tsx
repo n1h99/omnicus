@@ -63,6 +63,7 @@ import {
   whatsAppTemplateComponents,
   whatsAppTemplateComposerIssue,
 } from '../whatsapp-template-composer';
+import { resolveWhatsAppTemplateMessage } from '../whatsapp-template-message';
 import '../communications.css';
 
 const channelLabels: Record<CommunicationChannel, string> = {
@@ -318,6 +319,12 @@ function MessengerPanel({
     identity?.connectionId ?? availableConnections[0]?.id,
   );
   const messages = useCommunicationMessages(projectId, contact.id, identity?.id);
+  const messageTemplates = useCommunicationTemplates(
+    projectId,
+    contact.id,
+    connectionId,
+    channel === 'WHATSAPP',
+  );
   const actions = useCommunicationActions(projectId, contact.id);
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<CommunicationMessage>();
@@ -450,7 +457,12 @@ function MessengerPanel({
           />
         ) : messages.data?.items.length ? (
           messages.data.items.map((item) => (
-            <CommunicationBubble item={item} key={item.id} onReply={() => setReplyTo(item)} />
+            <CommunicationBubble
+              item={item}
+              key={item.id}
+              onReply={() => setReplyTo(item)}
+              templates={messageTemplates.data ?? []}
+            />
           ))
         ) : (
           <div className="communications-empty communications-empty--compact">
@@ -468,7 +480,7 @@ function MessengerPanel({
           <div className="communications-reply-preview">
             <span>
               <strong>Replying to message</strong>
-              <small>{messageText(replyTo)}</small>
+              <small>{messageText(replyTo, messageTemplates.data)}</small>
             </span>
             <Button type="text" onClick={() => setReplyTo(undefined)}>
               Cancel
@@ -562,15 +574,38 @@ function MessengerPanel({
 function CommunicationBubble({
   item,
   onReply,
+  templates,
 }: {
   item: CommunicationMessage;
   onReply: () => void;
+  templates: CommunicationTemplate[];
 }) {
+  const template = resolveWhatsAppTemplateMessage(item.content.whatsAppTemplate, templates);
   return (
     <article className={`communications-message is-${item.direction.toLowerCase()}`}>
       <div>
-        {item.content.whatsAppTemplate ? <Tag color="green">Meta template</Tag> : null}
-        <p>{messageText(item)}</p>
+        {item.content.whatsAppTemplate ? (
+          <div className="communications-template-message">
+            <Tag color="green">Meta template</Tag>
+            {template?.header ? <strong>{template.header}</strong> : null}
+            <p>{template?.body ?? messageText(item, templates)}</p>
+            {template?.footer ? <small>{template.footer}</small> : null}
+            {template?.buttons.length ? (
+              <div className="communications-template-buttons">
+                {template.buttons.map((button, index) => (
+                  <span key={`${button}-${index}`}>{button}</span>
+                ))}
+              </div>
+            ) : null}
+            {template ? (
+              <small className="communications-template-meta">
+                {template.name} · {template.languageCode}
+              </small>
+            ) : null}
+          </div>
+        ) : (
+          <p>{messageText(item, templates)}</p>
+        )}
         {item.mediaAsset ? (
           <span className="communications-media-label">
             <PaperClipOutlined /> {item.mediaAsset.originalFilename ?? item.mediaAsset.kind}
@@ -588,9 +623,10 @@ function CommunicationBubble({
   );
 }
 
-function messageText(item: CommunicationMessage) {
+function messageText(item: CommunicationMessage, templates: CommunicationTemplate[] = []) {
   const content = item.content;
   const template = object(content.whatsAppTemplate);
+  const templatePreview = resolveWhatsAppTemplateMessage(content.whatsAppTemplate, templates);
   const interactive = object(content.interactive);
   const structured = object(content.structured);
   return (
@@ -598,6 +634,7 @@ function messageText(item: CommunicationMessage) {
     text(content.caption) ??
     text(object(content.richMessage)?.markdown) ??
     text(interactive?.body) ??
+    templatePreview?.body ??
     text(template?.name) ??
     text(structured?.question) ??
     item.mediaAsset?.originalFilename ??
