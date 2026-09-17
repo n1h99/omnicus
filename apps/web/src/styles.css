@@ -2362,7 +2362,15 @@ button:disabled,
 }
 
 .ant-table-wrapper .ant-table-tbody > tr:hover > td {
-  background: rgba(15, 118, 110, 0.035) !important;
+  background: #f6f8fb !important;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected > td {
+  background: #eef3f8 !important;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row-selected:hover > td {
+  background: #e8eef5 !important;
 }
 
 .clickable-row {
@@ -2370,7 +2378,7 @@ button:disabled,
 }
 
 .clickable-row:focus-visible > td {
-  background: rgba(15, 118, 110, 0.06) !important;
+  background: #eef3f8 !important;
   box-shadow:
     inset 0 1px 0 rgba(15, 118, 110, 0.2),
     inset 0 -1px 0 rgba(15, 118, 110, 0.2);
@@ -3786,6 +3794,23 @@ button:disabled,
 
 .contact-groups-note {
   margin-bottom: 18px;
+  max-width: 980px;
+}
+
+.contact-group-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.contact-group-tag {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--text-soft);
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .contact-group-rules {

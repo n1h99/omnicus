@@ -26,6 +26,7 @@ interface ContactRow {
   id: string;
   displayName: string;
   email: string | null;
+  groups: { id: string; name: string }[];
   lastInteractionAt: string | null;
   status: 'ACTIVE' | 'BLOCKED' | 'UNSUBSCRIBED' | 'ARCHIVED' | 'MERGED';
   tags: { tag: { id: string; name: string; color: string | null } }[];
@@ -250,6 +251,25 @@ export function ContactsPage() {
                 </Tag>
               )),
             title: 'Tags',
+          },
+          {
+            dataIndex: 'groups',
+            render: (items: ContactRow['groups']) =>
+              items.length ? (
+                <div className="contact-group-tags">
+                  {items.slice(0, 2).map((group) => (
+                    <Tag className="contact-group-tag" key={group.id}>
+                      {group.name}
+                    </Tag>
+                  ))}
+                  {items.length > 2 ? (
+                    <Tag className="contact-group-tag">+{items.length - 2}</Tag>
+                  ) : null}
+                </div>
+              ) : (
+                <Typography.Text type="secondary">—</Typography.Text>
+              ),
+            title: 'Groups',
           },
           {
             dataIndex: 'status',

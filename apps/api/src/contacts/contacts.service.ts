@@ -95,7 +95,42 @@ export class ContactsService {
       }),
       this.database.client.contact.count({ where }),
     ]);
-    return { items, page: query.page, pageSize: query.pageSize, total };
+    const groupsByContact = new Map<string, { id: string; name: string }[]>();
+    const contactIds = items.map((contact) => contact.id);
+    if (contactIds.length) {
+      const segments = await this.database.client.segment.findMany({
+        orderBy: { name: 'asc' },
+        select: { filter: true, id: true, name: true },
+        where: { archivedAt: null, projectId, status: 'ACTIVE' },
+      });
+      await Promise.all(
+        segments.map(async (segment) => {
+          const segmentWhere = await this.whereForSegment(projectId, segment.filter);
+          const members = await this.database.client.contact.findMany({
+            select: { id: true },
+            where: {
+              AND: [{ id: { in: contactIds } }, segmentWhere],
+              projectId,
+              ...(segmentWhere.status ? {} : { status: { not: 'MERGED' } }),
+            },
+          });
+          members.forEach((member) => {
+            const groups = groupsByContact.get(member.id) ?? [];
+            groups.push({ id: segment.id, name: segment.name });
+            groupsByContact.set(member.id, groups);
+          });
+        }),
+      );
+    }
+    return {
+      items: items.map((contact) => ({
+        ...contact,
+        groups: groupsByContact.get(contact.id) ?? [],
+      })),
+      page: query.page,
+      pageSize: query.pageSize,
+      total,
+    };
   }
 
   async audienceOptions(projectId: string, connectionId?: string) {
