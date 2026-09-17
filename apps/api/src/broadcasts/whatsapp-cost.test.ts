@@ -69,7 +69,10 @@ describe('WhatsApp broadcast cost estimation', () => {
         connectionId: 'channel-a',
         channel: 'WHATSAPP',
         status: 'ACTIVE',
-        whatsAppReachability: 'AVAILABLE',
+        OR: [
+          { whatsAppReachability: null },
+          { whatsAppReachability: { notIn: ['BLOCKED', 'UNAVAILABLE'] } },
+        ],
         contact: {
           is: {
             projectId: 'project-a',

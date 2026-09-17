@@ -359,7 +359,14 @@ export class BroadcastPreparationService implements OnApplicationBootstrap, OnAp
         connectionId,
         channel: channelType,
         status: 'ACTIVE',
-        ...(channelType === 'WHATSAPP' ? { whatsAppReachability: 'AVAILABLE' } : {}),
+        ...(channelType === 'WHATSAPP'
+          ? {
+              OR: [
+                { whatsAppReachability: null },
+                { whatsAppReachability: { notIn: ['BLOCKED', 'UNAVAILABLE'] } },
+              ],
+            }
+          : {}),
         contact: { is: contact },
       },
       select: {

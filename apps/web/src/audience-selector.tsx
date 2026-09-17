@@ -149,5 +149,6 @@ export function AudienceSelector({
 
 function contactLabel(contact: AudienceOptions['contacts'][number]) {
   const address = contact.email ?? contact.phone ?? contact.username;
-  return address ? `${contact.displayName} · ${address}` : contact.displayName;
+  const label = address ? `${contact.displayName} · ${address}` : contact.displayName;
+  return contact.eligibilityReason ? `${label} — ${contact.eligibilityReason}` : label;
 }

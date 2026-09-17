@@ -761,7 +761,14 @@ export class BroadcastsService {
       connectionId,
       projectId,
       status: 'ACTIVE',
-      ...(connection.type === 'WHATSAPP' ? { whatsAppReachability: 'AVAILABLE' } : {}),
+      ...(connection.type === 'WHATSAPP'
+        ? {
+            OR: [
+              { whatsAppReachability: null },
+              { whatsAppReachability: { notIn: ['BLOCKED', 'UNAVAILABLE'] } },
+            ],
+          }
+        : {}),
       contact: { is: contactWhere },
     };
   }

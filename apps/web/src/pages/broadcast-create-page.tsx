@@ -184,7 +184,7 @@ export function BroadcastCreatePage() {
             }
             description={
               isWhatsApp
-                ? 'Only active, reachable contacts with recorded WhatsApp consent are included when the broadcast starts.'
+                ? 'Only active contacts with recorded WhatsApp consent and no known delivery block are included when the broadcast starts.'
                 : 'Only active contacts connected to this Telegram account are included when the broadcast starts.'
             }
             disabled={!selectedChannel}

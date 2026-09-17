@@ -195,8 +195,12 @@ export class ContactsService {
               ? `No active ${connection.type === 'WHATSAPP' ? 'WhatsApp' : 'Telegram'} identity on this connection`
               : connection?.type === 'WHATSAPP' && contact.whatsAppConsentStatus !== 'GRANTED'
                 ? 'WhatsApp consent is not granted'
-                : connection?.type === 'WHATSAPP' && identity?.whatsAppReachability !== 'AVAILABLE'
-                  ? 'WhatsApp recipient is not currently reachable'
+              : connection?.type === 'WHATSAPP' &&
+                  identity?.whatsAppReachability &&
+                  ['BLOCKED', 'UNAVAILABLE'].includes(identity.whatsAppReachability)
+                ? identity.whatsAppReachability === 'BLOCKED'
+                  ? 'WhatsApp recipient is blocked'
+                  : 'WhatsApp recipient is unavailable'
                   : null;
         return {
           automationMode: contact.automationMode,
