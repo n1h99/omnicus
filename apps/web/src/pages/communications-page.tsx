@@ -270,6 +270,10 @@ function CommunicationsWorkspace({ projectId }: { projectId: string }) {
               <Tabs
                 activeKey={selectedChannel}
                 className="communications-channel-tabs"
+                classNames={{
+                  body: 'communications-tab-body',
+                  content: 'communications-tab-content',
+                }}
                 onChange={(value) => choose({ channel: value as CommunicationChannel })}
                 items={(['EMAIL', 'WHATSAPP', 'TELEGRAM'] as const).map((channel) => ({
                   key: channel,
@@ -285,6 +289,7 @@ function CommunicationsWorkspace({ projectId }: { projectId: string }) {
                       <MessengerPanel
                         key={`${contact.data.id}-${channel}`}
                         channel={channel}
+                        active={selectedChannel === channel}
                         canSend={canSendMessages}
                         contact={contact.data}
                         projectId={projectId}
@@ -302,12 +307,14 @@ function CommunicationsWorkspace({ projectId }: { projectId: string }) {
 }
 
 function MessengerPanel({
+  active,
   canSend,
   channel,
   contact,
   projectId,
   onIdentityCreated,
 }: {
+  active: boolean;
   canSend: boolean;
   channel: 'TELEGRAM' | 'WHATSAPP';
   contact: CommunicationContact;
@@ -351,7 +358,7 @@ function MessengerPanel({
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [quickReplySearch, setQuickReplySearch] = useState('');
   const selectionRef = useRef({ end: 0, start: 0 });
-  const endRef = useRef<HTMLDivElement>(null);
+  const messageScrollRef = useRef<HTMLDivElement>(null);
   const lastMessageId = messages.data?.items.at(-1)?.id;
   const serviceWindowOpen =
     channel === 'TELEGRAM' ||
@@ -361,8 +368,9 @@ function MessengerPanel({
     );
 
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: 'end' });
-  }, [lastMessageId]);
+    const scroll = messageScrollRef.current;
+    if (active && scroll) scroll.scrollTop = scroll.scrollHeight;
+  }, [active, lastMessageId]);
 
   const send = async () => {
     if (!canSend || (!draft.trim() && !pendingMedia) || !identity) return;
@@ -375,9 +383,7 @@ function MessengerPanel({
           ? { media: { kind: pendingMedia.kind, mediaAssetId: pendingMedia.id } }
           : {}),
         ...(replyTo ? { replyToMessageId: replyTo.id } : {}),
-        ...(channel === 'WHATSAPP'
-          ? { linkPreviewOptions: { isDisabled: false } }
-          : {}),
+        ...(channel === 'WHATSAPP' ? { linkPreviewOptions: { isDisabled: false } } : {}),
         ...(draft.trim() ? { text: draft.trim() } : {}),
       });
       setDraft('');
@@ -416,55 +422,55 @@ function MessengerPanel({
     <div className="communications-messenger">
       <div className="communications-messenger-header">
         <div className="communications-channel-toolbar">
-        <div>
-          <strong>{channel === 'WHATSAPP' ? 'WhatsApp Business' : 'Telegram'}</strong>
-          <small>
-            {identity
-              ? `${identity.connection.name} · ${identity.username ? `@${identity.username}` : identity.externalUserId}`
-              : channel === 'WHATSAPP'
-                ? 'No existing identity — start with an approved Meta template'
-                : 'This contact has not started a conversation with a connected Telegram bot'}
-          </small>
-        </div>
-        <Space wrap>
-          {identities.length > 1 ? (
-            <Select
-              aria-label={`Choose ${channelLabels[channel]} identity`}
-              value={identity?.id}
-              onChange={(value) => {
-                setIdentityId(value);
-                const next = identities.find((candidate) => candidate.id === value);
-                if (next) setConnectionId(next.connectionId);
-              }}
-              options={identities.map((candidate) => ({
-                label: `${candidate.connection.name} · ${candidate.username ?? candidate.externalUserId}`,
-                value: candidate.id,
-              }))}
-            />
-          ) : null}
-        </Space>
+          <div>
+            <strong>{channel === 'WHATSAPP' ? 'WhatsApp Business' : 'Telegram'}</strong>
+            <small>
+              {identity
+                ? `${identity.connection.name} · ${identity.username ? `@${identity.username}` : identity.externalUserId}`
+                : channel === 'WHATSAPP'
+                  ? 'No existing identity — start with an approved Meta template'
+                  : 'This contact has not started a conversation with a connected Telegram bot'}
+            </small>
+          </div>
+          <Space wrap>
+            {identities.length > 1 ? (
+              <Select
+                aria-label={`Choose ${channelLabels[channel]} identity`}
+                value={identity?.id}
+                onChange={(value) => {
+                  setIdentityId(value);
+                  const next = identities.find((candidate) => candidate.id === value);
+                  if (next) setConnectionId(next.connectionId);
+                }}
+                options={identities.map((candidate) => ({
+                  label: `${candidate.connection.name} · ${candidate.username ?? candidate.externalUserId}`,
+                  value: candidate.id,
+                }))}
+              />
+            ) : null}
+          </Space>
         </div>
 
         {channel === 'WHATSAPP' && identity ? (
           <div className={`communications-window ${serviceWindowOpen ? 'is-open' : 'is-closed'}`}>
-          <ClockCircleOutlined />
-          <span>
-            <strong>
-              {serviceWindowOpen
-                ? '24-hour service window is open'
-                : '24-hour service window is closed'}
-            </strong>
-            <small>
-              {serviceWindowOpen
-                ? `Free-form messages are available${messages.data?.conversation?.serviceWindowExpiresAt ? ` until ${new Date(messages.data.conversation.serviceWindowExpiresAt).toLocaleString()}` : ''}.`
-                : 'Use an approved Meta template to start or reopen the conversation.'}
-            </small>
-          </span>
+            <ClockCircleOutlined />
+            <span>
+              <strong>
+                {serviceWindowOpen
+                  ? '24-hour service window is open'
+                  : '24-hour service window is closed'}
+              </strong>
+              <small>
+                {serviceWindowOpen
+                  ? `Free-form messages are available${messages.data?.conversation?.serviceWindowExpiresAt ? ` until ${new Date(messages.data.conversation.serviceWindowExpiresAt).toLocaleString()}` : ''}.`
+                  : 'Use an approved Meta template to start or reopen the conversation.'}
+              </small>
+            </span>
           </div>
         ) : null}
       </div>
 
-      <div className="communications-message-scroll">
+      <div className="communications-message-scroll" ref={messageScrollRef}>
         {!identity ? (
           <div className="communications-empty communications-empty--compact">
             {channel === 'WHATSAPP' ? <WhatsAppOutlined /> : <SendOutlined />}
@@ -517,117 +523,229 @@ function MessengerPanel({
             </Typography.Text>
           </div>
         )}
-        <div ref={endRef} />
       </div>
 
       <div className="communications-composer">
-        {replyTo ? (
-          <div className="communications-reply-preview">
-            <span>
-              <strong>Replying to message</strong>
-              <small>{messageText(replyTo, messageTemplates.data ?? [])}</small>
-            </span>
-            <Button
-              aria-label="Cancel reply"
-              icon={<CloseOutlined />}
-              size="small"
-              type="text"
-              onClick={() => setReplyTo(undefined)}
-            />
-          </div>
-        ) : null}
-        {pendingMedia ? (
-          <div className="communications-reply-preview">
-            <span>
-              <strong>{pendingMedia.name}</strong>
-              <small>{pendingMedia.kind}</small>
-            </span>
-            <Button
-              aria-label="Remove attachment"
-              icon={<CloseOutlined />}
-              size="small"
-              type="text"
-              onClick={() => setPendingMedia(undefined)}
-            />
-          </div>
-        ) : null}
-        <div className="communications-format-toolbar">
-          {channel === 'WHATSAPP' ? (
-            <>
-              <Tooltip title="Bold">
-                <Button
-                  aria-label="Bold"
-                  disabled={!canSend || !identity || !serviceWindowOpen}
-                  icon={<BoldOutlined />}
-                  size="small"
-                  type="text"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyWhatsAppFormat('*')}
-                />
-              </Tooltip>
-              <Tooltip title="Italic">
-                <Button
-                  aria-label="Italic"
-                  disabled={!canSend || !identity || !serviceWindowOpen}
-                  icon={<ItalicOutlined />}
-                  size="small"
-                  type="text"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyWhatsAppFormat('_')}
-                />
-              </Tooltip>
-              <Tooltip title="Strikethrough">
-                <Button
-                  aria-label="Strikethrough"
-                  disabled={!canSend || !identity || !serviceWindowOpen}
-                  icon={<StrikethroughOutlined />}
-                  size="small"
-                  type="text"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyWhatsAppFormat('~')}
-                />
-              </Tooltip>
-              <Tooltip title="Monospace">
-                <Button
-                  aria-label="Monospace"
-                  disabled={!canSend || !identity || !serviceWindowOpen}
-                  icon={<CodeOutlined />}
-                  size="small"
-                  type="text"
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => applyWhatsAppFormat('```')}
-                />
-              </Tooltip>
-            </>
+        <div className="communications-composer-main">
+          {replyTo ? (
+            <div className="communications-reply-preview">
+              <span>
+                <strong>Replying to message</strong>
+                <small>{messageText(replyTo, messageTemplates.data ?? [])}</small>
+              </span>
+              <Button
+                aria-label="Cancel reply"
+                icon={<CloseOutlined />}
+                size="small"
+                type="text"
+                onClick={() => setReplyTo(undefined)}
+              />
+            </div>
           ) : null}
-        </div>
-        <div className="communications-compose-row">
-          <Input.TextArea
-            autoSize={{ minRows: 1, maxRows: 6 }}
-            disabled={!canSend || !identity || !serviceWindowOpen}
-            maxLength={4096}
-            placeholder={
-              !identity
-                ? 'Choose Meta template to start'
-                : serviceWindowOpen
-                  ? `Message via ${channelLabels[channel]}`
-                  : 'Use an approved Meta template outside the 24-hour window'
-            }
-            value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            onSelect={(event) => {
-              selectionRef.current = {
-                end: event.currentTarget.selectionEnd,
-                start: event.currentTarget.selectionStart,
-              };
-            }}
-            onPressEnter={(event) => {
-              if (!event.shiftKey) {
-                event.preventDefault();
-                void send();
+          {pendingMedia ? (
+            <div className="communications-reply-preview">
+              <span>
+                <strong>{pendingMedia.name}</strong>
+                <small>{pendingMedia.kind}</small>
+              </span>
+              <Button
+                aria-label="Remove attachment"
+                icon={<CloseOutlined />}
+                size="small"
+                type="text"
+                onClick={() => setPendingMedia(undefined)}
+              />
+            </div>
+          ) : null}
+          <div className="communications-format-toolbar">
+            {channel === 'WHATSAPP' ? (
+              <>
+                <Tooltip title="Bold">
+                  <Button
+                    aria-label="Bold"
+                    disabled={!canSend || !identity || !serviceWindowOpen}
+                    icon={<BoldOutlined />}
+                    size="small"
+                    type="text"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyWhatsAppFormat('*')}
+                  />
+                </Tooltip>
+                <Tooltip title="Italic">
+                  <Button
+                    aria-label="Italic"
+                    disabled={!canSend || !identity || !serviceWindowOpen}
+                    icon={<ItalicOutlined />}
+                    size="small"
+                    type="text"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyWhatsAppFormat('_')}
+                  />
+                </Tooltip>
+                <Tooltip title="Strikethrough">
+                  <Button
+                    aria-label="Strikethrough"
+                    disabled={!canSend || !identity || !serviceWindowOpen}
+                    icon={<StrikethroughOutlined />}
+                    size="small"
+                    type="text"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyWhatsAppFormat('~')}
+                  />
+                </Tooltip>
+                <Tooltip title="Monospace">
+                  <Button
+                    aria-label="Monospace"
+                    disabled={!canSend || !identity || !serviceWindowOpen}
+                    icon={<CodeOutlined />}
+                    size="small"
+                    type="text"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => applyWhatsAppFormat('```')}
+                  />
+                </Tooltip>
+              </>
+            ) : null}
+          </div>
+          <div className="communications-compose-row">
+            <Input.TextArea
+              autoSize={{ minRows: 1, maxRows: 6 }}
+              disabled={!canSend || !identity || !serviceWindowOpen}
+              maxLength={4096}
+              placeholder={
+                !identity
+                  ? channel === 'WHATSAPP'
+                    ? 'Choose Meta template to start'
+                    : 'The contact must start a conversation with the Telegram bot'
+                  : serviceWindowOpen
+                    ? `Message via ${channelLabels[channel]}`
+                    : 'Use an approved Meta template outside the 24-hour window'
               }
-            }}
-          />
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onSelect={(event) => {
+                selectionRef.current = {
+                  end: event.currentTarget.selectionEnd,
+                  start: event.currentTarget.selectionStart,
+                };
+              }}
+              onPressEnter={(event) => {
+                if (!event.shiftKey) {
+                  event.preventDefault();
+                  void send();
+                }
+              }}
+            />
+          </div>
+        </div>
+        <div className="communications-composer-actions">
+          <div className="communications-composer-tools">
+            <Upload
+              accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+              beforeUpload={async (file) => {
+                const kind = mediaKind(file);
+                try {
+                  const asset = await actions.upload.mutateAsync({ channel, file, kind });
+                  setPendingMedia({
+                    id: asset.id,
+                    kind,
+                    name: asset.originalFilename ?? file.name,
+                  });
+                } catch (error) {
+                  void message.error(getUserErrorMessage(error, 'File could not be uploaded.'));
+                }
+                return false;
+              }}
+              disabled={!canSend || !identity || !serviceWindowOpen || actions.upload.isPending}
+              showUploadList={false}
+            >
+              <Button
+                aria-label="Attach a file"
+                disabled={!canSend || !identity || !serviceWindowOpen || actions.upload.isPending}
+                icon={<PaperClipOutlined />}
+                loading={actions.upload.isPending}
+                size="small"
+              >
+                Attach
+              </Button>
+            </Upload>
+            <Popover
+              content={
+                <div className="communications-quick-replies">
+                  <strong>Quick replies</strong>
+                  <small>Saved text templates for regular messages.</small>
+                  <Input
+                    allowClear
+                    prefix={<SearchOutlined />}
+                    placeholder="Search quick replies"
+                    value={quickReplySearch}
+                    onChange={(event) => setQuickReplySearch(event.target.value)}
+                  />
+                  <div>
+                    {quickReplyTemplates.isLoading ? (
+                      <Spin size="small" />
+                    ) : quickReplies.length ? (
+                      quickReplies.map((template) => (
+                        <button
+                          key={template.id}
+                          type="button"
+                          onClick={() => {
+                            setDraft(template.activeVersion?.content.text ?? '');
+                            setQuickRepliesOpen(false);
+                          }}
+                        >
+                          <strong>{template.name}</strong>
+                          <small>{template.activeVersion?.content.text}</small>
+                        </button>
+                      ))
+                    ) : (
+                      <small>No published text templates found.</small>
+                    )}
+                  </div>
+                </div>
+              }
+              open={quickRepliesOpen}
+              placement="topLeft"
+              trigger="click"
+              onOpenChange={setQuickRepliesOpen}
+            >
+              <Button
+                icon={<ThunderboltOutlined />}
+                size="small"
+                disabled={!canSend || !identity || !serviceWindowOpen}
+              >
+                Quick replies
+              </Button>
+            </Popover>
+            <Button
+              icon={<ContactsOutlined />}
+              size="small"
+              disabled={!canSend || !identity || !serviceWindowOpen}
+              onClick={() => setStructuredOpen(true)}
+            >
+              {channel === 'WHATSAPP' ? 'Contact / Location' : 'Contact / Poll'}
+            </Button>
+            {channel === 'WHATSAPP' ? (
+              <>
+                <Button
+                  icon={<AppstoreAddOutlined />}
+                  size="small"
+                  disabled={!canSend || !identity || !serviceWindowOpen}
+                  onClick={() => setInteractiveOpen(true)}
+                >
+                  Buttons / List
+                </Button>
+                <Button
+                  icon={<FileTextOutlined />}
+                  size="small"
+                  disabled={!canSend || !connectionId || !availableConnections.length}
+                  onClick={() => setTemplateOpen(true)}
+                >
+                  Meta template
+                </Button>
+              </>
+            ) : null}
+          </div>
           <Button
             type="primary"
             aria-label="Send message"
@@ -638,108 +756,6 @@ function MessengerPanel({
             }
             onClick={() => void send()}
           />
-        </div>
-        <div className="communications-composer-tools">
-          <Upload
-            accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-            beforeUpload={async (file) => {
-              const kind = mediaKind(file);
-              try {
-                const asset = await actions.upload.mutateAsync({ channel, file, kind });
-                setPendingMedia({ id: asset.id, kind, name: asset.originalFilename ?? file.name });
-              } catch (error) {
-                void message.error(getUserErrorMessage(error, 'File could not be uploaded.'));
-              }
-              return false;
-            }}
-            disabled={!canSend || !identity || !serviceWindowOpen || actions.upload.isPending}
-            showUploadList={false}
-          >
-            <Button
-              aria-label="Attach a file"
-              icon={<PaperClipOutlined />}
-              loading={actions.upload.isPending}
-              size="small"
-            >
-              Attach
-            </Button>
-          </Upload>
-          <Popover
-            content={
-              <div className="communications-quick-replies">
-                <strong>Quick replies</strong>
-                <small>Saved text templates for regular messages.</small>
-                <Input
-                  allowClear
-                  prefix={<SearchOutlined />}
-                  placeholder="Search quick replies"
-                  value={quickReplySearch}
-                  onChange={(event) => setQuickReplySearch(event.target.value)}
-                />
-                <div>
-                  {quickReplyTemplates.isLoading ? (
-                    <Spin size="small" />
-                  ) : quickReplies.length ? (
-                    quickReplies.map((template) => (
-                      <button
-                        key={template.id}
-                        type="button"
-                        onClick={() => {
-                          setDraft(template.activeVersion?.content.text ?? '');
-                          setQuickRepliesOpen(false);
-                        }}
-                      >
-                        <strong>{template.name}</strong>
-                        <small>{template.activeVersion?.content.text}</small>
-                      </button>
-                    ))
-                  ) : (
-                    <small>No published text templates found.</small>
-                  )}
-                </div>
-              </div>
-            }
-            open={quickRepliesOpen}
-            placement="topLeft"
-            trigger="click"
-            onOpenChange={setQuickRepliesOpen}
-          >
-            <Button
-              icon={<ThunderboltOutlined />}
-              size="small"
-              disabled={!canSend || !identity || !serviceWindowOpen}
-            >
-              Quick replies
-            </Button>
-          </Popover>
-          <Button
-            icon={<ContactsOutlined />}
-            size="small"
-            disabled={!canSend || !identity || !serviceWindowOpen}
-            onClick={() => setStructuredOpen(true)}
-          >
-            {channel === 'WHATSAPP' ? 'Contact / Location' : 'Contact / Poll'}
-          </Button>
-          {channel === 'WHATSAPP' ? (
-            <>
-              <Button
-                icon={<AppstoreAddOutlined />}
-                size="small"
-                disabled={!canSend || !identity || !serviceWindowOpen}
-                onClick={() => setInteractiveOpen(true)}
-              >
-                Buttons / List
-              </Button>
-              <Button
-                icon={<FileTextOutlined />}
-                size="small"
-                disabled={!canSend || !connectionId || !availableConnections.length}
-                onClick={() => setTemplateOpen(true)}
-              >
-                Meta template
-              </Button>
-            </>
-          ) : null}
         </div>
       </div>
 
@@ -820,9 +836,7 @@ function WhatsAppInteractiveModal({
         parsedRows.length > 10 ||
         parsedRows.some(([title, id, description]) =>
           Boolean(
-            (title?.length ?? 0) > 24 ||
-              (id?.length ?? 0) > 200 ||
-              (description?.length ?? 0) > 72,
+            (title?.length ?? 0) > 24 || (id?.length ?? 0) > 200 || (description?.length ?? 0) > 72,
           ),
         ));
   const send = async () => {
@@ -895,7 +909,11 @@ function WhatsAppInteractiveModal({
         />
         <label>
           <span>Header (optional)</span>
-          <Input maxLength={60} value={header} onChange={(event) => setHeader(event.target.value)} />
+          <Input
+            maxLength={60}
+            value={header}
+            onChange={(event) => setHeader(event.target.value)}
+          />
         </label>
         <label>
           <span>Message</span>
@@ -908,7 +926,11 @@ function WhatsAppInteractiveModal({
         </label>
         <label>
           <span>Footer (optional)</span>
-          <Input maxLength={60} value={footer} onChange={(event) => setFooter(event.target.value)} />
+          <Input
+            maxLength={60}
+            value={footer}
+            onChange={(event) => setFooter(event.target.value)}
+          />
         </label>
         {mode === 'list' ? (
           <div className="communications-structured-grid">
@@ -1077,7 +1099,11 @@ function StructuredMessageModal({
             {channel === 'WHATSAPP' ? (
               <label>
                 <span>Email (optional)</span>
-                <Input type="email" value={email} onChange={(event) => setEmail(event.target.value)} />
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
               </label>
             ) : null}
           </>
@@ -1154,8 +1180,8 @@ function CommunicationBubble({
         })
       : [];
   const structured = object(item.content.structured);
-  const contact = object(item.content.contact) ??
-    (text(structured?.type) === 'contact' ? structured : undefined);
+  const contact =
+    object(item.content.contact) ?? (text(structured?.type) === 'contact' ? structured : undefined);
   const location =
     typeof item.content.latitude === 'number' && typeof item.content.longitude === 'number'
       ? item.content
