@@ -169,6 +169,23 @@ describe('manual email send replay and privacy', () => {
     await expect(inbox.send('p1', input, actor)).rejects.toThrow('email_request_id_reused');
     expect(client.$transaction).not.toHaveBeenCalled();
   });
+  it('reconciles an already queued request even if sending was paused after a lost response', async () => {
+    const { inbox, client } = ready({
+      id: 'message1',
+      threadId: 't1',
+      deliveryId: 'delivery1',
+      requestHash: createHash('sha256').update(JSON.stringify(input)).digest('hex'),
+    });
+    client.project.findUnique.mockResolvedValue({ status: 'PAUSED' });
+    vi.mocked(inbox.assertMailbox).mockImplementation(async (_project, _id, _actor, send) => {
+      if (send) throw new Error('email_sender_not_ready');
+      return { id: 'm1', signature: '' } as never;
+    });
+    await expect(inbox.send('p1', input, actor)).resolves.toMatchObject({
+      deliveryId: 'delivery1',
+    });
+    expect(client.$transaction).not.toHaveBeenCalled();
+  });
   it('cannot send to a suppressed address through the manual composer', async () => {
     const { inbox, client } = ready();
     client.emailSuppression.findUnique.mockResolvedValue({} as never);
@@ -203,6 +220,77 @@ describe('manual email send replay and privacy', () => {
     expect(client.emailEvent.count).toHaveBeenCalledWith({
       where: { projectId: 'p1', delivery: { source: { not: 'MANUAL' } } },
     });
+  });
+});
+
+describe('private draft revision safety', () => {
+  const input = {
+    mailboxId: 'm1',
+    revision: 0,
+    to: 'client@example.com',
+    subject: 'Private notes',
+    text: 'First version',
+    assetIds: [] as string[],
+  };
+  function draftFixture(revision = 1) {
+    const draft = {
+      id: emailId,
+      projectId: 'p1',
+      userId: actor.userId,
+      mailboxId: 'm1',
+      threadId: null,
+      revision,
+      toEmail: input.to,
+      subject: input.subject,
+      textBody: input.text,
+      assetIds: [],
+    };
+    const tx = {
+      $executeRaw: vi.fn(),
+      emailDraft: {
+        findFirst: vi.fn().mockResolvedValue(draft),
+        count: vi.fn().mockResolvedValue(1),
+        createMany: vi.fn().mockResolvedValue({ count: 0 }),
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        deleteMany: vi.fn().mockImplementation(async ({ where }) => ({
+          count: where.revision === draft.revision && where.userId === draft.userId ? 1 : 0,
+        })),
+      },
+      emailAssetReference: { deleteMany: vi.fn(), createMany: vi.fn() },
+    };
+    const inbox = service({
+      ...tx,
+      mediaAsset: { findMany: vi.fn().mockResolvedValue([]) },
+      $transaction: (callback: (value: unknown) => unknown) => callback(tx),
+    });
+    vi.spyOn(inbox, 'assertMailbox').mockResolvedValue({ id: 'm1' } as never);
+    return { inbox, tx, draft };
+  }
+  it.each([0, 3])(
+    'recovers a lost save response for revision %i without overwriting the draft',
+    async (revision) => {
+      const { inbox, tx, draft } = draftFixture(revision + 1);
+      await expect(inbox.saveDraft('p1', emailId, { ...input, revision }, actor)).resolves.toEqual(
+        draft,
+      );
+      expect(tx.emailDraft.createMany).not.toHaveBeenCalled();
+      expect(tx.emailDraft.updateMany).not.toHaveBeenCalled();
+      expect(tx.emailAssetReference.deleteMany).not.toHaveBeenCalled();
+    },
+  );
+  it('rejects a stale edit with different content', async () => {
+    const { inbox, tx } = draftFixture(2);
+    await expect(
+      inbox.saveDraft('p1', emailId, { ...input, revision: 1, text: 'Stale edit' }, actor),
+    ).rejects.toThrow('email_draft_changed');
+    expect(tx.emailAssetReference.deleteMany).not.toHaveBeenCalled();
+  });
+  it('preserves a newer draft and its attachments when deletion uses an old revision', async () => {
+    const { inbox, tx } = draftFixture(2);
+    await expect(inbox.deleteDraft('p1', emailId, 1, actor)).rejects.toThrow('email_draft_changed');
+    expect(tx.emailAssetReference.deleteMany).not.toHaveBeenCalled();
+    await expect(inbox.deleteDraft('p1', emailId, 2, actor)).resolves.toEqual({ deleted: true });
+    expect(tx.emailAssetReference.deleteMany).toHaveBeenCalledTimes(1);
   });
 });
 

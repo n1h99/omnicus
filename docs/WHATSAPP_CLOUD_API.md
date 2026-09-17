@@ -6,7 +6,9 @@ The connected test number has verified open-window automation, interactive
 replies and CRM synchronization. The remaining provider gate is an approved
 template outside the service window and production-volume acceptance.
 
-Implementation behavior reviewed: 2026-08-14.
+Implementation behavior reviewed: 2026-09-10. Native template management,
+channel health and direct Meta billing are implemented; guided acceptance and
+remaining external checks are recorded in [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
 
 ## Authoritative Meta references
 
@@ -139,6 +141,25 @@ operation, never an uncertain provider outcome.
 Templates are exposed through a normalized contract. Raw Meta template payloads
 are mapped to an allowlisted name, language, category, status and component
 preview. Sending uses typed text/currency/date-time/media/button parameters.
+
+## Native template, health and payment management
+
+Operators can create supported Marketing/Utility templates in Omnicus, upload
+media review samples, preview, duplicate/edit/delete and explicitly synchronize
+Meta review status. Template creation is no longer a Graph API/Postman-only
+workflow. Meta remains the authority for approval; a submitted/pending template
+is not a sendable approved template.
+
+The channel center combines independent provider health checks with a direct
+Meta payment action and phone-scoped cost reports. Payment details, payment
+confirmation and invoices remain in Meta. Omnicus has no wallet or credit line.
+Broadcast list-rate estimates remain separate from provider-reported costs;
+unavailable currency/data is not zero. These controls use existing project
+permissions, encrypted connection credentials and delivery journals without
+changing the CRM contract or requiring a database migration.
+
+Routes, media limits, UI states, pricing maintenance and live evidence are
+documented in [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
 
 ## Application-owned scheduling
 

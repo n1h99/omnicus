@@ -4,6 +4,22 @@ Status reviewed: 2026-08-14. The generic outbox machine applies to Telegram,
 WhatsApp, CRM, Automation Studio 2.2 HTTP operations and email/attribution side
 effects.
 
+## WhatsApp management projections (2026-09-10)
+
+The native template editor does not create a second approval state machine:
+Meta remains the status authority. A successful submission or sync is not an
+`APPROVED` transition. Editing can return a template to review, and an uncertain
+save requires synchronization before another attempt. Supported-template and
+service-window guards still apply before actual delivery.
+
+Channel setup/active state, provider sending status, token validity, last
+delivery error, cost-report availability and payment-method confirmation are
+independent facts. Grouping notices or adding loading/spacing states changes
+presentation only; it must not rewrite message/outbox state or imply that an
+old delivery error currently blocks the channel. There is no Omnicus payment
+balance or charge lifecycle in the direct Meta billing model. See
+[WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
 ## Email Inbox addition — ADR-060 (2026-09-15)
 
 Durable receipt: `PENDING → PROCESSING → COMPLETED | RETRY | FAILED`.

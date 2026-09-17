@@ -32,6 +32,14 @@ send outside the window and production-volume verification on the customer's
 Meta business account. Instagram remains deliberately deferred until its own
 account and provider scope are approved.
 
+The September 10 WhatsApp update adds native marketing/utility template
+authoring and Meta review synchronization, a channel health center, direct Meta
+payment guidance and phone-scoped cost reports, plus broadcast cost estimates.
+Meta remains responsible for template approval and billing; Omnicus does not
+hold a customer wallet or collect card details. Missing report data is not zero
+spend. These features do not establish App Review approval or replace the
+remaining live acceptance gates. See [WhatsApp management](docs/WHATSAPP_MANAGEMENT.md).
+
 `Email & SMS Broadcast` contains the working email campaign product. Email is
 sent by the worker through Resend using the verified Omnicus mail and tracking
 domains; signed provider events update project analytics and linked CRM lead
@@ -147,4 +155,5 @@ bearer tokens, project secrets or Railway-generated values.
 - [Operations runbook](docs/RUNBOOK.md)
 - [Cyber Pulse CRM integration](docs/CRM_INTEGRATION.md)
 - [WhatsApp Business Cloud API](docs/WHATSAPP_CLOUD_API.md)
+- [WhatsApp templates, channel health and Meta billing](docs/WHATSAPP_MANAGEMENT.md)
 - [Email campaigns and Resend](docs/EMAIL_BROADCASTS.md)

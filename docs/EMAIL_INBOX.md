@@ -1,6 +1,6 @@
 # Email Inbox
 
-Status: implemented locally, 2026-09-15; user-approved scope (ADR-060).
+Status: implemented locally, with completion fixes on 2026-09-17; user-approved scope (ADR-060).
 Deployment and live acceptance are not verified. This is a Resend-backed Omnicus workspace, not
 an IMAP/Gmail importer or a second automation engine.
 
@@ -26,6 +26,21 @@ and a reader on the right. Mobile uses list/reader navigation. Threads show the
 source (campaign, automation or manual), delivery status and downloadable files.
 Search matches subject/address; list pages contain 30 threads, message pages 50.
 Polling is every 15 seconds; the receive worker scans every 5 seconds.
+
+Completion fixes (2026-09-17): draft saves accept an identical retry after a lost
+response; draft deletion requires the displayed revision and cannot remove a newer
+edit from another tab. A queued manual send can be reconciled with its original
+request ID after the project/sender is paused, while new sends still require an
+active project and ready sender. Legacy send retries retain the original Reply-To.
+First incoming messages retain their received date and preview when imported later;
+plain-text content is bounded just like HTML-derived text. Disabled/send-only
+mailboxes do not occupy the reply/timeout processing batches.
+
+Media readers can attach existing files; uploading additionally requires media
+management permission. Filtered drafts show a matching count and empty state;
+mailbox assignments display member names from the API contract. These fixes use
+the existing schema and do not require a new migration. Joint module-by-module
+live acceptance remains deferred at the user's request.
 
 ## Durability and security
 

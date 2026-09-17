@@ -4,3 +4,4 @@
 *.dump
 *.archive
 node_modules/
+*.local.sh

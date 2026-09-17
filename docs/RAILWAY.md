@@ -14,6 +14,23 @@ Verify Omnicus API → Settings → Deploy → Pre-deploy Command contains
 tracked API railway.toml. Only one service runs migrations. The checklist is in
 [EMAIL_INBOX.md](EMAIL_INBOX.md); a Git push does not verify successful deployment.
 
+## WhatsApp management release (2026-09-10)
+
+The feature release `35fb7d2` changes API, worker and web, including delivery
+pricing projections; keep all three services on compatible artifacts. It adds
+no database migration and no new environment variables. Existing app settings
+and encrypted per-channel Meta credentials remain authoritative.
+
+The UI follow-ups through `3698b7b` are web-only: channel ordering/empty states,
+grouped diagnostics, template toolbar/image preview, centered loading and
+card/report-error spacing. A successful Git push is not evidence that Railway
+finished deploying. Verify the web release commit and reload the browser after
+deployment. The report's backend/provider error may still require separate
+triage; adding an alert margin does not repair the failed request.
+
+No wallet, card-storage service or payment API secret is introduced. Customers
+manage payment methods in Meta. See [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
 ## Services
 
 All three services use the repository root and the same lockfile:

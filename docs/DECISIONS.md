@@ -1486,6 +1486,61 @@ invitation/reset delivery is not implicitly coupled to marketing email. A
 campaign snapshot is recoverable and deduplicated, while provider acceptance,
 delivery and clicks remain distinct evidence.
 
+## ADR-057: Broadcasts reuse Automation scenarios instead of duplicating the graph editor
+
+**Status:** Accepted, 2026-08-29.
+
+**Context:** Operators need event-triggered follow-up sequences across available
+channels and also need one-off audience broadcasts. Embedding another scenario
+canvas inside Broadcasts would present similar controls but duplicate graph
+rendering, local draft state, validation, immutable versioning and Test/Publish
+semantics. Two authoring implementations could diverge while still targeting
+the same runtime.
+
+**Decision:** `Automation -> Scenarios` is the only visual authoring surface for
+triggered sequences, delays, waits, conditions and channel branches.
+`Email & SMS Broadcast` owns campaign content, audience selection, scheduling
+and delivery reporting. A broadcast may use published content and Automation
+may pin published email templates, but Broadcast does not mount or fork the
+scenario editor. New channel providers extend Automation actions rather than
+creating another canvas.
+
+**Consequences:** Operators use one deterministic graph and one version history
+for follow-up chains. The web application avoids duplicate canvas render/state
+cost and the product avoids two validation/runtime contracts. Telegram, email
+and supported WhatsApp actions share the Automation runtime. SMS remains a
+separate unimplemented provider scope and does not justify duplicating the
+editor.
+
+## ADR-058: Native WhatsApp management with direct Meta billing
+
+**Status:** Accepted, 2026-09-10; records the user-approved implemented scope.
+
+**Decision:** Omnicus authors supported Marketing/Utility templates and media
+review samples, synchronizes Meta review state, and exposes independent channel
+health checks and phone-scoped cost reports. Meta owns template approval and
+billing. Payment actions open the selected WABA in Meta; Omnicus does not hold
+funds, issue payment tokens, store cards, operate a credit line or provide an
+embedded checkout. Business profile management, Flows, catalogs and QR tooling
+are not part of this slice.
+
+Broadcast estimates use a bounded, dated list-rate snapshot; missing currency,
+provider reports or recipient prices remain unknown instead of becoming zero.
+Estimates, delivery paid/free facts and the final Meta invoice are different
+evidence. Native templates do not bypass approval, service-window or existing
+project/connection permissions, and do not change the CRM contract.
+
+**UI contract:** Connection overview → How WhatsApp works here → WhatsApp
+channel center. Keep an 18 px card gap and a 16 px gap before a report error,
+center initial loaders, group duplicate diagnostics with expandable details,
+preserve distinct blockers, place template actions side by side responsively,
+and preview newly uploaded images locally without loosening CSP.
+
+**Consequences:** Users manage supported WhatsApp workflows from Omnicus while
+Meta remains the provider authority. App Review, real payments and remaining
+live acceptance cannot be inferred from repository deployment or mock coverage.
+Details: [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
 ## ADR-059: Explicit test-data purge, never production CRM
 
 **Status:** Accepted scope, 2026-09-15; requested by the operator. Scripts are
@@ -1503,6 +1558,32 @@ definitions and other projects remain. CRM production is forbidden. Both
 sides require verified environment/database/pairing identities, disabled sync,
 stopped writers, a reviewed expiring dry-run, exact confirmation and a
 restore-tested backup. There is no cross-database atomic commit or blind retry.
+
+Standalone MongoDB is supported only through explicit
+`--offline-standalone --writers-stopped` for both planning and execution. It keeps
+all target/pairing/backup guards, rechecks reviewed records before deletion and
+verifies preserved configuration/indexes afterward. This mode is NOT atomic:
+partial deletion is possible and there is no automatic rollback, retry or resume.
+The normal replica-set path does not silently fall back. A separate successful
+receipt status is `STANDALONE_VERIFIED_FILES_RETAINED`. A Railway volume snapshot
+alone is not represented as a tested native restore.
+
+**Operator-requested console exception, 2026-09-15:** The operator explicitly
+declined service shutdown. A separate PostgreSQL-only console reset is permitted
+for the verified test project, with operator-confirmed Railway backup, exact
+Railway/database/project/staging-pairing pins, an expected contact count,
+write-blocking table locks, active-work checks and transactional rollback.
+It does not pretend writers were stopped or a native restore was tested and does
+not weaken the original CLI guards. Background/provider work after commit can
+recreate records; no global/live atomicity or automatic retry is promised.
+The separately reviewed `mongo-console.mjs` procedure covers the same explicit
+no-shutdown request for the pinned staging standalone MongoDB only: loopback
+connection, exact Railway/project/database/pairing pins, expected 92 leads,
+collection allowlist, repeated snapshots and per-batch comparisons, preserved
+configuration/index checks and zero-count verification. This is non-atomic:
+partial cleanup is possible, with no rollback or blind retry. A reported
+Railway volume backup is not a verified native restore. Original offline CLI
+guards remain unchanged.
 
 Storage objects, shared assets, provider copies, Redis and backup archives are
 not erased. The plan records known retained file keys for a separately approved

@@ -1,18 +1,54 @@
 # Omnicus documentation index
 
-Status reviewed: 2026-08-14. `main` includes Automation Studio 2.2, Telegram
+Status reviewed: 2026-09-10. `main` includes Automation Studio 2.2, Telegram
 Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
 Resend email campaigns, cross-system contact merge, platform operations and
 Automation Activity.
 
 ## Current product status
 
+- Completion pass 2026-09-17: Email Inbox draft concurrency/retry, send replay,
+  incoming chronology and inactive mailbox processing fixes are complete locally;
+  media attachment permissions and settings/draft UI contracts are corrected.
+  The full 16-case browser regression passes. Joint live module acceptance is
+  deferred by the user. The shared dependency audit still reports 14 advisories
+  (10 high) and is a separate release follow-up; see [TESTING.md](TESTING.md).
 - Local update 2026-09-15: [Email Inbox](EMAIL_INBOX.md), ADR-060, adds project
   domains/addresses, Gmail-style conversation navigation, private drafts, manual
   replies/files, campaign/automation history and exact-thread email waits. New
   permissions and migration are included. Deployment, provider DNS/Receiving and
   live acceptance remain unverified; a Git push does not confirm Railway deployment.
 
+- WhatsApp now has native marketing/utility template authoring, media review
+  samples, preview, duplicate/edit/delete and explicit Meta status sync. The
+  channel center shows provider health and a direct Meta billing/cost report;
+  broadcasts have list-rate estimates with unknown/free/paid separation.
+  [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md) is the current feature,
+  limitation, UI and acceptance reference. Customer-facing release notes are in
+  [CUSTOMER_PATCH_NOTES_2026-09-10.md](CUSTOMER_PATCH_NOTES_2026-09-10.md).
+- Channel detail order is `Connection overview` -> `How WhatsApp works here`
+  -> `WhatsApp channel center`, followed by the existing settings and actions.
+  Missing configuration/access has a designed action state; duplicate checks
+  are grouped with expandable diagnostics. Template actions sit side by side,
+  newly uploaded image samples have a visual preview, loading is centered, and
+  card/report-error spacing is explicit. UI commits through `3698b7b` are on
+  `origin/main`; a push is not a separate confirmation of Railway deployment.
+- The customer-requested August patch adds manual contact creation with durable
+  CRM synchronization, safe absolute-URL validation, Telegram action-button
+  branches, content-rich editable automation nodes and multiple-attachment
+  group/separate delivery. Its customer-facing notes are in
+  [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md).
+- Automated follow-up remains in the single authoritative `Automation ->
+  Scenarios` graph. `Email & SMS Broadcast` remains the one-off/scheduled
+  campaign surface and does not duplicate the graph editor, draft/version
+  state, validation or runtime controls.
+- Automation continuation recovery now isolates failed executions and resolves
+  normalized inbound reply event types before ordinary trigger matching. One
+  failed Telegram media delivery cannot stop the continuation scan for other
+  executions.
+- Email campaigns explain that click tracking is controlled centrally by the
+  verified Resend domain. Incomplete destination URLs fail inline validation
+  instead of crashing the editor; click evidence remains visible in Analytics.
 - Railway runs the web, API and worker services from `main`; deployments are
   automatic after a push.
 - All operator mutations expose action-specific success/failure feedback. Safe
@@ -117,8 +153,8 @@ Automation Activity.
   WhatsApp broadcasts and channel-aware CRM chat. Live testing has verified
   the connected test number, website-triggered automation, open-window text and
   interactive replies, inbound reply routing and CRM history synchronization.
-  The closed-window guard is verified; an approved production template is not
-  yet available for the final outside-window send.
+  The closed-window guard is verified; the new review templates were pending
+  during the walkthrough, and the final outside-window send remains unverified.
 - CRM can create, update and cancel one-time WhatsApp text schedules while the
   current 24-hour window is open. The worker rechecks that window at delivery;
   WhatsApp recurrence and scheduled media remain intentionally unsupported.
@@ -147,6 +183,7 @@ into the final verification stage.
 
 | Area                                   | Authoritative document                                                 |
 | -------------------------------------- | ---------------------------------------------------------------------- |
+| Customer patch notes                   | [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md) |
 | Architecture and trust boundaries      | [ARCHITECTURE.md](ARCHITECTURE.md)                                     |
 | Product stages and follow-ups          | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)                       |
 | Accepted decisions                     | [DECISIONS.md](DECISIONS.md)                                           |
@@ -160,6 +197,7 @@ into the final verification stage.
 | Email campaigns and Resend             | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
 | Cyber Pulse integration                | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
 | WhatsApp Business Cloud API            | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                         |
+| WhatsApp templates, health and billing | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                       |
 | CRM-to-Omnicus OpenAPI                 | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml) |
 | Omnicus-to-CRM OpenAPI                 | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)             |
 | Pairing OpenAPI                        | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                   |

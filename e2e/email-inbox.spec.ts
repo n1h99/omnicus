@@ -12,6 +12,7 @@ const identity = {
 const mailboxId = '11111111-1111-4111-8111-111111111111';
 const threadId = '22222222-2222-4222-8222-222222222222';
 const messageId = '33333333-3333-4333-8333-333333333333';
+const assetId = '44444444-4444-4444-8444-444444444444';
 const mailbox = {
   id: mailboxId,
   domainId: 'domain-a',
@@ -67,11 +68,18 @@ const mail = {
 
 async function mockInbox(
   page: Page,
-  options: { empty?: boolean; send?: boolean; failSendOnce?: boolean } = {},
+  options: {
+    empty?: boolean;
+    send?: boolean;
+    failSendOnce?: boolean;
+    failSaveOnce?: boolean;
+    mediaRead?: boolean;
+  } = {},
 ) {
   const mutations: Array<{ path: string; method: string; body: Record<string, unknown> }> = [];
   let drafts: Array<Record<string, unknown>> = [],
-    attempts = 0;
+    attempts = 0,
+    saves = 0;
   await page.addInitScript(
     (user) => localStorage.setItem('omnicus-auth', JSON.stringify({ token: 'mock-session', user })),
     identity,
@@ -91,6 +99,7 @@ async function mockInbox(
           'email:manage',
           'broadcasts:read',
           ...(options.send === false ? [] : ['email:send']),
+          ...(options.mediaRead ? ['media:read'] : []),
         ],
         projectRoleName: 'Project Admin',
       });
@@ -108,6 +117,7 @@ async function mockInbox(
         return respond({ id: 'sent', threadId, deliveryId: 'delivery-1' });
       }
       if (path.includes('/drafts/') && method === 'PUT') {
+        saves += 1;
         const draft = {
           ...body,
           id: path.split('/').at(-1),
@@ -118,7 +128,12 @@ async function mockInbox(
           updatedAt: new Date().toISOString(),
         };
         drafts = [draft];
+        if (options.failSaveOnce && saves === 1) return route.abort('failed');
         return respond(draft);
+      }
+      if (path.includes('/drafts/') && method === 'DELETE') {
+        drafts = [];
+        return respond({ deleted: true });
       }
       if (path.endsWith('/state')) return respond({});
       return respond({});
@@ -163,8 +178,7 @@ async function mockInbox(
         {
           id: identity.userId,
           email: identity.email,
-          firstName: identity.firstName,
-          lastName: identity.lastName,
+          name: `${identity.firstName} ${identity.lastName}`,
         },
       ]);
     if (path.endsWith('/available-domains'))
@@ -189,7 +203,20 @@ async function mockInbox(
       );
     if (path.endsWith('/health'))
       return respond({ counts: { COMPLETED: 5 }, failedReceipts: [], failedAutomations: [] });
-    if (path.endsWith('/media-assets')) return respond([]);
+    if (path.endsWith('/media-assets'))
+      return respond(
+        options.mediaRead
+          ? [
+              {
+                id: assetId,
+                originalFilename: 'itinerary.pdf',
+                status: 'AVAILABLE',
+                kind: 'DOCUMENT',
+                sizeBytes: '100',
+              },
+            ]
+          : [],
+      );
     return respond([]);
   });
   return mutations;
@@ -258,9 +285,57 @@ test('private drafts can be saved and reopened without sending', async ({ page }
   await expect(page.getByText('Draft saved.', { exact: false })).toBeVisible();
   await page.getByRole('button', { name: 'Close', exact: true }).last().click();
   await page.getByRole('button', { name: 'Drafts', exact: true }).click();
+  await expect(page.locator('.mail-list-caption strong')).toHaveText('Drafts');
+  await page.getByLabel('Search email').fill('not present');
+  await page.getByLabel('Search email').press('Enter');
+  await expect(page.getByText('No matching conversations')).toBeVisible();
+  await expect(page.getByText('0 conversations', { exact: true })).toBeVisible();
+  await page.getByLabel('Search email').fill('');
+  await page.getByLabel('Search email').press('Enter');
   await page.getByRole('button', { name: /client@example.com A saved draft/ }).click();
   await expect(page.getByLabel('Message', { exact: true })).toHaveValue('Not sent yet');
   expect(mutations.some((item) => item.path.endsWith('/messages'))).toBe(false);
+  await page.getByRole('button', { name: 'Close', exact: true }).last().click();
+  await page.getByRole('button', { name: 'Delete draft', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete draft', exact: true }).click();
+  await expect(page.getByText('No saved drafts')).toBeVisible();
+  expect(mutations.find((item) => item.method === 'DELETE')?.body).toEqual({ revision: 1 });
+});
+
+test('a lost draft-save response can be retried with the same draft and revision', async ({
+  page,
+}) => {
+  const mutations = await mockInbox(page, { failSaveOnce: true });
+  await page.goto('/projects/project-a/email-inbox');
+  await page.getByRole('button', { name: 'Compose', exact: true }).click();
+  await page.getByLabel('Subject', { exact: true }).fill('Keep my draft');
+  await page.getByLabel('Message', { exact: true }).fill('Saved despite a lost response');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByText('The server is not reachable', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await expect(page.getByText('Draft saved.', { exact: false })).toBeVisible();
+  const saves = mutations.filter((item) => item.method === 'PUT');
+  expect(saves).toHaveLength(2);
+  expect(saves[0]).toEqual(saves[1]);
+});
+
+test('an operator with media read access can attach an existing file without upload permission', async ({
+  page,
+}) => {
+  const mutations = await mockInbox(page, { mediaRead: true });
+  await page.goto('/projects/project-a/email-inbox');
+  await page.getByRole('button', { name: 'Compose', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Upload file' })).toHaveCount(0);
+  await page.getByRole('combobox', { name: 'Choose files from Media' }).click();
+  await page.getByText('itinerary.pdf', { exact: true }).click();
+  await page.getByLabel('To', { exact: true }).fill('client@example.com');
+  await page.getByLabel('Subject', { exact: true }).fill('Your itinerary');
+  await page.getByRole('button', { name: 'Send email', exact: true }).click();
+  await expect(page.getByText('Email queued.', { exact: false })).toBeVisible();
+  expect(mutations.find((item) => item.path.endsWith('/messages'))?.body).toMatchObject({
+    text: '',
+    assetIds: [assetId],
+  });
 });
 
 test('uncertain manual send retries the same request key', async ({ page }) => {

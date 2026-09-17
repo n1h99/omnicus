@@ -1,11 +1,16 @@
 # Email Broadcasts
 
-Status reviewed: 2026-08-14. Resend sending/tracking domains and the signed
+Status reviewed: 2026-08-29. Resend sending/tracking domains and the signed
 webhook are configured; the email product is implemented and deployed. SMS is
 not implemented.
 
 Omnicus email delivery is a separate, durable delivery path. It does not emulate a Telegram or
 WhatsApp connection and does not depend on a chat identity.
+
+The WhatsApp management update of 2026-09-10 does not change Resend billing,
+email click tracking or the shared Automation editor. Native WhatsApp templates,
+Meta payment navigation and WhatsApp cost estimates are a separate provider
+surface documented in [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
 
 ## Product surface
 
@@ -30,6 +35,8 @@ See [EMAIL_INBOX.md](EMAIL_INBOX.md) for the new permissions and setup.
 - Project Analytics table for safe lifecycle events and clicked target URLs.
 - Project suppression list with manual entries and automatic unsubscribe/bounce/complaint entries.
 - `Send email` Automation Studio node that pins a published email template version.
+- An editor notice explaining that link tracking is controlled centrally for
+  the sending domain rather than by a per-campaign checkbox.
 
 The editor exposes a variable picker rather than requiring operators to type
 template syntax from memory. Image blocks keep a private media reference and
@@ -37,6 +44,13 @@ support explicit width and height controls; attachments are listed in content
 settings and are not rendered as fake body content in the central preview.
 Campaign and template deletion use the shared application confirmation dialog
 and remain subject to server lifecycle guards.
+
+Broadcast is intentionally not a second automation authoring surface. A
+campaign has content, audience, delivery time and delivery reporting. A
+triggered follow-up sequence belongs in `Automation -> Scenarios`, where the
+existing graph already owns delays, waits, conditions, branches and channel
+actions. Duplicating that canvas here would add client render/state cost and a
+second validation/version contract without adding runtime capability.
 
 ## Delivery architecture
 
@@ -110,6 +124,19 @@ Subscribe it to:
 
 Copy the webhook signing secret to the API service as `RESEND_WEBHOOK_SECRET`, then redeploy the API.
 Do not put this secret in the web or worker service.
+
+## URL validation and click tracking
+
+Campaign button destinations must be absolute HTTP(S) URLs. For example,
+`https://www.google.com` is valid while `www.google.com` is incomplete. The
+editor reports an inline validation issue and keeps the rest of the page
+available.
+
+Click tracking has no campaign-level checkbox. It is enabled centrally under
+the Resend domain configuration and applies consistently to campaigns sent from
+that domain. When enabled, the provider rewrites eligible links through
+`links.mail.omnicus.app`; signed webhook events populate the Omnicus Analytics
+table and the linked CRM lead history.
 
 ## Database deployment
 

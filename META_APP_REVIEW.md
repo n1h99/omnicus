@@ -4,12 +4,19 @@ Prepared for Meta App ID `969378529363534` on 2026-09-10. This file contains no
 reviewer password, Meta token, app secret, webhook verify token or customer
 message data. Keep those values in Meta's protected submission fields only.
 
+UI instructions updated 2026-09-10 after native template management shipped.
+The original review-delay description below is historical context, not a live
+Meta status check. Recheck the actual submission dashboard before acting on
+it. A deployment, **Connection verified**, or an approved business account
+does not establish approval of this app's requested permissions.
+
 ## Before changing the pending request
 
-The business verification shown in Meta is approved. The current request for
-`whatsapp_business_messaging` and `whatsapp_business_management` has been in
-review for almost three weeks. Do not withdraw it solely because it is old:
-withdrawing normally loses the current queue position.
+At the beginning of the guided session, the user reported a request for
+`whatsapp_business_messaging` and `whatsapp_business_management` pending for
+almost three weeks. The submission has since been edited during the guided
+workflow. Do not reuse the old age/status as a current fact or withdraw and
+resubmit a request without checking its present state and an explicit decision.
 
 First complete the app metadata below, deploy and test the public URLs, check
 Meta's notifications and **Required actions**, and open a developer-support case
@@ -105,11 +112,22 @@ Use a separate video from the messaging video:
    and complete connection. Show that the channel is active. This demonstrates
    the authorization-code exchange, phone validation/registration and WABA
    webhook subscription performed by the server.
-4. Create a uniquely named test template with a visible Graph API/Postman call
-   to `POST /{WABA-ID}/message_templates`. Keep the bearer token hidden and show
-   the returned template ID/status.
-5. In Omnicus, open the WhatsApp template workspace, click **Sync from Meta**,
-   and show the new template and its Meta status.
+4. Open **Templates > WhatsApp**, select the authorized test channel, and click
+   **New template**. Enter a unique name, language, category and message with
+   fictional variable examples. Show the preview, then **Submit to Meta**.
+5. Show the resulting template row, click **Sync from Meta**, and show its
+   actual review status. Pending is a valid submission result, not approval
+   and not evidence of a delivered message.
+
+Use only an authorized test WABA/number. Its owner must supply any required
+PIN directly into the hidden field; do not request it in chat or record it.
+If the owner/authorized test assets are unavailable, keep that acceptance step
+open instead of changing a customer's number registration. A payment card is
+not required merely to demonstrate template authoring; do not attach a
+developer's personal card for the recording.
+
+The API example below is an optional technical reference, not a prerequisite
+for the current native Omnicus editor or a substitute for its real recording.
 
 The official Meta collection documents the template endpoint at
 `https://graph.facebook.com/{Version}/{WABA-ID}/message_templates`. A minimal
@@ -139,8 +157,8 @@ Suggested permission explanation:
 > Omnicus uses whatsapp_business_management only for customer-authorized WABA
 > onboarding and management: exchanging the Embedded Signup code, validating
 > the selected WABA and phone, registering the business phone, subscribing the
-> app to WABA webhooks, and reading/synchronizing that WABA's message templates
-> and status. These actions are available only to authorized workspace
+> app to WABA webhooks, and creating, updating, deleting and synchronizing
+> supported message templates, review samples and status. These actions are available only to authorized workspace
 > administrators and are scoped to the business selected in Meta's flow.
 
 ## Support escalation for the existing request

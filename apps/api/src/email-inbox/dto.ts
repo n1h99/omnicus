@@ -99,3 +99,7 @@ export class UpdateEmailThreadStateDto {
   @IsOptional() @IsBoolean() starred?: boolean;
   @IsOptional() @IsBoolean() archived?: boolean;
 }
+
+export class DeleteEmailDraftDto {
+  @IsInt() @Min(1) @Max(2147483647) revision!: number;
+}

@@ -4,6 +4,26 @@ Status reviewed: 2026-08-14, including Telegram Chat v3.2, Automation Studio
 2.2 External HTTP behavior.
 Current integration addendum reviewed: 2026-08-08.
 
+## WhatsApp management/UI edge cases (2026-09-10)
+
+- Missing configuration gets an explicit setup state. A failed number check
+  is not proof of an invalid phone; invalid/expired Meta access has its own
+  settings action. A transient fetch failure must not fabricate health values.
+- Repeated unavailable checks are grouped by code/reason. Distinct provider
+  blocks remain visible. An old delivery error is not the current health state.
+- The cost report can fail before any rows load. Keep the 16 px gap after the
+  period toolbar and show the safe error; never replace failure with zero cost.
+- A failed refresh can retain cached facts, but must expose the refresh failure.
+  A successful connection check does not prove that a payment card is attached.
+- Replacing an image must update the editor preview. Header changes discard
+  the sample; unmount cancels its FileReader. Reopened templates do not pretend
+  to retain a local image URL. Review samples are not send media IDs.
+- Sync success can leave a template pending. After an uncertain save, sync
+  before retrying. Delete scope is the selected Meta template/language and may
+  affect the WABA's other numbers; old message history remains intact.
+- Card spacing, loaders and grouped notices do not repair an API/provider
+  failure, approve a template, charge a card or publish an app in Meta.
+
 ## Current cross-system edge cases
 
 - A linked Omnicus contact edit updates the same CRM lead; a missing or foreign
@@ -94,3 +114,14 @@ Current integration addendum reviewed: 2026-08-08.
 | Address is suppressed after scheduling | Suppression wins before provider call | Delivery `SUPPRESSED` | none | suppression list/report |
 | Resend webhook is duplicated or out of order | Verify signature, deduplicate and keep monotonic evidence | Existing event/state | none | analytics/CRM history |
 | Campaign is cancelled with in-flight delivery | Stop new claims; preserve provider result already in flight | Campaign cancelled, delivery terminal independently | recovery only | campaign report |
+
+## Customer-requested authoring addendum (2026-08-29)
+
+| Situation | Required behavior | Durable result | Retry | Audit/visibility |
+| --- | --- | --- | --- | --- |
+| Campaign button receives `www.google.com` without a scheme | Keep the editor mounted and show an inline absolute-URL issue | Draft retains operator input; launch remains blocked | operator corrects URL | validation beside the field |
+| Telegram action button has no connected branch | Allow explicit draft save but block Test/Publish | Published version unchanged | operator connects or removes the button | graph validation selects the node/output |
+| Grouped Telegram assets contain incompatible media types | Reject grouped delivery before provider execution | No false successful send | operator changes assets or selects separate delivery | safe node validation/error |
+| One Telegram media continuation fails permanently | Fail only the affected execution path and continue scanning other due work | Affected node/execution terminal; other claims proceed | no blind retry for permanent failure | Automation Activity and Operations Center |
+| Normalized inbound reply arrives for an active wait | Resolve the compatible wait from the durable event type before ordinary trigger matching | One conditional winner resumes the execution | duplicate is a no-op | execution timeline |
+| Operator needs an event-triggered sequence from a broadcast | Direct authoring to `Automation -> Scenarios`; do not clone the graph editor | Broadcast draft and scenario versions remain separate | none | operator guide and editor copy |

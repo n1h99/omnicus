@@ -2,6 +2,33 @@
 
 Status reviewed: 2026-08-14 for the deployed Railway `main` environment.
 
+## WhatsApp management triage (2026-09-10)
+
+Start at `Channels -> WhatsApp channel -> WhatsApp channel center`.
+For missing setup use the authorized **Continue setup** action. For expired
+Meta access, review the connection's saved credentials/account/number settings;
+do not rotate unrelated global Railway variables or change a customer's phone.
+**Diagnostic details** groups failed checks without suppressing distinct
+provider blocks. Last delivery error is historical, not the current status.
+
+For **Meta cost report unavailable**, record the safe correlation reference
+and request time, then inspect the matching API logs through authorized access.
+Distinguish an Omnicus request failure from a returned Meta permission/currency
+limitation. Refresh after the cause is resolved; do not invent zero costs or
+assume a card is attached. The UI spacing/loading corrections do not fix an
+underlying report-service or provider-access error.
+
+**Set up payments in Meta** opens the selected business account. Its authorized
+owner manages the card and invoices directly in Meta. Do not collect card/PIN
+details in chat or attach a developer's personal card for acceptance.
+For an uncertain template submission, use **Sync from Meta** before retrying.
+Pending review can legitimately remain pending after synchronization.
+
+Rate-card maintenance, API scopes and remaining live gates are documented in
+[WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md). The bundled estimate snapshot
+expires on 2026-10-01; review its rates and implementation assumptions before
+replacing it. Do not merely advance its expiry date.
+
 ## One-time production administrator bootstrap
 
 The development/test seed remains blocked inside Railway and must never be

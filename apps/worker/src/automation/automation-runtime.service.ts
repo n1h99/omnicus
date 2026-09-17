@@ -82,7 +82,8 @@ export class AutomationRuntimeService {
           !message ||
           message.automationStatus !== 'PENDING' ||
           message.thread.project.status !== 'ACTIVE' ||
-          message.thread.mailbox.status !== 'ACTIVE'
+          message.thread.mailbox.status !== 'ACTIVE' ||
+          message.thread.mailbox.mode !== 'TWO_WAY'
         )
           return;
         await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${message.threadId}), 90403)`;
@@ -520,7 +521,7 @@ export class AutomationRuntimeService {
             id: wait.emailThreadId,
             projectId: wait.projectId,
             project: { status: 'ACTIVE' },
-            mailbox: { status: 'ACTIVE' },
+            mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' },
           },
         });
         if (!thread) return;

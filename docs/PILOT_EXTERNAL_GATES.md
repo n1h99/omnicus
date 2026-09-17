@@ -1,6 +1,6 @@
 # External gate ledger
 
-Status reviewed: 2026-08-14. This file records access-dependent work separately
+Status reviewed: 2026-09-10. This file records access-dependent work separately
 from repository implementation. Supplying credentials never expands product
 scope or authorizes destructive operations.
 
@@ -17,6 +17,20 @@ scope or authorizes destructive operations.
   automation/broadcast source context, reaction lifecycle, duplicate event,
   reaction-before-source and isolation.
 - `userReactionEvents.supported=true` is enabled after live verification.
+
+## WhatsApp management walkthrough (2026-09-10)
+
+Native template creation, duplicate/image/button authoring, upload, preview
+and explicit synchronization were demonstrated in the guided customer session.
+The templates remained pending Meta review. Navigation to Meta payment setup
+worked; the user did not authorize attaching a personal card. Report currency
+was unavailable and a later report request failed, so complete paid reporting
+and payment acceptance are not marked complete.
+
+Real template edit/delete acceptance, approved-template delivery outside the
+window and production-volume behavior remain open. App Review permission
+approval is not established by a successful connection, template sync or Git
+push. Use authorized customer assets and recheck the actual dashboard state.
 
 ## Ongoing operational gates
 

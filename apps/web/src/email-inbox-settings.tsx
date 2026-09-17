@@ -20,7 +20,7 @@ import { useAuth } from './auth';
 import { getUserErrorMessage } from './api';
 import { useInboxActions, useInboxQuery, type Mailbox, type MailDomain } from './email-inbox-api';
 
-type Member = { id: string; email: string; firstName: string; lastName: string };
+type Member = { id: string; email: string; name: string };
 type MailboxValues = {
   domainId: string;
   localPart: string;
@@ -472,10 +472,7 @@ export function EmailInboxSettings({
                 mode="multiple"
                 options={(members.data ?? []).map((member) => ({
                   value: member.id,
-                  label:
-                    [member.firstName, member.lastName].filter(Boolean).join(' ') +
-                    ' · ' +
-                    member.email,
+                  label: member.name ? `${member.name} · ${member.email}` : member.email,
                 }))}
               />
             </Form.Item>

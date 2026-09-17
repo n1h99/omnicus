@@ -1531,6 +1531,14 @@ message store.
   Meta remains the status authority. Raw template payloads and credentials are
   not stored or returned.
 
+The native management extension (2026-09-10) reuses this projection. Successful
+create/edit updates same-WABA connections within the current project; sync
+preserves stable local IDs when Meta recreates a name/language. Deletion does
+not rewrite existing message history or prepared broadcast snapshots. Health
+and billing remain provider reads; there is no wallet/card/credit-line schema
+and no new migration for this release. See
+[WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
 `ChannelConnection` remains provider-neutral. WhatsApp access tokens are
 encrypted per connection. Global Meta App secret and webhook verification
 token remain server configuration because Meta signs and verifies the one

@@ -22,6 +22,7 @@ import type { AuthenticatedRequest } from '../auth/auth.types';
 import {
   ConnectEmailDomainDto,
   CreateEmailMailboxDto,
+  DeleteEmailDraftDto,
   SaveEmailDraftDto,
   SendInboxEmailDto,
   UpdateEmailMailboxDto,
@@ -186,9 +187,10 @@ export class EmailInboxController {
   async deleteDraft(
     @Param('projectId') projectId: string,
     @Param('draftId') id: string,
+    @Body() input: DeleteEmailDraftDto,
     @Req() request: AuthenticatedRequest,
   ) {
-    return response(await this.inbox.deleteDraft(projectId, id, request.auth!));
+    return response(await this.inbox.deleteDraft(projectId, id, input.revision, request.auth!));
   }
   @Get('attachments/:attachmentId')
   @RequireProjectPermission('email:read')

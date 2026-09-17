@@ -18,6 +18,27 @@ account lifecycle, roles, project cloning, System Health and the project-scoped
 Automation Activity board with human-readable contact journeys and bounded
 charts.
 
+## WhatsApp management update — 2026-09-10
+
+Implemented in `35fb7d2`: native Marketing/Utility template create/preview,
+media review sample upload, duplicate/edit/delete and explicit sync; independent
+channel health checks; direct Meta payment guidance and phone-scoped cost
+reports; broadcast list-rate estimates and recipient paid/free projections.
+
+UI fixes through `3698b7b` preserve the requested card order, designed
+unconfigured/invalid-access states, grouped diagnostic messages, side-by-side
+template actions, local image previews, centered loaders and both missing gaps.
+These commits are pushed to `origin/main`; deployment completion and provider
+approval remain separate facts.
+
+Guided acceptance confirmed create/duplicate/upload/preview/sync and the Meta
+payment navigation. Pending templates, incomplete billing access/report data,
+real edit/delete, outside-window delivery and production-volume acceptance
+remain bounded external checks. Tests were not rerun for the cosmetic fixes
+at the user's explicit request. Scope does not include a wallet, profile
+management, Flows, catalogs or QR tooling. See
+[WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
 ## Stage 3C.2 — Telegram channel UI
 
 The protected web shell includes Telegram channel list, create and details routes.
@@ -757,3 +778,10 @@ the final combined user verification stage.
 Steps 1–5 are implemented. Code/local checks do not authorize or confirm a Git push,
 Railway rollout, paid subscription or DNS change. Source of scope and the separate
 operator rollout/live acceptance gates: [EMAIL_INBOX.md](EMAIL_INBOX.md).
+
+Completion pass 2026-09-17 fixes draft retry/revision handling, send replay after a
+pause, immutable legacy reply addresses, delayed-import ordering/previews, bounded
+plain text, inactive-mailbox queue selection, media-read attachment access and
+settings/draft UI contract mismatches. No schema change or new migration. The user
+has deferred live checks to the final joint module-by-module acceptance session;
+local regression results are recorded in [TESTING.md](TESTING.md).

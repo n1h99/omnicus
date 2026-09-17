@@ -26,6 +26,14 @@ send outside the window and production-volume verification on the customer's
 Meta business account. Instagram remains deliberately deferred until its own
 account and provider scope are approved.
 
+The September 10 WhatsApp update adds native marketing/utility template
+authoring and Meta review synchronization, a channel health center, direct Meta
+payment guidance and phone-scoped cost reports, plus broadcast cost estimates.
+Meta remains responsible for template approval and billing; Omnicus does not
+hold a customer wallet or collect card details. Missing report data is not zero
+spend. These features do not establish App Review approval or replace the
+remaining live acceptance gates. See [WhatsApp management](WHATSAPP_MANAGEMENT.md).
+
 `Email & SMS Broadcast` contains the working email campaign product. Email is
 sent by the worker through Resend using the verified Omnicus mail and tracking
 domains; signed provider events update project analytics and linked CRM lead
@@ -50,7 +58,7 @@ backup configuration remains operator-owned and is not managed by Omnicus.
   and durable integration boundaries.
 
 The current implementation and remaining follow-ups are indexed in
-[docs/README.md](docs/README.md).
+[docs/README.md](README.md).
 
 ## Required toolchain
 
@@ -110,8 +118,8 @@ corepack pnpm audit:production
 
 Production artifacts are assembled under `.runtime/web`, `.runtime/api` and
 `.runtime/worker`. Railway deployment, variables, migration ownership and
-recovery procedures are documented in [docs/RAILWAY.md](docs/RAILWAY.md) and
-[docs/RUNBOOK.md](docs/RUNBOOK.md).
+recovery procedures are documented in [docs/RAILWAY.md](RAILWAY.md) and
+[docs/RUNBOOK.md](RUNBOOK.md).
 
 ## Database safety
 
@@ -128,17 +136,18 @@ bearer tokens, project secrets or Railway-generated values.
 
 ## Documentation
 
-- [Documentation index and current status](docs/README.md)
-- [Operator guide](docs/OPERATOR_GUIDE.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
-- [Architecture decisions](docs/DECISIONS.md)
-- [Database design and invariants](docs/DATABASE.md)
-- [Automation runtime](docs/AUTOMATION_ENGINE.md)
-- [Formal state machines](docs/STATE_MACHINES.md)
-- [Testing](docs/TESTING.md)
-- [Railway deployment](docs/RAILWAY.md)
-- [Operations runbook](docs/RUNBOOK.md)
-- [Cyber Pulse CRM integration](docs/CRM_INTEGRATION.md)
-- [WhatsApp Business Cloud API](docs/WHATSAPP_CLOUD_API.md)
-- [Email campaigns and Resend](docs/EMAIL_BROADCASTS.md)
+- [Documentation index and current status](README.md)
+- [Operator guide](OPERATOR_GUIDE.md)
+- [Architecture](ARCHITECTURE.md)
+- [Implementation plan](IMPLEMENTATION_PLAN.md)
+- [Architecture decisions](DECISIONS.md)
+- [Database design and invariants](DATABASE.md)
+- [Automation runtime](AUTOMATION_ENGINE.md)
+- [Formal state machines](STATE_MACHINES.md)
+- [Testing](TESTING.md)
+- [Railway deployment](RAILWAY.md)
+- [Operations runbook](RUNBOOK.md)
+- [Cyber Pulse CRM integration](CRM_INTEGRATION.md)
+- [WhatsApp Business Cloud API](WHATSAPP_CLOUD_API.md)
+- [WhatsApp templates, channel health and Meta billing](WHATSAPP_MANAGEMENT.md)
+- [Email campaigns and Resend](EMAIL_BROADCASTS.md)

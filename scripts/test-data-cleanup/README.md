@@ -64,6 +64,39 @@ webhook logs. Удаляются также осиротевшие записи 
 
 ## Защита production CRM
 
+### Исключение по запросу оператора: Omnicus через Postgres Console
+
+Оператор явно отказался останавливать сервисы (2026-09-15). Для уже проверенного
+единственного тестового проекта добавлен **отдельный** генератор
+`postgres-console.mjs`: SQL запускается через `psql -X -v ON_ERROR_STOP=1` после
+проверки точных Railway project/environment/Postgres service IDs в shell.
+Это не старый offline-скрипт и не ложное подтверждение `--writers-stopped`.
+
+Предусловия: оператор создал Railway backup, проект PAUSED, обе CRM-связи
+DISABLED, проверены проект, staging CRM origin и количество контактов.
+Наличие Railway backup не выдаётся за выполненный native restore test:
+эта ручная console-процедура не реализует проверки файла backup/receipt из CLI.
+Исходные CLI и их требования к backup не ослаблены.
+
+Одна PostgreSQL-транзакция сначала кратко блокирует записи в reviewed-таблицы,
+затем повторно проверяет настройки, счётчик контактов и отсутствие выполняющихся
+заданий. Любая ошибка до COMMIT откатывает изменения; тайм-аут блокировки — 5 секунд.
+Сервисы не выключаются, но запись временно ждёт/может получить тайм-аут. UNKNOWN
+не переотправляются: их тестовые журналы удаляются в утверждённом scope, а
+настройки bot interface и связанный configuration outbox сохраняются.
+Таблицы, FK, сценарии, шаблоны и разделяемые media сохраняются, bucket не очищается.
+
+Это **не гарантирует пустую базу навсегда**: запрос, webhook или provider callback,
+который уже выполнялся или придёт после COMMIT, может создать новые записи.
+Не возобновлять ручную работу и синхронизацию до проверки обеих систем.
+При потере связи после отправки COMMIT сначала проверить итоговые счётчики,
+а не запускать блок повторно. Эта процедура относится только к PostgreSQL
+Omnicus; она не разрешает online-удаление в standalone MongoDB автоматически.
+
+Семантика блокировки: [PostgreSQL Explicit Locking](https://www.postgresql.org/docs/17/explicit-locking.html).
+
+### Основные offline CLI
+
 1. По умолчанию выполняются только чтения. `--force`, `--all-projects` и
    `--allow-production` отсутствуют и отклоняются.
 2. Скрипты не читают `.env`, не используют `DATABASE_URL`/`MONGODB_URI`, не
@@ -82,9 +115,35 @@ webhook logs. Удаляются также осиротевшие записи 
 6. Применение требует свежий (до 1 часа) план, точную confirmation phrase,
    совпадение полного снимка данных/настроек, checksum backup и явные
    подтверждения остановки writers и проверенного восстановления backup.
-7. PostgreSQL удаляет в одной транзакции с FK и блокировками. Mongo требует
-   replica set и transaction support, использует snapshot + majority и не
-   делает автоматический retry. Standalone Mongo отклоняется.
+7. PostgreSQL удаляет в одной транзакции с FK и блокировками. По умолчанию Mongo
+   требует replica set и transaction support, использует snapshot + majority и
+   не делает автоматический retry. Для standalone есть только явный offline-режим,
+   описанный ниже; автоматического перехода без транзакций нет.
+
+### MongoDB standalone: только при полностью остановленных writers
+
+Если диагностический `hello` не содержит `setName`, используется отдельный режим
+`--offline-standalone --writers-stopped` **и для dry-run, и для apply**. Не нужно
+перенастраивать работающий MongoDB в replica set ради очистки. Все проверки точной
+staging-базы, Railway identity, disabled pairing, backup и confirmation сохраняются.
+Флаг не поддерживается в `omnicus.mjs` и не является обходом production-защиты.
+
+Перед первым удалением повторно сверяется весь снимок, перед каждой пачкой —
+содержимое её точных `_id`. Удаление подтверждается `w: 1, j: true`. После очистки
+проверяются нулевые счётчики и неизменность пользователей, настроек и индексов.
+Эти проверки **не заменяют остановку записи** и не создают общей транзакции:
+при сбое часть записей уже может быть удалена. Автоматического отката, продолжения
+или retry нет. Успешный receipt имеет отдельный статус
+`STANDALONE_VERIFIED_FILES_RETAINED`; незавершённый receipt требует проверки базы
+и согласованного восстановления, а не повторного запуска той же команды.
+
+Railway volume backup полезен как дополнительная страховка, но не заменяет
+требуемый этим инструментом restore-tested native backup после остановки writers.
+Наличие такой копии нельзя автоматически выдавать за выполненный тест восстановления.
+
+Проверено по документации MongoDB 2026-09-15:
+[transaction limitations](https://www.mongodb.com/docs/manual/core/transactions-production-consideration/),
+[journaled write concern](https://www.mongodb.com/docs/manual/reference/write-concern/).
 
 **Это защита от ошибок выбора, не независимая аттестация инфраструктуры.**
 Нельзя самому переименовать production в `staging` или подставить придуманные
@@ -170,7 +229,8 @@ node .\crm-staging.mjs --target .\target.local.json --plan .\crm.plan.json --app
 ```
 
 8. Убедиться, что оба `.receipt.json` имеют статус
-   `DATABASE_COMMITTED_FILES_RETAINED`. Выполнить новые dry-run: удаляемые
+   `DATABASE_COMMITTED_FILES_RETAINED` (для offline standalone CRM —
+   `STANDALONE_VERIFIED_FILES_RETAINED`). Выполнить новые dry-run: удаляемые
    наборы должны быть пустыми. Настройки, сценарии, пользователи и другие
    Omnicus projects должны сохраниться. Сам cleanup оставляет проект на паузе
    и pairing выключенным.
@@ -190,6 +250,25 @@ node .\crm-staging.mjs --target .\target.local.json --plan .\crm.plan.json --app
 
 ## Проверки и ограничения
 
+### Отдельная MongoDB console-процедура без остановки сервисов
+
+Оператор явно отказался от остановки сервисов для этого тестового сброса.
+`mongo-console.mjs` генерирует отдельную команду для локального `mongosh`
+в проверенном Railway staging MongoDB container. Она закрепляет Railway
+project/environment, базу `test`, отключённую единственную staging pairing
+и ожидаемые 92 лида. Проверяет allowlist коллекций, два снимка документов,
+каждый удаляемый batch, сохранность настроек/индексов и нулевой остаток.
+URI из приложения не используется: подключение только к `127.0.0.1`.
+
+Это **неатомарная** операция: при сбое возможна частичная очистка без отката.
+При `PARTIAL_CLEANUP_POSSIBLE` нельзя повторять команду вслепую. Новые записи
+после завершения возможны, поскольку сервисы продолжают работать. Оператор
+сообщил о Railway volume backup; native dump/restore не проверялся. Эта
+процедура не ослабляет offline CLI и не подтверждает остановку writers.
+Успех: `CRM_STAGING_CLEANUP_VERIFIED | remaining_leads=0 | files_retained=true`.
+
+### Локальные тесты
+
 ```powershell
 npm ci --ignore-scripts
 npm test
@@ -197,7 +276,7 @@ npm test
 
 Тесты не используют пользовательские URL: PostgreSQL запускается в памяти
 через PGlite с реальными миграциями репозитория; Mongo создаёт временный
-loopback replica set (при первом запуске скачивается MongoDB binary).
+loopback replica set и standalone (при первом запуске скачивается MongoDB binary).
 Проверяются production guards, target mismatch, отсутствие `.env` fallback,
 строгость CLI, backup/confirmation, устаревший/изменённый план, FK-порядок,
 откат, shared assets, сохранение настроек, второго проекта и другой Mongo базы.

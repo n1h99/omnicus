@@ -121,6 +121,21 @@ an open service window and a scheduled time no later than its current expiry;
 the worker repeats the window guard immediately before the provider call.
 Telegram scheduling remains the only recurring DAILY/WEEKLY implementation.
 
+### WhatsApp management extension (2026-09-10)
+
+Native Meta template authoring, review samples, health and billing reads use
+project-scoped API routes and existing encrypted connection credentials. The
+UI never owns Meta secrets. Same-WABA template updates stay project-scoped
+locally and do not rewrite prepared broadcast snapshots or message history.
+Provider template status, Omnicus channel status and past delivery errors are
+independent facts. Unknown costs/currency cannot become a zero-cost claim.
+
+Payments remain direct to Meta: Omnicus provides instructions/navigation and
+reporting, not a wallet, card vault, credit line or checkout. Broadcast
+list-rate estimates and webhook paid/free facts are separate from Meta's final
+invoice. See [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md) and ADR-058 in
+[DECISIONS.md](DECISIONS.md).
+
 ## Email delivery boundary
 
 Email is a separate provider path and is not represented as a chat channel.

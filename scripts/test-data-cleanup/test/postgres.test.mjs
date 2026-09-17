@@ -11,6 +11,7 @@ import {
   schemaSnapshot,
 } from '../postgres.mjs';
 import { checkSnapshot, makePlan } from '../safety.mjs';
+import { consoleResetSql } from '../postgres-console.mjs';
 
 test('actual migrations: full project cleanup, rollback, FK ordering and other-project isolation', async () => {
   // In-memory WASM PostgreSQL only: no environment variables or external URI.
@@ -268,12 +269,73 @@ test('actual migrations: full project cleanup, rollback, FK ordering and other-p
     await db.exec('ROLLBACK');
     assert.deepEqual(await readState(client, target), before);
 
+    // The online console path uses real restrictive/self-referential FKs too.
+    // A non-disabled pairing and active jobs must abort before any deletion.
+    const consoleSql = consoleResetSql(target, 2);
+    await assert.rejects(db.exec(consoleSql), /disabled staging pairing/);
+    await db.exec('ROLLBACK');
+    await db.query('UPDATE crm_project_configs SET status=\'DISABLED\' WHERE "projectId"=$1', [
+      projectA,
+    ]);
+    await assert.rejects(db.exec(consoleSql), /unfinished jobs/);
+    await db.exec('ROLLBACK');
+    for (const [table, status] of [
+      ['inbox_records', 'COMPLETED'],
+      ['outbox_records', 'UNKNOWN'],
+      ['email_deliveries', 'FAILED'],
+      ['scheduled_messages', 'FAILED'],
+      ['telegram_media_groups', 'UNKNOWN'],
+      ['scenario_executions', 'WAITING'],
+      ['node_executions', 'SUCCEEDED'],
+      ['delayed_actions', 'COMPLETED'],
+    ])
+      await db.query(`UPDATE public."${table}" SET status=$1 WHERE "projectId"=$2`, [
+        status,
+        projectA,
+      ]);
+    const quietBefore = await readState(client, target);
+    // Exercise a late exception AFTER deletions to verify real rollback.
+    await assert.rejects(
+      db.exec(
+        consoleSql.replace(
+          'END\n$cleanup$;',
+          "RAISE EXCEPTION 'injected late fixture failure';\nEND\n$cleanup$;",
+        ),
+      ),
+      /injected late/,
+    );
+    await db.exec('ROLLBACK');
+    assert.deepEqual(await readState(client, target), quietBefore);
+    await db.exec(consoleSql.replace('COMMIT;', 'ROLLBACK;'));
+    assert.deepEqual(await readState(client, target), quietBefore);
+    await db.exec(consoleSql);
+    assert.deepEqual(await readState(client, otherTarget), otherBefore);
+    assert.deepEqual(
+      postgresPlan(await readState(client, target)).deleteCounts,
+      Object.fromEntries(DELETE_TABLES.map((table) => [table, 0])),
+    );
+    assert.equal(
+      (await db.query('SELECT count(*)::int n FROM media_assets WHERE "projectId"=$1', [projectA]))
+        .rows[0].n,
+      2,
+    );
+    assert.equal(
+      (
+        await db.query('SELECT count(*)::int n FROM outbox_records WHERE "projectId"=$1', [
+          projectA,
+        ])
+      ).rows[0].n,
+      1,
+    );
+    // Use the unchanged transactional helper on the now-empty selected scope.
+    const cleared = await readState(client, target);
+
     await db.exec('BEGIN');
     // Mirror CLI locks and real restrictive/self-referential FK behavior.
     await db.exec(
       `LOCK TABLE ${[...DELETE_TABLES, ...PRESERVE_TABLES].map((name) => `public."${name}"`).join(',')} IN SHARE ROW EXCLUSIVE MODE`,
     );
-    await deleteProjectData(client, target, before);
+    await deleteProjectData(client, target, cleared);
     await db.exec('COMMIT');
     assert.deepEqual(await readState(client, otherTarget), otherBefore);
     assert.equal(

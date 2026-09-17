@@ -548,12 +548,7 @@ export class EmailInboxService {
   }
 
   async send(projectId: string, input: SendInboxEmailDto, actor: AuthenticatedUser) {
-    const mailbox = await this.assertMailbox(projectId, input.mailboxId, actor, true);
-    const project = await this.database.client.project.findUnique({
-      where: { id: projectId },
-      select: { status: true },
-    });
-    if (project?.status !== 'ACTIVE') throw new ConflictException('email_project_not_active');
+    const mailbox = await this.assertMailbox(projectId, input.mailboxId, actor);
     const to = mailboxAddressSchema.parse(input.to);
     if (!input.text.trim() && !input.assetIds?.length)
       throw new BadRequestException('email_message_empty');
@@ -574,6 +569,12 @@ export class EmailInboxService {
         throw new ConflictException('email_request_id_reused');
       return { id: existing.id, threadId: existing.threadId, deliveryId: existing.deliveryId };
     }
+    await this.assertMailbox(projectId, input.mailboxId, actor, true);
+    const project = await this.database.client.project.findUnique({
+      where: { id: projectId },
+      select: { status: true },
+    });
+    if (project?.status !== 'ACTIVE') throw new ConflictException('email_project_not_active');
     if (
       await this.database.client.emailSuppression.findUnique({
         where: { projectId_normalizedEmail: { projectId, normalizedEmail: to } },
@@ -730,6 +731,7 @@ export class EmailInboxService {
     }
     const assets = await this.assets(projectId, input.assetIds ?? [], actor);
     return this.database.client.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${projectId}), hashtext(${id}))`;
       const data = {
         mailboxId: input.mailboxId,
         threadId: input.threadId ?? null,
@@ -738,6 +740,20 @@ export class EmailInboxService {
         textBody: input.text,
         assetIds: input.assetIds ?? [],
       };
+      const existing = await tx.emailDraft.findFirst({
+        where: { projectId, id, userId: actor.userId },
+      });
+      // A lost save response can be retried, but a different edit must keep its revision check.
+      if (
+        existing?.revision === input.revision + 1 &&
+        existing.mailboxId === data.mailboxId &&
+        existing.threadId === data.threadId &&
+        existing.toEmail === data.toEmail &&
+        existing.subject === data.subject &&
+        existing.textBody === data.textBody &&
+        JSON.stringify(existing.assetIds) === JSON.stringify(data.assetIds)
+      )
+        return existing;
       if (input.revision === 0) {
         if ((await tx.emailDraft.count({ where: { projectId, userId: actor.userId } })) >= 100)
           throw new ConflictException('email_draft_limit_reached');
@@ -769,17 +785,20 @@ export class EmailInboxService {
     });
   }
 
-  async deleteDraft(projectId: string, id: string, actor: AuthenticatedUser) {
+  async deleteDraft(projectId: string, id: string, revision: number, actor: AuthenticatedUser) {
     const draft = await this.database.client.emailDraft.findFirst({
       where: { projectId, id, userId: actor.userId },
     });
     if (!draft) throw new NotFoundException('email_draft_not_found');
     await this.assertMailbox(projectId, draft.mailboxId, actor);
     await this.database.client.$transaction(async (tx) => {
+      const removed = await tx.emailDraft.deleteMany({
+        where: { projectId, id, userId: actor.userId, revision },
+      });
+      if (removed.count !== 1) throw new ConflictException('email_draft_changed');
       await tx.emailAssetReference.deleteMany({
         where: { projectId, ownerId: id, ownerType: 'EMAIL_DRAFT' },
       });
-      await tx.emailDraft.delete({ where: { projectId_id: { projectId, id } } });
     });
     return { deleted: true };
   }

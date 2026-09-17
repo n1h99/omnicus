@@ -1,6 +1,6 @@
 # Cyber Pulse CRM integration
 
-Status reviewed: 2026-08-14. Telegram Chat v3.3 is implemented and its core
+Status reviewed: 2026-08-29. Telegram Chat v3.3 is implemented and its core
 live acceptance is complete. Channel-aware contract 4.0.0 adds WhatsApp Cloud
 API in both directions. The connected WhatsApp test route has passed
 open-window automation, interactive reply and CRM-history checks; approved
@@ -86,6 +86,13 @@ An edit to a CRM-linked contact creates a new `CREATE_OR_UPDATE_LEAD` outbox
 intent keyed by the contact and its update timestamp. Cyber Pulse resolves the
 existing project-scoped contact link and updates that lead's name, email and
 phone without fuzzy matching or duplicate creation.
+
+Manual contact creation uses the same durable lead-upsert boundary. Omnicus
+commits the contact first, then queues `CREATE_OR_UPDATE_LEAD`; temporary CRM
+failure therefore does not remove the contact and is recovered by the outbox.
+Archiving a contact is a local lifecycle transition, not a destructive CRM lead
+delete. Restoring the contact preserves and reuses the existing project-scoped
+link and history.
 
 Explicit Omnicus merge creates one `MERGE_CONTACTS` operation. The CRM callback
 receives both Omnicus contact IDs and optional known CRM lead IDs, selects one
@@ -203,6 +210,15 @@ still use the media-group endpoint rather than emulate an album with repeated
 single-message sends.
 
 ## WhatsApp contract 4.0.0
+
+The 2026-09-10 native template/health/billing UI does not change contract 4.0.0.
+Templates may now be created and submitted to Meta inside Omnicus instead of
+being created separately in Meta first. CRM still uses the same synchronized,
+approved, connection-scoped definitions and typed sending contract. Health and
+cost controls do not authorize CRM to bypass service-window guards or payment
+restrictions. Payments remain directly between the customer and Meta; no CRM
+wallet, card fields or new billing callbacks are introduced. See
+[WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
 
 CRM selects WhatsApp with `identity.channel=whatsapp`; omission remains the
 backward-compatible Telegram path only where the v3 contract allowed it.

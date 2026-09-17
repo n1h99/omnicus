@@ -2,6 +2,7 @@ import { ConfigService } from '@nestjs/config';
 import { describe, expect, it, vi } from 'vitest';
 import { AutomationRuntimeService } from '../automation/automation-runtime.service';
 import { EmailDeliveryService } from './email-delivery.service';
+import { createDefaultEmailDocument } from '@omnicus/email-core';
 
 function replyFixture(automatic = false, text = 'Yes, please') {
   const reply = {
@@ -24,7 +25,7 @@ function replyFixture(automatic = false, text = 'Yes, please') {
         displayName: 'Alice',
         email: 'alice@example.com',
       },
-      mailbox: { status: 'ACTIVE' },
+      mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' },
       project: { status: 'ACTIVE' },
     },
   };
@@ -119,6 +120,10 @@ describe('Email automation continuation', () => {
     disabled.reply.thread.mailbox.status = 'DISABLED';
     await disabled.runtime.processInboundEmail('reply');
     expect(disabled.resume).not.toHaveBeenCalled();
+    const sendOnly = replyFixture();
+    sendOnly.reply.thread.mailbox.mode = 'SEND_ONLY';
+    await sendOnly.runtime.processInboundEmail('reply');
+    expect(sendOnly.tx.emailMessage.updateMany).not.toHaveBeenCalled();
   });
   it('does not race an already received but still importing reply into the timeout branch', async () => {
     const tx = {
@@ -151,6 +156,64 @@ describe('Email automation continuation', () => {
 });
 
 describe('Email send reconciliation safety', () => {
+  it('reuses the saved reply address for legacy send retries after configuration changes', async () => {
+    const delivery = {
+      id: 'delivery',
+      projectId: 'p1',
+      campaignId: null,
+      mailboxId: null,
+      contact: null,
+      source: 'TEST',
+      attempts: 2,
+      maxAttempts: 5,
+      firstAttemptAt: new Date(Date.now() - 60_000),
+      senderSnapshot: 'original@example.com',
+      replyToSnapshot: 'original-reply@example.com',
+      headersSnapshot: { 'X-Omnicus-Delivery-Id': 'delivery' },
+      renderedHtml: '<p>Original</p>',
+      renderedText: 'Original',
+      subject: 'Original subject',
+      toEmail: 'client@example.com',
+      designSnapshot: createDefaultEmailDocument(),
+    };
+    const tx = {
+      emailMessage: { findFirst: vi.fn().mockResolvedValue(null) },
+      emailDelivery: { findUnique: vi.fn().mockResolvedValue(delivery) },
+    };
+    const client = {
+      ...tx,
+      emailDelivery: {
+        ...tx.emailDelivery,
+        findUniqueOrThrow: vi.fn().mockResolvedValue(delivery),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      project: { findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE' }) },
+      $transaction: (callback: (value: unknown) => unknown) => callback(tx),
+    };
+    const send = vi.fn().mockResolvedValue({ data: { id: 'provider-id' } });
+    const service = new EmailDeliveryService(
+      new ConfigService({ EMAIL_REPLY_TO: 'changed@example.com' }) as never,
+      { client } as never,
+    );
+    const markSent = vi.fn(),
+      failDelivery = vi.fn();
+    Object.assign(service, { resend: { emails: { send } }, markSent, failDelivery });
+    await (service as unknown as { processDelivery(id: string): Promise<void> }).processDelivery(
+      'delivery',
+    );
+    expect(failDelivery).not.toHaveBeenCalled();
+    expect(send).toHaveBeenCalledWith(
+      expect.objectContaining({
+        from: 'original@example.com',
+        replyTo: 'original-reply@example.com',
+        html: '<p>Original</p>',
+        text: 'Original',
+        subject: 'Original subject',
+      }),
+      expect.objectContaining({ idempotencyKey: 'delivery' }),
+    );
+    expect(markSent).toHaveBeenCalledTimes(1);
+  });
   it('does not resend after the provider idempotency window', async () => {
     const delivery = {
       id: 'delivery',

@@ -336,9 +336,10 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
               : {}),
             'X-Omnicus-Delivery-Id': delivery.id,
           };
-      const replyTo = delivery.mailboxId
-        ? delivery.replyToSnapshot
-        : this.config.get('EMAIL_REPLY_TO', { infer: true });
+      const replyTo =
+        delivery.firstAttemptAt || delivery.mailboxId
+          ? delivery.replyToSnapshot
+          : this.config.get('EMAIL_REPLY_TO', { infer: true });
       const html = delivery.renderedHtml ?? rendered.html;
       const text = delivery.renderedText ?? rendered.text;
       const sentSubject = delivery.firstAttemptAt ? delivery.subject : subject || 'Omnicus message';

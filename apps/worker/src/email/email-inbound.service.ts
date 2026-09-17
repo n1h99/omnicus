@@ -15,6 +15,7 @@ import {
   mailAttachmentLimit,
   mailHeader,
   mailMessageIds,
+  mailTextLimit,
   parseMailAddress,
   replyAliasToken,
   safeMailFilename,
@@ -118,7 +119,10 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
         where: {
           automationStatus: 'PENDING',
           direction: 'INBOUND',
-          thread: { project: { status: 'ACTIVE' } },
+          thread: {
+            project: { status: 'ACTIVE' },
+            mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' },
+          },
         },
         select: { id: true },
         orderBy: { occurredAt: 'asc' },
@@ -220,6 +224,7 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
             peerEmail: sender,
             contactId: contacts.length === 1 ? contacts[0]!.id : null,
             subject: incoming.subject.slice(0, 200),
+            lastMessageAt: receipt.occurredAt,
             replyToken: randomBytes(18).toString('hex'),
           },
         });
@@ -237,7 +242,7 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
             data: { contactId: matches[0]!.id },
           });
       }
-      const text =
+      const text = (
         incoming.text ||
         convert(incoming.html ?? '', {
           wordwrap: false,
@@ -246,7 +251,8 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
             { selector: 'img', format: 'skip' },
             { selector: 'a', options: { ignoreHref: true } },
           ],
-        }).slice(0, 100_000);
+        })
+      ).slice(0, mailTextLimit);
       const message = await tx.emailMessage.create({
         data: {
           projectId: receipt.projectId,

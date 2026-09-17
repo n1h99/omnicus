@@ -15,10 +15,15 @@ import {
   writeNewJson,
 } from './safety.mjs';
 import { collectionInventory, deleteMongoData, mongoPlan, readMongoState } from './mongo.mjs';
+import { runStandalone } from './mongo-standalone.mjs';
 
 export async function main(args, environment = process.env) {
   const opts = options(args);
   if (opts.help) return help('crm');
+  requireSafe(
+    !opts['offline-standalone'] || opts['writers-stopped'],
+    'Offline standalone mode requires stopped writers for BOTH dry-run and apply.',
+  );
   const target = await readTarget(opts.target);
   validateEnvironment('crm', target, environment);
   const uri = databaseUri('crm', target, environment);
@@ -30,15 +35,21 @@ export async function main(args, environment = process.env) {
     connectTimeoutMS: 10_000,
     appName: 'explicit-staging-lead-cleanup',
     maxPoolSize: 2,
+    ...(opts['offline-standalone'] ? { retryWrites: false } : {}),
   });
   let session;
   try {
     await client.connect();
     const db = client.db(target.crm.database);
     const hello = await db.command({ hello: 1 });
+    if (opts['offline-standalone']) {
+      requireSafe(!hello.setName && hello.msg !== 'isdbgrid', 'Expected a standalone MongoDB.');
+      await runStandalone(db, target, BSON.EJSON, opts, reviewed);
+      return;
+    }
     requireSafe(
       Boolean(hello.setName),
-      'Mongo replica set with transaction support is required. Standalone cleanup is intentionally forbidden.',
+      'Standalone MongoDB requires the explicit --offline-standalone --writers-stopped procedure. See README.md; no automatic fallback.',
     );
     const inventory = await collectionInventory(db);
     session = client.startSession();

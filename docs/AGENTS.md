@@ -32,7 +32,7 @@ Sender/body/headers фиксируются перед отправкой; UNKNOW
 allowlists после новой миграции должны останавливаться на неизвестной схеме;
 не обходить эту защиту в рамках настройки почты.
 
-Статус актуализирован 2026-08-14.
+Статус актуализирован 2026-09-10.
 
 Pilot и утверждённые post-pilot slices реализованы и развёрнуты из `main`:
 
@@ -60,6 +60,21 @@ Pilot и утверждённые post-pilot slices реализованы и р
 - project-scoped Automation Activity с контактными путями, bounded charts и
   понятными причинами завершения или остановки execution;
 - Railway web/API/worker deployment с automatic deploy из `main`.
+
+WhatsApp management дополнительно включает создание marketing/utility
+шаблонов в Omnicus, review samples, preview, duplicate/edit/delete и явный
+Sync from Meta; channel health center, прямые платежи в Meta и оценку стоимости
+рассылки. Текущий контракт и ограничения: `docs/WHATSAPP_MANAGEMENT.md`.
+Не создавать внутренний баланс, токены оплаты, сбор карт или partner credit
+line: заказчик платит Meta напрямую. Не выдавать неизвестную стоимость за ноль,
+pending template за approved или публикацию кода за одобрение Meta App Review.
+
+Порядок карточек: Connection overview → How WhatsApp works here → WhatsApp
+channel center. Сохранять 18 px перед channel center и 16 px между фильтром
+периода и ошибкой отчёта. Загрузка центрирована; повторяющиеся проверки
+сгруппированы, отдельные блокировки не скрываются; кнопки создания и
+синхронизации шаблона стоят рядом. Предпросмотр новой картинки использует
+локальный FileReader/data URL и не требует ослабления CSP.
 
 Исторические этапы в `docs/IMPLEMENTATION_PLAN.md` не ограничивают уже
 утверждённый и реализованный scope. Текущая сводка находится в

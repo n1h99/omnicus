@@ -26,6 +26,7 @@ import {
 export async function main(args, environment = process.env) {
   const opts = options(args);
   if (opts.help) return help('omnicus');
+  requireSafe(!opts['offline-standalone'], '--offline-standalone is only for staging MongoDB.');
   const target = await readTarget(opts.target);
   validateEnvironment('omnicus', target, environment);
   const connectionString = databaseUri('omnicus', target, environment);

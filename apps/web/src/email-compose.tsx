@@ -31,21 +31,23 @@ export function EmailCompose({
   projectId,
   mailboxes,
   initial,
-  canMedia,
+  canReadMedia,
+  canUploadMedia,
   onClose,
   onSent,
 }: {
   projectId: string;
   mailboxes: Mailbox[];
   initial: ComposeInitial;
-  canMedia: boolean;
+  canReadMedia: boolean;
+  canUploadMedia: boolean;
   onClose: () => void;
   onSent: (threadId: string) => void;
 }) {
   const [form] = Form.useForm<Values>();
   const actions = useInboxActions(projectId);
   const { message, modal } = App.useApp();
-  const media = useMediaAssets(projectId, canMedia);
+  const media = useMediaAssets(projectId, canReadMedia);
   const mediaActions = useMediaMutations(projectId);
   const [assetIds, setAssetIds] = useState<string[]>(initial.draft?.assetIds ?? []);
   const [revision, setRevision] = useState(initial.draft?.revision ?? 0);
@@ -255,10 +257,12 @@ export function EmailCompose({
             {media.data?.find((item) => item.id === id)?.originalFilename ?? 'Attached file'}
           </Tag>
         ))}
-        {canMedia && (
+        {canReadMedia && (
           <Space wrap className="mail-attachments-picker">
             <Select
               mode="multiple"
+              aria-label="Choose files from Media"
+              disabled={busy}
               placeholder="Choose files from Media"
               value={assetIds}
               onChange={(ids: string[]) => {
@@ -271,29 +275,31 @@ export function EmailCompose({
                 .filter((item) => item.status === 'AVAILABLE')
                 .map((item) => ({ value: item.id, label: item.originalFilename ?? item.id }))}
             />
-            <Upload
-              showUploadList={false}
-              beforeUpload={(file) => {
-                if (assetIds.length >= 20) {
-                  setError('Up to 20 attachments per email.');
+            {canUploadMedia && (
+              <Upload
+                showUploadList={false}
+                beforeUpload={(file) => {
+                  if (assetIds.length >= 20) {
+                    setError('Up to 20 attachments per email.');
+                    return false;
+                  }
+                  setBusy(true);
+                  void mediaActions.upload
+                    .mutateAsync({ file, kind: 'DOCUMENT', channel: 'EMAIL' })
+                    .then((asset) => {
+                      setAssetIds((current) => [...new Set([...current, asset.id])]);
+                      changed();
+                    })
+                    .catch((err: unknown) => setError(getUserErrorMessage(err)))
+                    .finally(() => setBusy(false));
                   return false;
-                }
-                setBusy(true);
-                void mediaActions.upload
-                  .mutateAsync({ file, kind: 'DOCUMENT', channel: 'EMAIL' })
-                  .then((asset) => {
-                    setAssetIds((current) => [...new Set([...current, asset.id])]);
-                    changed();
-                  })
-                  .catch((err: unknown) => setError(getUserErrorMessage(err)))
-                  .finally(() => setBusy(false));
-                return false;
-              }}
-            >
-              <Button disabled={busy} icon={<PaperClipOutlined />}>
-                Upload file
-              </Button>
-            </Upload>
+                }}
+              >
+                <Button disabled={busy} icon={<PaperClipOutlined />}>
+                  Upload file
+                </Button>
+              </Upload>
+            )}
           </Space>
         )}
         {!mailbox?.receivingReady && (

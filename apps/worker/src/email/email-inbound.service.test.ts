@@ -11,7 +11,7 @@ function fixture(duplicate = false) {
     bcc: [],
     reply_to: [],
     subject: 'A question',
-    text: null,
+    text: null as string | null,
     html: '<p>Hello <strong>team</strong></p>',
     message_id: '<alice-1@example.com>',
     headers: {},
@@ -44,7 +44,7 @@ function fixture(duplicate = false) {
       updateMany: vi.fn(),
     },
     emailThread: {
-      create: vi.fn().mockResolvedValue(thread),
+      create: vi.fn().mockImplementation(async ({ data }) => ({ ...thread, ...data })),
       findFirst: vi.fn().mockResolvedValue(null),
       update: vi.fn(),
     },
@@ -67,7 +67,7 @@ function fixture(duplicate = false) {
     workerId: 'fixture',
     provider: { received: vi.fn().mockResolvedValue(incoming) },
   });
-  return { service, tx, incoming, saved, receipt };
+  return { service, tx, incoming, saved, receipt, client };
 }
 
 describe('durable incoming email import', () => {
@@ -123,6 +123,42 @@ describe('durable incoming email import', () => {
     expect(current.saved.isAutomatic).toBe(true);
     expect(current.tx.emailMessage.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: { automationStatus: 'NONE' } }),
+    );
+  });
+  it('uses the received date and content preview when importing an older first message', async () => {
+    const { service, tx, receipt } = fixture();
+    receipt.occurredAt = new Date('2026-09-01T10:00:00Z');
+    await service.process('receipt');
+    expect(tx.emailThread.update).toHaveBeenCalledWith({
+      where: { id: 't1' },
+      data: expect.objectContaining({
+        lastMessageAt: receipt.occurredAt,
+        lastInboundAt: receipt.occurredAt,
+        preview: 'Hello team',
+      }),
+    });
+  });
+  it('bounds plain-text messages as well as HTML-derived text', async () => {
+    const { service, incoming, saved } = fixture();
+    incoming.text = 'x'.repeat(100_001);
+    await service.process('receipt');
+    expect(saved.textBody).toHaveLength(100_000);
+  });
+  it('keeps disabled mailboxes out of the bounded automation dispatch batch', async () => {
+    const { service, client } = fixture();
+    const findMany = vi.fn().mockResolvedValue([]);
+    Object.assign(client.emailInboundReceipt, {
+      updateMany: vi.fn(),
+      findFirst: vi.fn().mockResolvedValue(null),
+    });
+    Object.assign(client, { emailMessage: { findMany } });
+    await service.drain();
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          thread: { project: { status: 'ACTIVE' }, mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' } },
+        }),
+      }),
     );
   });
 });

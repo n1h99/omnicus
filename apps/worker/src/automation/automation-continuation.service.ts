@@ -67,6 +67,10 @@ export class AutomationContinuationService
             expiresAt: { lte: now },
             status: 'ACTIVE',
             execution: { project: { status: 'ACTIVE' } },
+            OR: [
+              { emailThreadId: null },
+              { emailThread: { mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' } } },
+            ],
           },
         }),
       ]);

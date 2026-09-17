@@ -73,9 +73,8 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
   const { message, modal } = App.useApp();
   const canManage = hasProjectPermission(access.data, 'email:manage');
   const canSend = hasProjectPermission(access.data, 'email:send');
-  const canMedia =
-    hasProjectPermission(access.data, 'media:read') &&
-    hasProjectPermission(access.data, 'media:manage');
+  const canReadMedia = hasProjectPermission(access.data, 'media:read');
+  const canUploadMedia = canReadMedia && hasProjectPermission(access.data, 'media:manage');
   const settings = params.get('view') === 'settings' && canManage;
   const folder = folders.some((item) => item.key === params.get('folder'))
     ? params.get('folder')!
@@ -110,6 +109,11 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
     true,
   );
   const drafts = useInboxQuery<MailDraft[]>(projectId, 'drafts', !settings && folder === 'drafts');
+  const visibleDrafts = (drafts.data ?? []).filter(
+    (draft) =>
+      (!mailboxId || draft.mailboxId === mailboxId) &&
+      (!search || (draft.subject + draft.toEmail).toLowerCase().includes(search.toLowerCase())),
+  );
   const current = threads.data?.items.find((thread) => thread.id === threadId);
   const perform = async (work: () => Promise<unknown>) => {
     setBusy(true);
@@ -259,7 +263,7 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
             <div className="mail-list-caption">
               <strong>{folders.find((item) => item.key === folder)?.label}</strong>
               <span>
-                {folder === 'drafts' ? (drafts.data?.length ?? 0) : (threads.data?.total ?? 0)}{' '}
+                {folder === 'drafts' ? visibleDrafts.length : (threads.data?.total ?? 0)}{' '}
                 conversations
               </span>
             </div>
@@ -277,50 +281,41 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
             )}
             <div className="mail-list-scroll">
               {folder === 'drafts'
-                ? (drafts.data ?? [])
-                    .filter(
-                      (draft) =>
-                        (!mailboxId || draft.mailboxId === mailboxId) &&
-                        (!search ||
-                          (draft.subject + draft.toEmail)
-                            .toLowerCase()
-                            .includes(search.toLowerCase())),
-                    )
-                    .map((draft) => (
-                      <div className="mail-draft-row" key={draft.id}>
-                        <button
-                          type="button"
-                          className="mail-thread-row"
-                          disabled={!canSend}
-                          onClick={() => setCompose({ draft })}
-                        >
-                          <strong>{draft.toEmail || 'No recipient'}</strong>
-                          <span>{draft.subject || '(No subject)'}</span>
-                          <small>{draft.textBody || 'Empty draft'}</small>
-                        </button>
-                        {canSend && (
-                          <Button
-                            type="text"
-                            aria-label="Delete draft"
-                            icon={<DeleteOutlined />}
-                            disabled={busy}
-                            onClick={() =>
-                              modal.confirm({
-                                title: 'Delete this draft?',
-                                okText: 'Delete draft',
-                                okButtonProps: { danger: true },
-                                onOk: () =>
-                                  perform(() =>
-                                    actions.request(`drafts/${draft.id}`, 'DELETE', {
-                                      revision: draft.revision,
-                                    }),
-                                  ),
-                              })
-                            }
-                          />
-                        )}
-                      </div>
-                    ))
+                ? visibleDrafts.map((draft) => (
+                    <div className="mail-draft-row" key={draft.id}>
+                      <button
+                        type="button"
+                        className="mail-thread-row"
+                        disabled={!canSend}
+                        onClick={() => setCompose({ draft })}
+                      >
+                        <strong>{draft.toEmail || 'No recipient'}</strong>
+                        <span>{draft.subject || '(No subject)'}</span>
+                        <small>{draft.textBody || 'Empty draft'}</small>
+                      </button>
+                      {canSend && (
+                        <Button
+                          type="text"
+                          aria-label="Delete draft"
+                          icon={<DeleteOutlined />}
+                          disabled={busy}
+                          onClick={() =>
+                            modal.confirm({
+                              title: 'Delete this draft?',
+                              okText: 'Delete draft',
+                              okButtonProps: { danger: true },
+                              onOk: () =>
+                                perform(() =>
+                                  actions.request(`drafts/${draft.id}`, 'DELETE', {
+                                    revision: draft.revision,
+                                  }),
+                                ),
+                            })
+                          }
+                        />
+                      )}
+                    </div>
+                  ))
                 : threads.data?.items.map((thread) => (
                     <button
                       type="button"
@@ -355,7 +350,7 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
                   ))}
             </div>
             {!(folder === 'drafts'
-              ? drafts.isLoading || drafts.isError || drafts.data?.length
+              ? drafts.isLoading || drafts.isError || visibleDrafts.length
               : threads.isLoading || threads.isError || threads.data?.items.length) && (
               <Empty
                 className="mail-list-empty"
@@ -408,7 +403,8 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
           projectId={projectId}
           mailboxes={mailboxes.data ?? []}
           initial={compose}
-          canMedia={canMedia}
+          canReadMedia={canReadMedia}
+          canUploadMedia={canUploadMedia}
           onClose={() => setCompose(null)}
           onSent={(id) => {
             setCompose(null);

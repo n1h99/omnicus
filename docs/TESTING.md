@@ -1,6 +1,75 @@
 # Testing
 
-Status reviewed: 2026-08-14.
+Status reviewed: 2026-09-10; historical regression counts retain their original dates.
+
+## Email Inbox completion checks — 2026-09-17
+
+ADR-060 completion fixes cover private-draft save replay and deletion revisions,
+manual-send replay after a pause, immutable legacy Reply-To on retries, incoming
+dates/previews/text limits, disabled/send-only mailbox dispatch and timeout batches,
+existing-file attachment permissions, member names and filtered draft empty states.
+Implementation changes are in `apps/api/src/email-inbox/`, the worker email and
+automation services, and web `email-compose.tsx`, `email-inbox-settings.tsx` and
+`pages/email-inbox-page.tsx`. No schema, migration or dependency versions changed.
+
+Verified with Node 24.18.0 / pnpm 10.5.0:
+
+- Focused API/worker regression: 36 passed; covers saved-response loss, stale
+  draft deletion, unchanged send replay, delayed import previews, input bounds
+  and inactive mailbox processing.
+- `pnpm test --output-logs=errors-only`: 36 successful tasks, 31 cached.
+  API 194 unit tests; worker 145; existing web/database/email-core suites pass.
+  API integration: 6 passed, 1 skipped; worker service integration: 4 skipped.
+  Live-service tests were explicitly disabled, with database/Redis URLs pinned
+  to unavailable loopback ports. The ordered migration suite also passed against
+  disposable PGlite PostgreSQL during this completion pass.
+- `pnpm exec playwright test --workers=2`: all 16 passed, including 7 Email Inbox
+  cases and the existing account/Telegram/WhatsApp/Automation Studio regressions.
+  Desktop/mobile screenshots were inspected. API/provider data is mocked;
+  no customer email is sent. The draft-search test waits for folder navigation
+  to render before searching, avoiding a test interaction with a pending route.
+- Lint, repository format check, typecheck (34 successful tasks), Prisma
+  validation/SQL invariants, workspace boundaries and `git diff --check`: passed.
+- `pnpm build`: 17 successful build tasks and all three minimal runtime
+  artifacts passed, including the web bundle budget. Windows optional executable
+  links and the existing frontend chunk size emitted warnings, not failures.
+- Production web server: 10 tests passed.
+- API and worker production-artifact smoke checks passed with deliberately
+  unavailable local dependencies (API `safe-503`, worker `safe-failure`). These
+  verify packaging and failure handling, not live database/queue readiness.
+- Local Markdown links and fenced blocks in the email scope: passed.
+
+### Existing dependency audit findings — release follow-up
+
+`pnpm audit:production` **failed**: 14 advisories (10 high, 3 moderate, 1 low).
+The manifests and lockfile are unchanged from HEAD, so these findings predate the
+completion fixes. This is a shared dependency release gate, not a passed check.
+It needs a separate dependency update and regression pass before release; local
+feature completion does not clear it. Advisory counts are not proof that each
+reported path is exploitable in the deployed configuration.
+
+| Package        | Installed | Findings           | Patched floor reported by audit |
+| -------------- | --------- | ------------------ | ------------------------------- |
+| `deepmerge-ts` | 7.1.5     | 1 high             | 8.0.0                           |
+| `mysql2`       | 3.15.3    | 1 high, 1 moderate | 3.23.1                          |
+| `qs`           | 6.15.3    | 2 moderate         | 6.16.0                          |
+| `fast-uri`     | 3.1.5     | 4 high             | 3.1.6                           |
+| `sharp`        | 0.35.0    | 1 high             | 0.35.4                          |
+| `multer`       | 2.2.0     | 3 high, 1 low      | 2.3.0                           |
+
+Multer/Sharp are in the shared upload/media path used by attachments. The other
+paths include Express query parsing and Prisma's toolchain dependencies. Audit
+references include [Multer multipart parsing](https://github.com/advisories/GHSA-wc9g-mqfw-jrwm),
+[Sharp image decoding](https://github.com/advisories/GHSA-rgj7-g3m4-5g8c),
+[DeepmergeTS](https://github.com/advisories/GHSA-ggr8-5vv4-36mx),
+[MySQL2](https://github.com/advisories/GHSA-rgwj-5xj2-c3m3),
+[qs](https://github.com/advisories/GHSA-4mjr-xmp4-gh2g) and
+[fast-uri](https://github.com/advisories/GHSA-f65p-4m7j-42xc).
+
+Joint live module acceptance is deferred at the user's request. Deployment,
+Resend/DNS setup and the original additive migration remain rollout steps in
+[EMAIL_INBOX.md](EMAIL_INBOX.md). No push, live migration, DNS change or live mail
+send was performed in this completion pass.
 
 ## Email Inbox local checks — 2026-09-15
 
@@ -32,6 +101,30 @@ unavailable local database/Redis (safe 503, not live database readiness).
 Windows packaging reported optional bin-link warnings; the runtime checks passed.
 Worker production-artifact smoke also passed its expected safe-failure path with
 intentionally unavailable local dependencies; it does not assert a live ready worker.
+
+## WhatsApp management acceptance and UI follow-ups
+
+The native management implementation is in `35fb7d2`; UI-only follow-ups are
+`1ec63a6`, `e01ec51` and `3698b7b`. The guided walkthrough confirmed native
+template submission, duplication, review-image upload, text/button preview,
+explicit synchronization and navigation to Meta payment setup. Templates were
+pending, no personal card was attached, and a complete billing report was not
+verified. Missing-currency and report-failure states were observed.
+
+Do not count that walkthrough as real template edit/delete acceptance, an
+approved outside-window send, a successful payment, App Review approval or a
+production-volume regression. See [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md).
+
+For the visual follow-ups the user explicitly requested no test runs.
+TypeScript passed for the component changes; formatting and `git diff --check`
+passed for the spacing-only change. This documentation pass uses only Markdown
+integrity/diff checks. Existing test files are coverage, not a newly executed
+test result. The general quality gate below remains applicable to future work.
+
+When a visual acceptance run is requested, inspect configured/unconfigured and
+invalid-access channels, unique vs repeated diagnostic causes, stale refresh
+failure, initial billing loading/error/success, responsive toolbar actions,
+image replacement/header switching, and the 18 px card / 16 px error gaps.
 
 ## Local quality gate
 
@@ -165,3 +258,16 @@ the executed suites, 850 tests passed and no executed test failed.
 
 These counts document that run; future changes still require the full commands
 above and must not treat this record as a substitute for a new gate.
+
+## 2026-08-29 customer patch regression
+
+The customer-requested automation/UI patch was rechecked with Node.js
+`24.18.0`. A targeted web run completed with 15 test files and 58 passing
+tests. The root `pnpm test` Turbo graph then completed 36/36 tasks successfully,
+including 2 passing API integration suites with 6 passing tests and 1 explicit
+service-dependent skip. Four worker service-backed integration cases also
+remain explicit local skips. No executed test failed.
+
+This was a test/integration regression run, not a replacement for every command
+in the full local quality gate above. The web production build required by the
+task graph completed successfully.

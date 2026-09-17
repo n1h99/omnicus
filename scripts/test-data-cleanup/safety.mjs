@@ -42,6 +42,7 @@ export function options(args = process.argv.slice(2)) {
       'writers-stopped': { type: 'boolean' },
       'restore-tested': { type: 'boolean' },
       'accept-retained-files': { type: 'boolean' },
+      'offline-standalone': { type: 'boolean' },
       help: { type: 'boolean' },
     },
   });
@@ -274,12 +275,12 @@ export function checkSnapshot(plan, snapshot) {
   );
 }
 
-export async function committed(opts, plan, counts) {
+export async function committed(opts, plan, counts, status = 'DATABASE_COMMITTED_FILES_RETAINED') {
   await writeFile(
     `${opts.plan}.receipt.json`,
     `${JSON.stringify(
       {
-        status: 'DATABASE_COMMITTED_FILES_RETAINED',
+        status,
         fingerprint: plan.fingerprint,
         committedAt: new Date().toISOString(),
         counts,
@@ -314,6 +315,7 @@ export function summarize(plan) {
         deleteCounts: plan.snapshot.deleteCounts,
         updateCounts: plan.snapshot.updateCounts,
         retainedFileCount: plan.snapshot.retainedFiles.length,
+        executionMode: plan.snapshot.executionMode ?? 'TRANSACTION',
         confirm: confirmation(plan),
       },
       null,
@@ -327,7 +329,7 @@ export function reportError(error) {
   console.error(
     error instanceof SafetyError
       ? error.message
-      : 'Cleanup stopped. No raw driver error is printed because it may contain secrets. Check target, network, permissions and database transaction support. If COMMIT was attempted, inspect the database and receipt before doing anything else.',
+      : 'Cleanup stopped. No raw driver error is printed because it may contain secrets. Keep writers stopped and inspect the database and receipt before doing anything else. Standalone deletions have NO automatic rollback; a failed run may have partially applied. Do not blindly retry.',
   );
   process.exitCode = 1;
 }

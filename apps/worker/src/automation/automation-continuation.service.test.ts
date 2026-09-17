@@ -22,6 +22,16 @@ describe('AutomationContinuationService', () => {
 
     expect(resumeDelayedAction).toHaveBeenCalledWith('delay-a');
     expect(timeoutWait).toHaveBeenCalledWith('wait-a');
+    expect(waitState.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { emailThreadId: null },
+            { emailThread: { mailbox: { status: 'ACTIVE', mode: 'TWO_WAY' } } },
+          ],
+        }),
+      }),
+    );
     expect(delayedAction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
