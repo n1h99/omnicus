@@ -1,6 +1,6 @@
 # OMNICUS — edge case decision table
 
-Status reviewed: 2026-08-14, including Telegram Chat v3.2, Automation Studio
+Status reviewed: 2026-09-17, including Telegram Chat v3.2, Automation Studio
 2.2 External HTTP behavior.
 Current integration addendum reviewed: 2026-08-08.
 
@@ -125,3 +125,16 @@ Current integration addendum reviewed: 2026-08-08.
 | One Telegram media continuation fails permanently | Fail only the affected execution path and continue scanning other due work | Affected node/execution terminal; other claims proceed | no blind retry for permanent failure | Automation Activity and Operations Center |
 | Normalized inbound reply arrives for an active wait | Resolve the compatible wait from the durable event type before ordinary trigger matching | One conditional winner resumes the execution | duplicate is a no-op | execution timeline |
 | Operator needs an event-triggered sequence from a broadcast | Direct authoring to `Automation -> Scenarios`; do not clone the graph editor | Broadcast draft and scenario versions remain separate | none | operator guide and editor copy |
+
+## Communications and reverse CRM-sync addendum (2026-09-17)
+
+| Situation | Required behavior | Durable result | Retry | Audit/visibility |
+| --- | --- | --- | --- | --- |
+| Older CRM snapshot arrives after a newer edit | Return success without applying the older fields | `crmSourceUpdatedAt` and contact remain at the newer version | none | correlation and safe no-op result |
+| Same idempotency key is reused for different profile content | Reject with `409` | Original idempotency result remains authoritative | caller fixes key generation | safe conflict code |
+| CRM lead has no name, email or phone | Create/update the exact linked contact with `CRM lead <id>` as display name | Stable `(projectId, crmLeadId)` link | normal queue | contact source metadata |
+| CRM archives/restores a blocked or unsubscribed contact | Preserve the policy state; do not silently reactivate it | `BLOCKED`/`UNSUBSCRIBED` remains | none | contact timeline/audit |
+| Old queue attempt finishes after a new lead edit | Ignore its completion when the claimed `syncVersion` is stale | New snapshot remains `PENDING` or terminal independently | newest version only | queue version metadata |
+| Communications contact has no channel identity | Keep the contact visible but disable ordinary send for that channel | No synthetic message/identity | none | composer eligibility reason |
+| Approved WhatsApp template is selected for a consenting contact without an identity | Create identity only for an active connection, valid unclaimed phone and granted consent, then use the normal send path | One project-owned identity and ordinary message/outbox | normal channel recovery | conversation/audit |
+| CRM phone is already owned by another Omnicus contact | Reject the unsafe reassignment; never fuzzy-merge | Existing ownership unchanged | operator resolves data | safe conflict/error code |

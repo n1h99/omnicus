@@ -1,13 +1,26 @@
 # Omnicus documentation index
 
-Status reviewed: 2026-09-10. `main` includes Automation Studio 2.2, Telegram
+Status reviewed: 2026-09-17. `main` includes Automation Studio 2.2, Telegram
 Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
 Resend email campaigns, cross-system contact merge, platform operations and
 Automation Activity.
 
 ## Current product status
 
-- Local update 2026-09-17: contact groups now support hand-picked members or
+- `origin/main` commit `83f75cb` adds the project-scoped
+  [Communications workspace](COMMUNICATIONS.md): searchable contacts on the
+  left and Email/WhatsApp/Telegram conversations on the right. It reuses the
+  existing message/email services and leaves Cyber Pulse lead-card chat intact.
+- The same release adds durable
+  [CRM lead -> Omnicus contact synchronization](CRM_CONTACT_SYNC.md). Cyber
+  Pulse create/update/archive/restore writes a latest-state MongoDB queue;
+  Omnicus applies idempotent, version-ordered snapshots by exact `crmLeadId`.
+  Migration `20260917100000_crm_contact_inbound_sync` is required. Existing CRM
+  leads are not bulk-backfilled and synchronize on their next general edit.
+- Customer-facing scope and rollout caveats are consolidated in
+  [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md).
+
+- Update 2026-09-17: contact groups now support hand-picked members or
   dynamic rules. Telegram, WhatsApp and email broadcasts share all-active,
   saved-group and individual-contact audience modes with optional tag guards;
   provider eligibility is still applied at launch. Automation Safe Test can use
@@ -201,11 +214,14 @@ into the final verification stage.
 | Operator workflows                     | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                 |
 | Email campaigns and Resend             | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
 | Cyber Pulse integration                | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
+| Direct contact communications          | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                 |
+| CRM lead profile synchronization       | [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md)                             |
 | WhatsApp Business Cloud API            | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                         |
 | WhatsApp templates, health and billing | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                       |
 | CRM-to-Omnicus OpenAPI                 | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml) |
 | Omnicus-to-CRM OpenAPI                 | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)             |
 | Pairing OpenAPI                        | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                   |
+| Customer patch notes (2026-09-17)      | [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md) |
 
 ## Historical and handoff references
 

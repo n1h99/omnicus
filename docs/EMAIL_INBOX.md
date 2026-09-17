@@ -1,10 +1,16 @@
 # Email Inbox
 
-Status: implemented locally, with completion fixes on 2026-09-17; user-approved scope (ADR-060).
+Status: implemented on `origin/main`, with completion fixes on 2026-09-17; user-approved scope (ADR-060).
 Deployment and live acceptance are not verified. This is a Resend-backed Omnicus workspace, not
 an IMAP/Gmail importer or a second automation engine.
 
 ## Product
+
+The Email tab in `Project -> Communications` is an alternate contact-first
+entry into these same mailboxes, threads, messages and APIs. It does not create
+a second email store or bypass mailbox assignment, `email:*` permissions,
+suppression, attachment or provider rules. See
+[COMMUNICATIONS.md](COMMUNICATIONS.md).
 
 Project sections → Email Inbox. Responsive folders/mailbox navigation, paginated
 searchable threads and chronological reading/reply pane. Inbox, Sent, Starred,

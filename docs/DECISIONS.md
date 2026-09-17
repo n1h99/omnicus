@@ -1631,3 +1631,56 @@ or duplicated membership source. Manual membership has no new table or
 migration and is validated within the current project. Merged, inactive,
 unreachable, non-consenting or suppressed contacts can remain referenced by a
 saved definition but are excluded by the channel-specific launch guard.
+
+## ADR-062 — Communications is a contact-first facade over existing channel domains
+
+**Status:** Accepted and implemented on `origin/main`, 2026-09-17; live provider acceptance pending.
+
+**Context:** Managers need one Omnicus workspace where they can select a contact
+and use Email, WhatsApp or Telegram without removing the existing Cyber Pulse
+lead-card chat. Copying CRM components or creating another conversation store
+would make delivery, permissions and provider-policy behavior diverge.
+
+**Decision:** Add project-scoped `communications:read` and
+`communications:send` permissions plus a web/API facade. The facade reads
+existing Contact, ChannelIdentity, Conversation and Message records; Telegram
+and WhatsApp sends reuse their current durable outbox services, and Email reuses
+Email Inbox. The desktop UI is contact-first with a narrow list and wide
+conversation pane. CRM frontend code is not imported or shared. A missing
+WhatsApp identity may be created only for an active contact/connection with a
+valid unclaimed phone and granted consent, immediately followed by ordinary CRM
+identity synchronization.
+
+**Consequences:** Omnicus gains a unified operator surface without a second
+provider runtime or history model. Channel, media and email permissions remain
+enforceable below the page. The first release intentionally omits CRM-only
+notes/quick replies and the complete advanced chat action set. Official Meta
+templates and service-window rules remain provider-owned. Details:
+[COMMUNICATIONS.md](COMMUNICATIONS.md).
+
+## ADR-063 — CRM lead profiles synchronize through a latest-state durable queue
+
+**Status:** Accepted and implemented in Omnicus `main` and Cyber Pulse backend
+`staging`, 2026-09-17; deployment/backfill/live acceptance pending.
+
+**Context:** Omnicus already projects contacts into CRM leads, but a lead created
+or edited directly in Cyber Pulse did not create/update the Omnicus contact.
+Calling Omnicus inline would couple manager saves to network availability, and
+matching by PII could create unsafe merges. Concurrent retries can also arrive
+out of order.
+
+**Decision:** Cyber Pulse stores one MongoDB latest-state delivery record per
+lead after create/update/archive/restore and retries it independently. The
+authenticated Omnicus endpoint matches only `(projectId, crmLeadId)`, uses a
+stable payload-derived idempotency key and stores the accepted CRM version in
+`Contact.crmSourceUpdatedAt`. Older snapshots are successful no-ops. Empty
+profiles receive a deterministic fallback display name. Omnicus does not emit a
+new CRM outbox intent for this inbound mutation, and CRM lifecycle changes do
+not erase `BLOCKED` or `UNSUBSCRIBED` policy states.
+
+**Consequences:** CRM manager work is not rolled back by temporary Omnicus
+failure, duplicates are not inferred from contact fields, and late delivery
+cannot regress a newer profile. The two databases do not share a transaction;
+queue state and idempotency provide convergence. Existing leads synchronize on
+their next general edit because no automatic bulk startup scan is approved.
+Details: [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).

@@ -785,3 +785,26 @@ plain text, inactive-mailbox queue selection, media-read attachment access and
 settings/draft UI contract mismatches. No schema change or new migration. The user
 has deferred live checks to the final joint module-by-module acceptance session;
 local regression results are recorded in [TESTING.md](TESTING.md).
+
+## Communications and reverse CRM contact sync — implemented 2026-09-17
+
+The project now has a contact-first `Communications` workspace with a narrow
+contact list and Email/WhatsApp/Telegram conversation pane. It is a facade over
+the existing channel and Email Inbox domains, not a copied CRM runtime or a new
+message store. Project permissions, media access, service-window rules,
+official Meta templates and provider-specific send paths remain enforced.
+
+Cyber Pulse lead create/update/archive/restore now writes a latest-state Mongo
+delivery record. Its background worker calls the authenticated, idempotent
+Omnicus contact upsert route. Omnicus matches only the exact project/CRM lead
+link, stores the accepted CRM timestamp and ignores older arrivals. The change
+does not loop back into the Omnicus-to-CRM outbox and does not erase blocked or
+unsubscribed policy states.
+
+Migrations `20260917090000_communications_permissions` and
+`20260917100000_crm_contact_inbound_sync`, automated regressions and production
+builds are complete. Railway deployment, a historical-lead backfill (if later
+approved) and live paired/provider acceptance remain operator gates. Decisions
+and operations: [DECISIONS.md](DECISIONS.md),
+[COMMUNICATIONS.md](COMMUNICATIONS.md) and
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).

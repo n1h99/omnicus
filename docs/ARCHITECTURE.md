@@ -1,6 +1,6 @@
 # Omnicus architecture
 
-Status reviewed: 2026-08-14.
+Status reviewed: 2026-09-17.
 
 ## Runtime topology
 
@@ -27,6 +27,25 @@ package exports and never another application's source. Important packages are
 `database`, `contracts`, `automation-core`, `automation-http`,
 `channel-telegram`, `channel-whatsapp`, `crm-core`, `media-core` and
 `email-core`.
+
+## Unified communications boundary
+
+`apps/web` exposes one project-scoped Communications route, but the backend is
+a facade over existing domain services rather than a new provider runtime.
+Contact discovery and normalized channel history come from PostgreSQL. Telegram
+and WhatsApp sends enter the same durable channel outbox and validation paths
+used by CRM; Email opens the existing mailbox/thread boundary. The facade adds
+no second conversation/message tables and does not import Cyber Pulse frontend
+components. Read/send permissions are independent, while Email and media retain
+their stricter resource permissions.
+
+The facade may create a missing WhatsApp identity only for an active contact,
+active connection, granted consent and a normalized phone that is not already
+owned by another contact on that connection. Official Meta templates remain
+connection-scoped provider projections. Free-form service-window checks,
+reachability, blocked status and project isolation are not UI decisions and
+are repeated by the service layer. See [COMMUNICATIONS.md](COMMUNICATIONS.md)
+and ADR-062.
 
 ## Durable processing model
 
@@ -96,6 +115,17 @@ lead. An explicit project-scoped merge moves Omnicus conversations, messages,
 identities and dependent records to the selected primary contact and queues one
 idempotent CRM merge. CRM keeps one surviving lead and reparents both Telegram
 and WhatsApp histories before removing the redundant lead.
+
+The reverse profile path is deliberately asymmetric. Cyber Pulse lead
+create/update/archive/restore writes one latest-state MongoDB delivery record
+per lead and calls the authenticated Omnicus contact-upsert endpoint. Omnicus
+matches only `(projectId, crmLeadId)`, applies a snapshot only when its CRM
+`updatedAt` is not older than `Contact.crmSourceUpdatedAt`, and records a safe
+idempotent result. It does not echo the update through the Omnicus-to-CRM outbox.
+This prevents loops while allowing either product to originate an explicit
+profile edit. CRM lifecycle changes cannot erase Omnicus `BLOCKED` or
+`UNSUBSCRIBED` policy state. See [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md) and
+ADR-063.
 
 Merge is never inferred from a matching name, email, phone or username. Earlier
 merges are reconciled by a bounded idempotent worker CLI after the reviewed

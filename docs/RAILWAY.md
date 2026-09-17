@@ -1,7 +1,23 @@
 # Railway deployment
 
-Status reviewed: 2026-08-14. Omnicus is deployed on Railway from `main`; pushes
+Status reviewed: 2026-09-17. Omnicus is deployed on Railway from `main`; pushes
 to `origin/main` trigger the configured web, API and worker deployments.
+
+## Communications and CRM contact-sync release (2026-09-17)
+
+This release adds migrations `20260917090000_communications_permissions` and
+`20260917100000_crm_contact_inbound_sync`. Release compatible Omnicus API/web
+artifacts together and keep the worker compatible with the existing channel and
+email runtimes. Exactly one API pre-deploy owner applies both migrations.
+
+For the reverse lead-profile path, deploy and verify the Omnicus migration/API
+before the Cyber Pulse backend. If Cyber Pulse is deployed first, lead saves
+remain successful and its Mongo queue retries, but repeated configuration
+failure can eventually dead-letter the record. There is no automatic bulk scan
+of historical leads. Use the smoke and recovery procedures in
+[RUNBOOK.md](RUNBOOK.md), [COMMUNICATIONS.md](COMMUNICATIONS.md) and
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md). A push is not evidence of a
+successful Railway deployment or provider acceptance.
 
 ## Email Inbox release (2026-09-15, deployment unverified)
 
@@ -110,8 +126,8 @@ ranges by convenience.
 ## Migration flow
 
 The executable schema has reviewed migrations through
-`20260814030000_email_campaigns`, including lead capture/link tracking and
-WhatsApp mailing eligibility. Exactly one designated API
+`20260917100000_crm_contact_inbound_sync`, including Email Inbox,
+Communications permissions and reverse CRM-contact versioning. Exactly one designated API
 pre-deploy step runs:
 
 ```text

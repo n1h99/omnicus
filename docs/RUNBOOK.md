@@ -1,6 +1,8 @@
 # Omnicus operations runbook
 
-Status reviewed: 2026-08-14 for the deployed Railway `main` environment.
+Status reviewed: 2026-09-17. Deployed state must still be verified in Railway;
+the Communications and reverse CRM-contact additions below describe the new
+release artifacts, not proof of rollout.
 
 ## WhatsApp management triage (2026-09-10)
 
@@ -340,6 +342,52 @@ re-pairing after confirming that no old worker is still dispatching operations.
 Legacy `CRM_BASE_URL`, `CRM_AUTH_TOKEN`, and `CRM_INBOUND_AUTH_TOKEN` values are
 temporary fallback inputs only and must not be copied when onboarding another
 project.
+
+### CRM lead profile synchronization to Omnicus
+
+Deploy Omnicus migration `20260917100000_crm_contact_inbound_sync` and its API
+before the Cyber Pulse backend that starts producing contact snapshots. The
+reverse order does not block CRM lead saves, but records retry and may reach
+`DEAD_LETTER` after 12 failed attempts.
+
+For a missing or stale Omnicus contact, inspect the single Cyber Pulse
+`OmnicusContactSync` row for that lead. Expected states are `PENDING`,
+`PROCESSING`, `SUCCEEDED` and `DEAD_LETTER`. Check only safe error code,
+attempts, `nextAttemptAt`, lock age and `syncVersion`; never log the stored
+profile snapshot or bearer token. A `PROCESSING` lock older than two minutes is
+eligible for automatic recovery. An older in-flight result can be ignored when
+a newer version has already replaced it.
+
+After correcting configuration or pairing, edit/save the lead once to enqueue
+the newest profile and reset a dead letter. Do not insert queue rows or alter
+`crmSourceUpdatedAt` manually. A `409` idempotency conflict indicates a client
+bug: the same key was reused for different content. A phone collision is not
+reassigned automatically and must be resolved as a data-ownership issue.
+
+There is no automatic historical bulk backfill. Existing leads synchronize on
+their next general create/edit/archive/restore operation. Direct Mongo import
+scripts bypass `LeadsService`; any bulk backfill requires a separately reviewed
+idempotent command and dry run. See
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).
+
+### Communications release smoke
+
+Apply `20260917090000_communications_permissions` before releasing the web/API
+pair. With a project administrator and a restricted member, verify:
+
+1. `Communications` lists active/archived contacts but not merged contacts and
+   enforces `communications:read`.
+2. Telegram and WhatsApp histories are the existing conversations, and a send
+   creates the existing durable message/outbox path exactly once.
+3. WhatsApp free-form content is blocked outside the service window while an
+   approved Meta template can be selected; no quick reply is presented as a
+   Meta template.
+4. Email opens the existing assigned Email Inbox mailbox/thread and retains its
+   channel permissions.
+5. Media URLs remain short-lived and project-scoped; cross-project IDs fail.
+
+Provider delivery, Meta billing and email DNS still require the final live
+acceptance session. See [COMMUNICATIONS.md](COMMUNICATIONS.md).
 
 ## Telegram media and template assets
 

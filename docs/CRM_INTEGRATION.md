@@ -61,6 +61,18 @@ snapshot that arrives after a newer one and replays the same idempotency key
 without creating a duplicate. Temporary connection failures do not roll back
 the manager's lead change: the CRM queue retries them in the background.
 
+The queue stores one latest-state record per lead, retries up to 12 attempts and
+uses the payload-derived idempotency key for safe replay. A new edit replaces
+the snapshot and resets delivery. Archived CRM leads archive ordinary Omnicus
+contacts, while `BLOCKED` and `UNSUBSCRIBED` policy states are preserved. The
+inbound mutation does not enqueue a return Omnicus-to-CRM update.
+
+Deploy Omnicus migration `20260917100000_crm_contact_inbound_sync` and the API
+before enabling the Cyber Pulse producer. There is no automatic historical
+backfill: existing leads synchronize on their next general edit, archive or
+restore. Full ownership, failure and incident rules are in
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).
+
 The adapter sends normalized Omnicus data, never Telegram/Meta webhook payloads,
 provider credentials or encrypted secret envelopes. When an inbound channel
 file can be materialized, `media.downloadUrl` is a private signed URL with a

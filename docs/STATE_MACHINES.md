@@ -1,6 +1,6 @@
 # OMNICUS — формальные state machines
 
-Status reviewed: 2026-08-14. The generic outbox machine applies to Telegram,
+Status reviewed: 2026-09-17. The generic outbox machine applies to Telegram,
 WhatsApp, CRM, Automation Studio 2.2 HTTP operations and email/attribution side
 effects.
 
@@ -358,3 +358,25 @@ delivery status.
 Out-of-order provider events cannot regress later evidence. Retryable confirmed
 failures use bounded backoff; an ambiguous result is never converted into a
 second uncorrelated send.
+
+## Cyber Pulse OmnicusContactSync — ADR-063
+
+This state lives in Cyber Pulse MongoDB, not in the Omnicus PostgreSQL
+`OutboxRecord`. One row per CRM lead carries the latest complete profile
+snapshot and version.
+
+| From | Event | Guard | To | Side effects | Retry policy |
+| --- | --- | --- | --- | --- | --- |
+| absent/any | `lead.updated` | Service-layer create/update/archive/restore | `PENDING` | Upsert latest snapshot/version; reset attempts | worker scan |
+| `PENDING` | `delivery.claim` | Due and lease available | `PROCESSING` | Acquire lease for this version | none |
+| `PROCESSING` | `omnicus.accepted` | Claimed version still current | `SUCCEEDED` | Store completion metadata | none |
+| `PROCESSING` | `delivery.failed` | Retryable and attempt `< 12` | `PENDING` | Save safe error and `nextAttemptAt` | exponential, 5 s–15 min |
+| `PROCESSING` | `delivery.failed` | Attempt `>= 12` | `DEAD_LETTER` | Preserve safe terminal diagnosis | new lead edit resets |
+| `PROCESSING` | `lease.stale` | Lock older than 2 minutes | `PROCESSING` | Reclaim the same current version | immediate claim |
+| any | `lead.updated` | Newer CRM version | `PENDING` | Replace snapshot and reset attempts | worker scan |
+| any | `old-attempt.completed` | Claimed version is no longer current | unchanged | Ignore stale completion | none |
+
+The worker scans every five seconds and claims at most 20 rows per batch. There
+is no `UNKNOWN` state: Omnicus accepts a stable payload-derived idempotency key,
+so the exact snapshot can be retried safely. Omnicus independently rejects an
+older `crmSourceUpdatedAt` snapshot as a successful no-op.

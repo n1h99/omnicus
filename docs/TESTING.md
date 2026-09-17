@@ -1,6 +1,25 @@
 # Testing
 
-Status reviewed: 2026-09-10; historical regression counts retain their original dates.
+Status reviewed: 2026-09-17; historical regression counts retain their original dates.
+
+## Communications and CRM contact-sync checks — 2026-09-17
+
+The combined feature gate completed green on the pinned workspace toolchain:
+
+- Omnicus API: 209/209 unit tests; the focused CRM contact-sync safety suite
+  passed 4/4 after the final lifecycle/idempotency changes.
+- Omnicus web: 60/60 tests; database package: 31/31 tests.
+- Omnicus lint, typecheck, Prisma validation, migration/schema diff and the full
+  17-package production build passed.
+- Cyber Pulse backend: 194/194 tests, lint and production build passed.
+- Cyber Pulse frontend: 63/63 tests, lint and production build passed.
+
+These are automated and mocked checks. They do not prove Railway migration,
+paired CRM create/edit delivery, real Telegram/WhatsApp delivery, approved Meta
+template billing behavior or live Email Inbox delivery. Those remain final
+module-by-module acceptance gates. The operational scopes are documented in
+[COMMUNICATIONS.md](COMMUNICATIONS.md) and
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).
 
 ## Email Inbox completion checks — 2026-09-17
 

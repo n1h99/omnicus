@@ -22,6 +22,21 @@
 
 ## Текущий статус
 
+Дополнение 2026-09-17: в `origin/main` реализован contact-first раздел
+Communications, который использует существующие Telegram/WhatsApp conversation
+и Email Inbox, а не создаёт второй runtime или store. Контракты и осознанные
+ограничения описаны в `docs/COMMUNICATIONS.md` и ADR-062. Не переносить CRM UI
+код напрямую и не обходить channel/email permissions, consent, reachability,
+service-window или media guards.
+
+Также реализован обратный профильный sync Cyber Pulse lead → Omnicus contact
+через latest-state Mongo queue и идемпотентный endpoint. Omnicus сопоставляет
+только `(projectId, crmLeadId)`, хранит `crmSourceUpdatedAt`, не делает fuzzy PII
+merge, не затирает `BLOCKED`/`UNSUBSCRIBED` и не создаёт обратную CRM outbox
+операцию. Исторического auto-backfill нет. Контракт: `docs/CRM_CONTACT_SYNC.md`,
+state machine и ADR-063. Миграции/деплой и live acceptance нельзя считать
+выполненными только по наличию кода в Git.
+
 Локальное дополнение 2026-09-15: Email Inbox реализован по ADR-060; актуальный
 контракт — `docs/EMAIL_INBOX.md`. Gmail-подобная навигация не означает IMAP/Gmail
 import. Адреса общие/назначенные, черновики строго личные, receiving через signed
@@ -32,7 +47,7 @@ Sender/body/headers фиксируются перед отправкой; UNKNOW
 allowlists после новой миграции должны останавливаться на неизвестной схеме;
 не обходить эту защиту в рамках настройки почты.
 
-Статус актуализирован 2026-09-10.
+Статус актуализирован 2026-09-17.
 
 Pilot и утверждённые post-pilot slices реализованы и развёрнуты из `main`:
 
@@ -40,6 +55,9 @@ Pilot и утверждённые post-pilot slices реализованы и р
 - Contacts v2, теги, custom fields, segments и manual merge;
 - Telegram transactional inbox/outbox и channel management;
 - Cyber Pulse CRM pairing и versioned contracts в обоих направлениях;
+- contact-first Communications для Email/WhatsApp/Telegram с отдельными
+  `communications:read`/`communications:send` permissions;
+- durable Cyber Pulse lead profile → Omnicus contact synchronization;
 - broadcasts, media storage, templates и retention;
 - Automation v2, Delay, Wait for Reply и Subflows;
 - public website lead capture, Telegram deep-link triggers, per-contact tracked

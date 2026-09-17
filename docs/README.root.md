@@ -1,10 +1,18 @@
 # Omnicus
 
+Feature update, 2026-09-17: `origin/main` includes the contact-first
+[Communications workspace](COMMUNICATIONS.md), reusable manual/dynamic contact
+audiences and durable
+[CRM lead -> Omnicus contact synchronization](CRM_CONTACT_SYNC.md). Cyber Pulse
+keeps its existing lead-card chats and now distinguishes CRM quick replies from
+official Meta templates. Railway migration/deployment and live channel
+acceptance remain separate release gates.
+
 Omnicus is a production-deployed omnichannel automation platform built as a
 `pnpm`/Turborepo monorepo. The current release includes Auth/RBAC, projects,
 contacts and segmentation, Telegram messaging, official WhatsApp Business
 Cloud API support, durable inbox/outbox delivery, Cyber Pulse CRM integration,
-broadcasts, media/templates, public website lead capture, tracked links,
+broadcasts, a unified Communications workspace, media/templates, public website lead capture, tracked links,
 Resend-backed email campaigns, cross-system contact merge and Automation Studio
 2.2. WhatsApp CRM chat includes voice media and one-time text scheduling inside
 the current service window; Telegram retains recurring scheduling and
@@ -148,6 +156,9 @@ bearer tokens, project secrets or Railway-generated values.
 - [Railway deployment](RAILWAY.md)
 - [Operations runbook](RUNBOOK.md)
 - [Cyber Pulse CRM integration](CRM_INTEGRATION.md)
+- [Communications workspace](COMMUNICATIONS.md)
+- [CRM lead to Omnicus contact synchronization](CRM_CONTACT_SYNC.md)
 - [WhatsApp Business Cloud API](WHATSAPP_CLOUD_API.md)
 - [WhatsApp templates, channel health and Meta billing](WHATSAPP_MANAGEMENT.md)
 - [Email campaigns and Resend](EMAIL_BROADCASTS.md)
+- [Customer patch notes — 2026-09-17](CUSTOMER_PATCH_NOTES_2026-09-17.md)

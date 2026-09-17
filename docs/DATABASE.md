@@ -1,5 +1,21 @@
 # OMNICUS — Prisma schema and migration design
 
+## Communications and inbound CRM contact sync — ADR-062/063 (2026-09-17)
+
+Migration `20260917090000_communications_permissions` registers
+`communications:read` and `communications:send` and updates built-in project
+role grants. It creates no message or conversation tables: the Communications
+facade reads the existing contact/channel/email records.
+
+Migration `20260917100000_crm_contact_inbound_sync` adds nullable
+`Contact.crmSourceUpdatedAt TIMESTAMPTZ(3)`. The timestamp is the applied CRM
+lead version guard; null means no CRM-originated snapshot has been accepted.
+It does not replace `Contact.updatedAt`, materialize a CRM queue in PostgreSQL,
+or make `crmLeadId` globally unique. Endpoint-level project routing and an
+advisory transaction lock serialize exact `(projectId, crmLeadId)` updates.
+Cyber Pulse owns its delivery queue in MongoDB. See
+[CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).
+
 ## Email Inbox extension — ADR-060, locally implemented (2026-09-15)
 
 Reviewed schema intent: EmailDomain, EmailMailbox, EmailMailboxMember, EmailThread,
@@ -534,6 +550,7 @@ model Contact {
   status             String
   automationMode     AutomationMode @default(AUTOMATION_ENABLED)
   crmLeadId          String?
+  crmSourceUpdatedAt DateTime?
   crmContactId       String?
   crmManagerId       String?
   firstInteractionAt DateTime?
@@ -654,6 +671,13 @@ segment is archived rather than hard deleted. `Contact` gets a
 self-relation through `(projectId, mergedIntoContactId)`; a secondary contact is
 kept for history with status `MERGED`, while project-bound dependent records are
 re-parented to the primary contact transactionally.
+
+`Contact.crmSourceUpdatedAt` is independent from local `updatedAt`. CRM contact
+upsert compares the source timestamp before updating profile fields, so a late
+retry cannot regress the contact. The identity remains exact `crmLeadId` inside
+one project; names, usernames, phone numbers and emails are never alternate
+merge keys. CRM archive/restore can change ordinary active/archive lifecycle,
+but cannot replace `BLOCKED` or `UNSUBSCRIBED` messaging-policy status.
 
 ## Channels, identities и conversations
 

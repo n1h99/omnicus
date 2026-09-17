@@ -1,6 +1,7 @@
 # Omnicus operator guide
 
-Status reviewed: 2026-09-10.
+Status reviewed: 2026-09-17. Communications and CRM-contact synchronization
+are implemented; deployment and live-provider acceptance remain separate gates.
 
 This guide describes the current deployed workflows. Provider restrictions are
 part of the product contract; a queued operation is not delivery evidence.
@@ -22,6 +23,39 @@ CRM availability is not allowed to roll back the local contact.
 The contact action is `Archive`, not permanent deletion. Archiving preserves
 channel history, automation journals and the CRM link. Open an archived contact
 and use `Restore` to return it to active status.
+
+A lead created or edited directly in Cyber Pulse is synchronized back to the
+paired Omnicus project in the background. CRM saving does not wait for Omnicus.
+An empty lead still appears with a `CRM lead <id>` fallback name. Existing
+historical leads are not scanned automatically; saving, archiving or restoring
+one queues its latest profile. Omnicus matches only its stored CRM lead ID and
+does not guess by email or phone.
+
+## Communications
+
+Open `Project -> Communications`. Select a contact in the narrow left column,
+then choose Email, WhatsApp or Telegram in the conversation pane. Search is
+contact-oriented; the page uses the same identities, conversations, messages,
+provider queues and Email Inbox as the existing channel screens. The Cyber
+Pulse lead-card chats remain available and unchanged.
+
+- Reading requires `communications:read`; sending requires
+  `communications:send` plus the channel-specific permission and eligibility.
+- A visible contact may have no usable identity for a selected channel. This is
+  not a delivery error; the composer stays unavailable and explains why.
+- WhatsApp free-form messages require an open customer-service window. Outside
+  it, choose a synced and approved **Meta template**. Meta may charge the
+  connected business account; Omnicus does not maintain a wallet or fee.
+- CRM quick replies are only local text shortcuts. They are not official Meta
+  templates and cannot reopen a closed WhatsApp service window.
+- Email uses the existing assigned mailbox, thread, attachment and suppression
+  rules. Communications does not create a second email store.
+- A missing WhatsApp identity can be established for an active consenting
+  contact only when its phone is valid, unclaimed and the connection is active.
+
+If a channel is unexpectedly unavailable, first inspect contact status,
+consent/reachability, identity ownership, connection health and the underlying
+channel permission. See [COMMUNICATIONS.md](COMMUNICATIONS.md).
 
 ## Website registration and automatic follow-up
 
