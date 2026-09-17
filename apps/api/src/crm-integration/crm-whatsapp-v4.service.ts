@@ -265,6 +265,7 @@ export class CrmWhatsAppV4Service {
     return {
       data: data.map((template) => ({
         ...template,
+        components: this.crmTemplateComponents(template.components),
         ...this.templateAvailability(template),
       })),
     };
@@ -1248,6 +1249,54 @@ export class CrmWhatsAppV4Service {
       disabledReason: disabledReason ?? null,
       sendable: disabledReason === undefined,
     };
+  }
+
+  private crmTemplateComponents(value: Prisma.JsonValue): JsonObject[] {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0, 32).flatMap((candidate) => {
+      const component = this.object(candidate);
+      const type = this.nonEmptyString(component?.type);
+      if (!component || !type || !['HEADER', 'BODY', 'FOOTER', 'BUTTONS'].includes(type)) return [];
+      const format = this.nonEmptyString(component.format);
+      const parameterStyle = this.nonEmptyString(component.parameterStyle);
+      const unsupportedReason = this.nonEmptyString(component.unsupportedReason);
+      const text = typeof component.text === 'string' ? component.text : undefined;
+      const buttons = Array.isArray(component.buttons)
+        ? component.buttons.slice(0, 10).flatMap((candidateButton) => {
+            const button = this.object(candidateButton);
+            const buttonType = this.nonEmptyString(button?.type);
+            const buttonText = this.nonEmptyString(button?.text);
+            if (
+              !button ||
+              !buttonType ||
+              !buttonText ||
+              !['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(buttonType)
+            )
+              return [];
+            const buttonParameterStyle = this.nonEmptyString(button.parameterStyle);
+            const buttonUnsupportedReason = this.nonEmptyString(button.unsupportedReason);
+            return [
+              {
+                ...(typeof button.dynamic === 'boolean' ? { dynamic: button.dynamic } : {}),
+                ...(buttonParameterStyle ? { parameterStyle: buttonParameterStyle } : {}),
+                ...(buttonUnsupportedReason ? { unsupportedReason: buttonUnsupportedReason } : {}),
+                text: buttonText,
+                type: buttonType,
+              },
+            ];
+          })
+        : undefined;
+      return [
+        {
+          ...(buttons ? { buttons } : {}),
+          ...(format ? { format } : {}),
+          ...(parameterStyle ? { parameterStyle } : {}),
+          ...(text !== undefined ? { text } : {}),
+          ...(unsupportedReason ? { unsupportedReason } : {}),
+          type,
+        },
+      ];
+    });
   }
 
   private normalizeTemplateParameter(value: unknown): JsonObject {

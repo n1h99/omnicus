@@ -260,6 +260,77 @@ describe('CrmWhatsAppV4Service', () => {
     expect(transaction.outboxRecord.create).not.toHaveBeenCalled();
   });
 
+  it('removes provider-only template preview fields from the CRM contract', async () => {
+    const { client, service } = fixture();
+    client.whatsAppMessageTemplate.findMany.mockResolvedValue([
+      {
+        category: 'UTILITY',
+        components: [
+          {
+            example: { body_text: [['Alex']], private: 'provider-only' },
+            parameterStyle: 'positional',
+            text: 'Hello {{1}}',
+            type: 'BODY',
+          },
+          {
+            buttons: [
+              {
+                dynamic: true,
+                examples: ['https://example.test/order-1'],
+                parameterStyle: 'positional',
+                text: 'Open',
+                type: 'URL',
+                url: 'https://example.test/{{1}}',
+              },
+              {
+                phoneNumber: '+15551234567',
+                text: 'Call',
+                type: 'PHONE_NUMBER',
+              },
+            ],
+            type: 'BUTTONS',
+          },
+        ],
+        id: 'template-a',
+        languageCode: 'en_US',
+        name: 'order_update',
+        status: 'APPROVED',
+      },
+    ]);
+
+    const result = await service.templates({
+      channel: 'whatsapp',
+      channelIdentityId: 'identity-a',
+      connectionId: 'connection-a',
+      crmProjectId: 'cyber-pulse-staging',
+      omnicusContactId: 'contact-a',
+      omnicusProjectId: 'project-a',
+    });
+
+    expect(result.data[0]?.components).toEqual([
+      {
+        parameterStyle: 'positional',
+        text: 'Hello {{1}}',
+        type: 'BODY',
+      },
+      {
+        buttons: [
+          {
+            dynamic: true,
+            parameterStyle: 'positional',
+            text: 'Open',
+            type: 'URL',
+          },
+          { text: 'Call', type: 'PHONE_NUMBER' },
+        ],
+        type: 'BUTTONS',
+      },
+    ]);
+    expect(JSON.stringify(result)).not.toContain('provider-only');
+    expect(JSON.stringify(result)).not.toContain('phoneNumber');
+    expect(JSON.stringify(result)).not.toContain('example.test');
+  });
+
   it('rejects named template variables before creating an outbox intent', async () => {
     const { client, service, transaction } = fixture();
     client.whatsAppMessageTemplate.findUnique.mockResolvedValue({
