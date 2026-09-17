@@ -12,7 +12,7 @@ const sectionLabels: Record<string, string> = {
   'custom-fields': 'Custom fields',
   'email-sms-broadcast': 'Email & SMS Broadcast',
   'email-inbox': 'Email Inbox',
-  'media-assets': 'Media',
+  'media-assets': 'Content library',
   members: 'Members',
   operations: 'Operations & audit',
   'automation-activity': 'Automation activity',

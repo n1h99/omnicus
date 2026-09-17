@@ -30,18 +30,19 @@ export function MediaAssetsPage() {
     try {
       await mutations.upload.mutateAsync({ channel, file, kind });
       setFile(undefined);
-      void message.success('Media asset uploaded.');
+      void message.success('File added to the content library.');
     } catch (error) {
-      void message.error(getUserErrorMessage(error, 'Media asset could not be uploaded.'));
+      void message.error(getUserErrorMessage(error, 'File could not be added to the content library.'));
     }
   };
   return (
     <section>
       <div className="page-heading">
         <div>
-          <Typography.Title level={2}>Media assets</Typography.Title>
+          <Typography.Title level={2}>Content library</Typography.Title>
           <Typography.Text type="secondary">
-            Validated private files for Telegram and WhatsApp templates, broadcasts and automations.
+            Reusable lead magnets, webinar files and campaign materials for email, Telegram,
+            WhatsApp broadcasts and automations.
           </Typography.Text>
         </div>
       </div>
@@ -158,7 +159,7 @@ export function MediaAssetsPage() {
       ) : null}
       {assets.isError ? (
         <Alert
-          message={getUserErrorMessage(assets.error, 'Media assets could not be loaded.')}
+          message={getUserErrorMessage(assets.error, 'Content library could not be loaded.')}
           showIcon
           type="error"
         />
@@ -270,10 +271,12 @@ export function MediaAssetsPage() {
               setDeletingAsset(true);
               try {
                 await mutations.remove.mutateAsync(deleteAsset.id);
-                void message.success('Media asset deleted.');
+                void message.success('File deleted from the content library.');
                 setDeleteAsset(undefined);
               } catch (error) {
-                void message.error(getUserErrorMessage(error, 'Media asset could not be deleted.'));
+                void message.error(
+                  getUserErrorMessage(error, 'File could not be deleted from the content library.'),
+                );
               } finally {
                 setDeletingAsset(false);
               }

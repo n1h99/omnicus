@@ -261,9 +261,9 @@ export function EmailCompose({
           <Space wrap className="mail-attachments-picker">
             <Select
               mode="multiple"
-              aria-label="Choose files from Media"
+              aria-label="Choose files from Content library"
               disabled={busy}
-              placeholder="Choose files from Media"
+              placeholder="Choose files from Content library"
               value={assetIds}
               onChange={(ids: string[]) => {
                 setAssetIds(ids);

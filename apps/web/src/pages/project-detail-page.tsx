@@ -145,9 +145,9 @@ export function ProjectDetailPage() {
       visible: hasProjectPermission(access.data, 'templates:read'),
     },
     {
-      description: 'Project media library',
+      description: 'Reusable lead magnets, webinar files and campaign materials',
       icon: <FileImageOutlined />,
-      label: 'Media',
+      label: 'Content library',
       path: `/projects/${project.id}/media-assets`,
       visible: hasProjectPermission(access.data, 'media:read'),
     },
