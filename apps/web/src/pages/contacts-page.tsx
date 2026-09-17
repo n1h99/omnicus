@@ -1,4 +1,4 @@
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
 import {
   Alert,
   Button,
@@ -61,10 +61,13 @@ export function ContactsPage() {
   const access = useProjectAccess(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [createForm] = Form.useForm<CreateContactInput>();
+  const [groupForm] = Form.useForm<{ name: string }>();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<string>();
   const [segmentId, setSegmentId] = useState<string>();
+  const [groupOpen, setGroupOpen] = useState(false);
+  const [selectedContactIds, setSelectedContactIds] = useState<string[]>([]);
   const createContact = useMutation({
     mutationFn: (input: CreateContactInput) =>
       apiRequest<ContactRow>(
@@ -78,6 +81,28 @@ export function ContactsPage() {
       setCreateOpen(false);
       void message.success('Contact created.');
       navigate(`/projects/${projectId}/contacts/${contact.id}`);
+    },
+  });
+  const createGroup = useMutation({
+    mutationFn: (name: string) =>
+      apiRequest<SegmentItem>(
+        `/api/v1/projects/${projectId}/segments`,
+        {
+          body: JSON.stringify({ filter: { contactIds: selectedContactIds }, name }),
+          method: 'POST',
+        },
+        accessToken,
+      ),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['segments', projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['contact-audience-options', projectId] }),
+        queryClient.invalidateQueries({ queryKey: ['email-audience-options', projectId] }),
+      ]);
+      groupForm.resetFields();
+      setGroupOpen(false);
+      setSelectedContactIds([]);
+      void message.success('Contact group created.');
     },
   });
   const queryString = useMemo(
@@ -134,6 +159,11 @@ export function ContactsPage() {
               Create contact
             </Button>
           ) : null}
+          {hasProjectPermission(access.data, 'contacts:update') && selectedContactIds.length ? (
+            <Button icon={<TeamOutlined />} onClick={() => setGroupOpen(true)}>
+              Create group ({selectedContactIds.length})
+            </Button>
+          ) : null}
           <Input
             allowClear
             aria-label="Search contacts"
@@ -170,7 +200,7 @@ export function ContactsPage() {
           />
           <Select
             allowClear
-            aria-label="Contact segment"
+            aria-label="Contact group"
             onChange={(value) => {
               setPage(1);
               setSegmentId(value);
@@ -179,7 +209,7 @@ export function ContactsPage() {
               label: segment.name,
               value: segment.id,
             }))}
-            placeholder="Segment"
+            placeholder="Contact group"
             style={{ width: 220 }}
             value={segmentId}
           />
@@ -266,6 +296,16 @@ export function ContactsPage() {
                 tabIndex: 0,
               }
         }
+        {...(hasProjectPermission(access.data, 'contacts:update')
+          ? {
+              rowSelection: {
+                getCheckboxProps: (row) => ({ disabled: row.status === 'MERGED' }),
+                onChange: (keys) => setSelectedContactIds(keys.map(String)),
+                preserveSelectedRowKeys: true,
+                selectedRowKeys: selectedContactIds,
+              },
+            }
+          : {})}
         rowKey="id"
       />
       <Modal
@@ -308,6 +348,39 @@ export function ContactsPage() {
           </Form.Item>
           <Form.Item label="Username" name="username">
             <Input autoComplete="off" maxLength={100} />
+          </Form.Item>
+        </Form>
+      </Modal>
+      <Modal
+        confirmLoading={createGroup.isPending}
+        destroyOnHidden
+        onCancel={() => setGroupOpen(false)}
+        onOk={() => groupForm.submit()}
+        open={groupOpen}
+        title="Create contact group"
+      >
+        <Typography.Paragraph type="secondary">
+          Save the {selectedContactIds.length} selected contact
+          {selectedContactIds.length === 1 ? '' : 's'} as a reusable manual group.
+        </Typography.Paragraph>
+        <Form<{ name: string }>
+          form={groupForm}
+          layout="vertical"
+          onFinish={(values) =>
+            createGroup.mutate(values.name, {
+              onError: (error) =>
+                void message.error(
+                  getUserErrorMessage(error, 'Contact group could not be created.'),
+                ),
+            })
+          }
+        >
+          <Form.Item
+            label="Group name"
+            name="name"
+            rules={[{ message: 'Enter a group name', required: true }]}
+          >
+            <Input maxLength={120} placeholder="For example: Priority customers" />
           </Form.Item>
         </Form>
       </Modal>

@@ -644,7 +644,13 @@ The migration backfills valid Stage 2 values, while all later updates write the
 document and its projections in one transaction.
 
 `Segment` persists only a versioned, declarative filter and never materialised
-contact membership. It is archived rather than hard deleted. `Contact` gets a
+contact membership. A manual contact group is represented by the allow-listed
+`contactIds` predicate in that filter; dynamic groups continue to use status,
+channel, tag, CRM and typed custom-field predicates. Contact identifiers are
+validated against the same project before the filter is saved. Runtime readers
+always combine the segment predicate with their own eligibility rules, and a
+broadcast materialises the resulting recipients only when it starts. The
+segment is archived rather than hard deleted. `Contact` gets a
 self-relation through `(projectId, mergedIntoContactId)`; a secondary contact is
 kept for history with status `MERGED`, while project-bound dependent records are
 re-parented to the primary contact transactionally.

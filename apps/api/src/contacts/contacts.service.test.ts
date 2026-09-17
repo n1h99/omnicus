@@ -186,4 +186,97 @@ describe('ContactsService v2', () => {
       },
     });
   });
+
+  it('stores a manual contact group with unique project-scoped contact identifiers', async () => {
+    const count = vi.fn().mockResolvedValue(2);
+    const create = vi.fn().mockImplementation(({ data }) =>
+      Promise.resolve({
+        ...data,
+        id: 'segment-a',
+        status: 'ACTIVE',
+      }),
+    );
+    const audit = { record: vi.fn() };
+    const instance = new ContactsService(
+      audit as never,
+      { client: { contact: { count }, segment: { create } } } as never,
+    );
+
+    await expect(
+      instance.createSegment(
+        'project-a',
+        {
+          filter: { contactIds: ['contact-a', 'contact-b', 'contact-a'] },
+          name: 'Priority customers',
+        },
+        { actorEmail: 'operator@example.test', actorUserId: 'user-a', correlationId: 'test' },
+      ),
+    ).resolves.toMatchObject({ name: 'Priority customers' });
+
+    expect(count).toHaveBeenCalledWith({
+      where: {
+        id: { in: ['contact-a', 'contact-b'] },
+        projectId: 'project-a',
+        status: { not: 'MERGED' },
+      },
+    });
+    expect(create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        filter: { contactIds: ['contact-a', 'contact-b'] },
+        projectId: 'project-a',
+      }),
+    });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'segment.created', projectId: 'project-a' }),
+    );
+  });
+
+  it('rejects a manual group when any contact is outside the project', async () => {
+    const instance = new ContactsService(
+      { record: vi.fn() } as never,
+      { client: { contact: { count: vi.fn().mockResolvedValue(1) } } } as never,
+    );
+
+    await expect(
+      instance.createSegment(
+        'project-a',
+        { filter: { contactIds: ['contact-a', 'contact-from-another-project'] }, name: 'Unsafe' },
+        { actorEmail: 'operator@example.test', actorUserId: 'user-a', correlationId: 'test' },
+      ),
+    ).rejects.toMatchObject({
+      response: { code: 'CONTACT_NOT_FOUND', message: 'One or more contacts were not found' },
+    });
+  });
+
+  it('counts a manual group using its stored contact identifiers', async () => {
+    const count = vi.fn().mockResolvedValue(2);
+    const instance = new ContactsService(
+      { record: vi.fn() } as never,
+      {
+        client: {
+          contact: { count },
+          segment: {
+            findMany: vi.fn().mockResolvedValue([
+              {
+                filter: { contactIds: ['contact-a', 'contact-b'] },
+                id: 'segment-a',
+                name: 'Priority customers',
+              },
+            ]),
+          },
+        },
+      } as never,
+    );
+
+    await expect(instance.listSegments('project-a')).resolves.toEqual([
+      expect.objectContaining({ id: 'segment-a', memberCount: 2 }),
+    ]);
+    expect(count).toHaveBeenCalledWith({
+      where: {
+        id: { in: ['contact-a', 'contact-b'] },
+        projectId: 'project-a',
+        status: { not: 'MERGED' },
+      },
+    });
+  });
 });

@@ -2,7 +2,9 @@ import { Alert, Button, Form, Input, Select, Space, Spin, Typography, message } 
 import { useNavigate, useParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
-import { useBroadcastMutations } from '../broadcasts-api';
+import { useContactAudienceOptions, type AudienceSelection } from '../audience-api';
+import { AudienceSelector } from '../audience-selector';
+import { useBroadcastMutations, type BroadcastAudience } from '../broadcasts-api';
 import { channelAccountLabel, channelProviderLabel } from '../channel-provider';
 import { useChannels } from '../channels-api';
 import { useMediaAssets } from '../media-api';
@@ -16,10 +18,14 @@ import {
 import { useWhatsAppTemplates } from '../whatsapp-templates-api';
 
 type BroadcastFormValues = {
-  audienceMode: 'ALL_ACTIVE';
+  audienceMode: AudienceSelection['mode'];
+  contactIds?: string[];
   connectionId: string;
   contentMode: 'TEMPLATE' | 'TEXT' | 'WHATSAPP_TEMPLATE';
+  excludeTagIds?: string[];
+  includeTagIds?: string[];
   name: string;
+  segmentId?: string;
   templateVersionId?: string;
   text?: string;
   whatsAppParameters?: Record<string, string>;
@@ -35,10 +41,16 @@ export function BroadcastCreatePage() {
   const mutations = useBroadcastMutations(projectId);
   const [form] = Form.useForm<BroadcastFormValues>();
   const connectionId = Form.useWatch('connectionId', form);
+  const audienceMode = Form.useWatch('audienceMode', form) ?? 'ALL_ACTIVE';
+  const contactIds = Form.useWatch('contactIds', form);
+  const segmentId = Form.useWatch('segmentId', form);
+  const includeTagIds = Form.useWatch('includeTagIds', form);
+  const excludeTagIds = Form.useWatch('excludeTagIds', form);
   const contentMode = Form.useWatch('contentMode', form) ?? 'TEXT';
   const whatsAppTemplateId = Form.useWatch('whatsAppTemplateId', form);
   const selectedChannel = (channels.data ?? []).find((channel) => channel.id === connectionId);
   const isWhatsApp = selectedChannel?.type === 'WHATSAPP';
+  const audienceOptions = useContactAudienceOptions(projectId, connectionId, Boolean(connectionId));
   const whatsAppTemplates = useWhatsAppTemplates(projectId, isWhatsApp ? connectionId : undefined);
   const selectedWhatsAppTemplate = whatsAppTemplates.data?.find(
     (template) => template.id === whatsAppTemplateId,
@@ -61,7 +73,7 @@ export function BroadcastCreatePage() {
       <Form<BroadcastFormValues>
         className="settings-form surface"
         form={form}
-        initialValues={{ contentMode: 'TEXT' }}
+        initialValues={{ audienceMode: 'ALL_ACTIVE', contentMode: 'TEXT' }}
         layout="vertical"
         onFinish={async (values) => {
           try {
@@ -75,8 +87,15 @@ export function BroadcastCreatePage() {
                   ...(components ? { components } : {}),
                 }
               : undefined;
+            const audience: BroadcastAudience = {
+              mode: values.audienceMode,
+              ...(values.contactIds?.length ? { contactIds: values.contactIds } : {}),
+              ...(values.excludeTagIds?.length ? { excludeTagIds: values.excludeTagIds } : {}),
+              ...(values.includeTagIds?.length ? { includeTagIds: values.includeTagIds } : {}),
+              ...(values.segmentId ? { segmentId: values.segmentId } : {}),
+            };
             const broadcast = await mutations.create.mutateAsync({
-              audience: { mode: values.audienceMode },
+              audience,
               connectionId: values.connectionId,
               name: values.name,
               ...(isWhatsApp
@@ -117,6 +136,10 @@ export function BroadcastCreatePage() {
             onChange={(id: string) => {
               const channel = (channels.data ?? []).find((candidate) => candidate.id === id);
               form.resetFields([
+                'contactIds',
+                'excludeTagIds',
+                'includeTagIds',
+                'segmentId',
                 'templateVersionId',
                 'text',
                 'whatsAppParameters',
@@ -153,27 +176,83 @@ export function BroadcastCreatePage() {
           />
         ) : null}
 
-        <Form.Item
-          label="Audience"
-          name="audienceMode"
-          rules={[{ message: 'Choose a channel first', required: true }]}
-        >
-          <Select
-            disabled={!selectedChannel}
-            options={
-              selectedChannel
-                ? [
-                    {
-                      label: isWhatsApp
-                        ? 'All active WhatsApp contacts'
-                        : 'All active Telegram contacts',
-                      value: 'ALL_ACTIVE',
-                    },
-                  ]
-                : []
+        <div className="broadcast-audience-section">
+          <Typography.Title level={4}>Audience</Typography.Title>
+          <AudienceSelector
+            allLabel={
+              isWhatsApp ? 'All eligible WhatsApp contacts' : 'All active Telegram contacts'
             }
-            placeholder="Choose a channel first"
+            description={
+              isWhatsApp
+                ? 'Only active, reachable contacts with recorded WhatsApp consent are included when the broadcast starts.'
+                : 'Only active contacts connected to this Telegram account are included when the broadcast starts.'
+            }
+            disabled={!selectedChannel}
+            loading={audienceOptions.isLoading}
+            onChange={(audience) => {
+              form.setFieldValue('audienceMode', audience.mode);
+              form.setFieldValue('contactIds', audience.contactIds);
+              form.setFieldValue('excludeTagIds', audience.excludeTagIds);
+              form.setFieldValue('includeTagIds', audience.includeTagIds);
+              form.setFieldValue('segmentId', audience.segmentId);
+            }}
+            {...(audienceOptions.data ? { options: audienceOptions.data } : {})}
+            value={{
+              mode: audienceMode,
+              ...(contactIds ? { contactIds } : {}),
+              ...(excludeTagIds ? { excludeTagIds } : {}),
+              ...(includeTagIds ? { includeTagIds } : {}),
+              ...(segmentId ? { segmentId } : {}),
+            }}
           />
+          {audienceOptions.isError && selectedChannel ? (
+            <Alert
+              className="form-alert"
+              message={getUserErrorMessage(
+                audienceOptions.error,
+                'Contact groups and audience options could not be loaded.',
+              )}
+              showIcon
+              type="error"
+            />
+          ) : null}
+        </div>
+        <Form.Item hidden name="audienceMode" rules={[{ required: true }]}>
+          <Input />
+        </Form.Item>
+        <Form.Item
+          hidden
+          name="segmentId"
+          rules={[
+            ({ getFieldValue }) => ({
+              validator: async (_, value) => {
+                if (getFieldValue('audienceMode') !== 'SEGMENT' || value) return;
+                throw new Error('Choose a contact group');
+              },
+            }),
+          ]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item
+          hidden
+          name="contactIds"
+          rules={[
+            ({ getFieldValue }) => ({
+              validator: async (_, value: string[] | undefined) => {
+                if (getFieldValue('audienceMode') !== 'CONTACTS' || value?.length) return;
+                throw new Error('Choose at least one contact');
+              },
+            }),
+          ]}
+        >
+          <Select mode="multiple" />
+        </Form.Item>
+        <Form.Item hidden name="includeTagIds">
+          <Select mode="multiple" />
+        </Form.Item>
+        <Form.Item hidden name="excludeTagIds">
+          <Select mode="multiple" />
         </Form.Item>
 
         {!selectedChannel ? null : isWhatsApp ? (

@@ -98,6 +98,92 @@ export class ContactsService {
     return { items, page: query.page, pageSize: query.pageSize, total };
   }
 
+  async audienceOptions(projectId: string, connectionId?: string) {
+    const connection = connectionId
+      ? await this.database.client.channelConnection.findFirst({
+          select: { id: true, type: true },
+          where: { id: connectionId, projectId },
+        })
+      : null;
+    if (connectionId && !connection)
+      throw new NotFoundException({
+        code: 'CHANNEL_CONNECTION_NOT_FOUND',
+        message: 'Channel connection was not found',
+      });
+    const [contacts, segments, tags] = await Promise.all([
+      this.database.client.contact.findMany({
+        orderBy: [{ displayName: 'asc' }, { createdAt: 'asc' }],
+        select: {
+          automationMode: true,
+          customFields: true,
+          displayName: true,
+          email: true,
+          firstName: true,
+          id: true,
+          lastName: true,
+          phone: true,
+          status: true,
+          username: true,
+          whatsAppConsentStatus: true,
+          channelIdentities: {
+            select: {
+              channel: true,
+              connectionId: true,
+              status: true,
+              whatsAppReachability: true,
+            },
+            ...(connectionId ? { where: { connectionId } } : {}),
+          },
+        },
+        take: 2_000,
+        where: { projectId, status: { not: 'MERGED' } },
+      }),
+      this.listSegments(projectId),
+      this.database.client.tag.findMany({
+        orderBy: { name: 'asc' },
+        select: { color: true, id: true, name: true },
+        where: { archivedAt: null, projectId },
+      }),
+    ]);
+    return {
+      contacts: contacts.map((contact) => {
+        const identity = connection
+          ? contact.channelIdentities.find(
+              (candidate) =>
+                candidate.connectionId === connection.id && candidate.channel === connection.type,
+            )
+          : undefined;
+        const eligibilityReason =
+          contact.status !== 'ACTIVE'
+            ? 'Contact is not active'
+            : connection && (!identity || identity.status !== 'ACTIVE')
+              ? `No active ${connection.type === 'WHATSAPP' ? 'WhatsApp' : 'Telegram'} identity on this connection`
+              : connection?.type === 'WHATSAPP' && contact.whatsAppConsentStatus !== 'GRANTED'
+                ? 'WhatsApp consent is not granted'
+                : connection?.type === 'WHATSAPP' && identity?.whatsAppReachability !== 'AVAILABLE'
+                  ? 'WhatsApp recipient is not currently reachable'
+                  : null;
+        return {
+          automationMode: contact.automationMode,
+          channels: [...new Set(contact.channelIdentities.map((item) => item.channel))],
+          customFields: contact.customFields,
+          displayName: contact.displayName,
+          eligibilityReason,
+          eligible: eligibilityReason === null,
+          email: contact.email,
+          firstName: contact.firstName,
+          id: contact.id,
+          lastName: contact.lastName,
+          phone: contact.phone,
+          status: contact.status,
+          username: contact.username,
+        };
+      }),
+      segments,
+      tags,
+    };
+  }
+
   async create(
     projectId: string,
     input: CreateContactDto,
@@ -728,10 +814,25 @@ export class ContactsService {
   }
 
   async listSegments(projectId: string) {
-    return this.database.client.segment.findMany({
+    const segments = await this.database.client.segment.findMany({
       orderBy: { name: 'asc' },
       where: { archivedAt: null, projectId, status: 'ACTIVE' },
     });
+    return Promise.all(
+      segments.map(async (segment) => {
+        const segmentWhere = await this.whereForSegment(projectId, segment.filter);
+        return {
+          ...segment,
+          memberCount: await this.database.client.contact.count({
+            where: {
+              projectId,
+              ...(segmentWhere.status ? {} : { status: { not: 'MERGED' } }),
+              ...segmentWhere,
+            },
+          }),
+        };
+      }),
+    );
   }
 
   async createSegment(
@@ -1122,6 +1223,7 @@ export class ContactsService {
   private async validateSegmentFilter(projectId: string, input: Record<string, unknown>) {
     const allowed = new Set([
       'channel',
+      'contactIds',
       'customFieldKey',
       'customFieldValue',
       'hasCrmLeadId',
@@ -1133,6 +1235,28 @@ export class ContactsService {
         code: 'SEGMENT_FILTER_INVALID',
         message: 'Segment filter contains an unsupported predicate',
       });
+    let contactIds: string[] | undefined;
+    if (input.contactIds !== undefined) {
+      if (
+        !Array.isArray(input.contactIds) ||
+        input.contactIds.length === 0 ||
+        input.contactIds.length > 2_000 ||
+        input.contactIds.some((value) => typeof value !== 'string')
+      )
+        throw new ConflictException({
+          code: 'SEGMENT_FILTER_INVALID',
+          message: 'Choose between 1 and 2,000 contacts for a manual group',
+        });
+      contactIds = [...new Set(input.contactIds)];
+      const contactCount = await this.database.client.contact.count({
+        where: { id: { in: contactIds }, projectId, status: { not: 'MERGED' } },
+      });
+      if (contactCount !== contactIds.length)
+        throw new NotFoundException({
+          code: 'CONTACT_NOT_FOUND',
+          message: 'One or more contacts were not found',
+        });
+    }
     if (
       input.status !== undefined &&
       !['ACTIVE', 'BLOCKED', 'UNSUBSCRIBED', 'ARCHIVED'].includes(String(input.status))
@@ -1176,7 +1300,10 @@ export class ContactsService {
         message: 'Custom field key is required',
       });
     }
-    return input as Prisma.InputJsonValue;
+    return {
+      ...input,
+      ...(contactIds ? { contactIds } : {}),
+    } as Prisma.InputJsonValue;
   }
 
   private async whereForSegment(
@@ -1185,6 +1312,10 @@ export class ContactsService {
   ): Promise<Prisma.ContactWhereInput> {
     const filter = this.jsonObject(filterValue);
     const where: Prisma.ContactWhereInput = {
+      ...(Array.isArray(filter.contactIds) &&
+      filter.contactIds.every((contactId) => typeof contactId === 'string')
+        ? { id: { in: filter.contactIds as string[] } }
+        : {}),
       ...(typeof filter.status === 'string' ? { status: filter.status as never } : {}),
       ...(typeof filter.channel === 'string'
         ? { channelIdentities: { some: { channel: filter.channel as never } } }

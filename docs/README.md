@@ -7,6 +7,11 @@ Automation Activity.
 
 ## Current product status
 
+- Local update 2026-09-17: contact groups now support hand-picked members or
+  dynamic rules. Telegram, WhatsApp and email broadcasts share all-active,
+  saved-group and individual-contact audience modes with optional tag guards;
+  provider eligibility is still applied at launch. Automation Safe Test can use
+  one existing contact as sample data without creating a mass scenario run.
 - Completion pass 2026-09-17: Email Inbox draft concurrency/retry, send replay,
   incoming chronology and inactive mailbox processing fixes are complete locally;
   media attachment permissions and settings/draft UI contracts are corrected.

@@ -7,11 +7,18 @@ import {
   IsObject,
   IsOptional,
   IsString,
+  IsUUID,
   Length,
   Matches,
   Max,
   Min,
 } from 'class-validator';
+
+export class AudienceOptionsQueryDto {
+  @IsOptional()
+  @IsUUID()
+  connectionId?: string;
+}
 
 export class ContactsQueryDto {
   @IsOptional()
@@ -189,6 +196,11 @@ export class BulkTagsDto {
 }
 
 export class SegmentFilterDto {
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  contactIds?: string[];
+
   @IsOptional()
   @IsIn(['ACTIVE', 'BLOCKED', 'UNSUBSCRIBED', 'ARCHIVED'])
   status?: 'ACTIVE' | 'BLOCKED' | 'UNSUBSCRIBED' | 'ARCHIVED';

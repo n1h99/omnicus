@@ -77,10 +77,16 @@ export function ProjectDetailPage() {
       path: `/projects/${project.id}/contacts`,
     },
     {
-      description: 'Labels and audience groups',
+      description: 'Project-specific contact labels',
       icon: <TagsOutlined />,
-      label: 'Tags & segments',
+      label: 'Tags',
       path: `/projects/${project.id}/tags`,
+    },
+    {
+      description: 'Manual lists and dynamic broadcast audiences',
+      icon: <TeamOutlined />,
+      label: 'Contact groups',
+      path: `/projects/${project.id}/segments`,
     },
     {
       description: 'Project-specific contact data',

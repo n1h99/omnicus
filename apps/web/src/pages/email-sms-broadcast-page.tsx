@@ -49,6 +49,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
+import { AudienceSelector } from '../audience-selector';
 import { EmailBuilder } from '../email-builder';
 import {
   type EmailAudience,
@@ -974,7 +975,7 @@ function CampaignEditor({
         audience={audience}
         disabled={!editable}
         onChange={(next) => setDraft({ ...draft, audience: next })}
-        options={options}
+        {...(options ? { options } : {})}
       />
       <EmailBuilder
         disabled={!editable}
@@ -1131,102 +1132,14 @@ function AudiencePanel({
         </span>
       }
     >
-      <div className="email-audience-grid">
-        <label>
-          Recipients
-          <Select
-            disabled={disabled}
-            onChange={(mode) => onChange({ ...audience, mode })}
-            options={[
-              { label: 'All active contacts with email', value: 'ALL_ACTIVE' },
-              { label: 'Saved segment', value: 'SEGMENT' },
-              { label: 'Selected contacts', value: 'CONTACTS' },
-            ]}
-            value={audience.mode}
-          />
-        </label>
-        {audience.mode === 'SEGMENT' ? (
-          <label>
-            Segment
-            <Select<string>
-              disabled={disabled}
-              onChange={(segmentId) => onChange({ ...audience, segmentId })}
-              options={(options?.segments ?? []).map((item) => ({
-                label: item.name,
-                value: item.id,
-              }))}
-              value={audience.segmentId ?? null}
-            />
-          </label>
-        ) : null}
-        {audience.mode === 'CONTACTS' ? (
-          <label>
-            Contacts
-            <Select<string[]>
-              disabled={disabled}
-              mode="multiple"
-              onChange={(contactIds) => onChange({ ...audience, contactIds })}
-              optionFilterProp="label"
-              options={(options?.contacts ?? []).map((item) => ({
-                disabled: !item.eligible,
-                label: `${item.displayName} · ${item.email}`,
-                value: item.id,
-              }))}
-              value={audience.contactIds ?? []}
-            />
-          </label>
-        ) : null}
-        <label>
-          Must have tags
-          <Select<string[]>
-            allowClear
-            disabled={disabled}
-            mode="multiple"
-            onChange={(includeTagIds) =>
-              onChange({
-                ...audience,
-                includeTagIds,
-                excludeTagIds: (audience.excludeTagIds ?? []).filter(
-                  (tagId) => !includeTagIds.includes(tagId),
-                ),
-              })
-            }
-            options={(options?.tags ?? []).map((item) => ({
-              disabled: Boolean(audience.excludeTagIds?.includes(item.id)),
-              label: item.name,
-              value: item.id,
-            }))}
-            value={audience.includeTagIds ?? []}
-          />
-        </label>
-        <label>
-          Exclude tags
-          <Select<string[]>
-            allowClear
-            disabled={disabled}
-            mode="multiple"
-            onChange={(excludeTagIds) =>
-              onChange({
-                ...audience,
-                excludeTagIds,
-                includeTagIds: (audience.includeTagIds ?? []).filter(
-                  (tagId) => !excludeTagIds.includes(tagId),
-                ),
-              })
-            }
-            options={(options?.tags ?? []).map((item) => ({
-              disabled: Boolean(audience.includeTagIds?.includes(item.id)),
-              label: item.name,
-              value: item.id,
-            }))}
-            value={audience.excludeTagIds ?? []}
-          />
-        </label>
-      </div>
-      <Typography.Text type="secondary">
-        Active contacts with a valid email are included. Unsubscribed, bounced, complained and
-        manually suppressed addresses are removed again immediately before delivery.
-      </Typography.Text>
+      <AudienceSelector
+        allLabel="All active contacts with email"
+        description="Active contacts with a valid email are included. Unsubscribed, bounced, complained and manually suppressed addresses are removed again immediately before delivery."
+        disabled={disabled}
+        onChange={(next) => onChange(next)}
+        {...(options ? { options } : {})}
+        value={audience}
+      />
     </Card>
   );
 }

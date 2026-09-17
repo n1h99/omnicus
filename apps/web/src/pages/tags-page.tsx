@@ -1,8 +1,8 @@
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, PlusOutlined, TeamOutlined } from '@ant-design/icons';
 import { Alert, Button, Drawer, Form, Input, Space, Table, Typography, message } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 
 import { apiRequest, getUserErrorMessage } from '../api';
 import { useAuth } from '../auth';
@@ -36,17 +36,22 @@ export function TagsPage() {
             Organize contacts with project-specific labels.
           </Typography.Text>
         </div>
-        <Button
-          icon={<PlusOutlined />}
-          onClick={() => {
-            form.resetFields();
-            setEditing(undefined);
-            setOpen(true);
-          }}
-          type="primary"
-        >
-          Create tag
-        </Button>
+        <Space>
+          <Link to={`/projects/${projectId}/segments`}>
+            <Button icon={<TeamOutlined />}>Contact groups</Button>
+          </Link>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => {
+              form.resetFields();
+              setEditing(undefined);
+              setOpen(true);
+            }}
+            type="primary"
+          >
+            Create tag
+          </Button>
+        </Space>
       </div>
       {tags.isError ? (
         <Alert

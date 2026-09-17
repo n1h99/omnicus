@@ -20,6 +20,7 @@ import { firstHeaderValue, type AuthenticatedRequest } from '../auth/auth.types'
 import type { RequestSecurityContext } from '../auth/auth.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import {
+  AudienceOptionsQueryDto,
   CreateCustomFieldDto,
   CreateSegmentDto,
   CreateTagDto,
@@ -47,6 +48,19 @@ export class ContactsController {
   @ApiQuery({ type: ContactsQueryDto })
   async list(@Param('projectId') projectId: string, @Query() query: ContactsQueryDto) {
     return { data: await this.contacts.list(projectId, query), meta: {} };
+  }
+
+  @Get('contacts/audience-options')
+  @RequireProjectPermission('contacts:read')
+  @ApiQuery({ type: AudienceOptionsQueryDto })
+  async audienceOptions(
+    @Param('projectId') projectId: string,
+    @Query() query: AudienceOptionsQueryDto,
+  ) {
+    return {
+      data: await this.contacts.audienceOptions(projectId, query.connectionId),
+      meta: {},
+    };
   }
 
   @Post('contacts')

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
+import { useContactAudienceOptions, type AudienceOptions } from '../audience-api';
 import {
   type BroadcastRecipient,
   useBroadcast,
@@ -23,6 +24,11 @@ export function BroadcastDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [restarting, setRestarting] = useState(false);
   const query = useBroadcast(projectId, broadcastId);
+  const audienceOptions = useContactAudienceOptions(
+    projectId,
+    query.data?.connectionId,
+    Boolean(query.data?.connectionId),
+  );
   const channels = useChannels(projectId);
   const recipients = useBroadcastRecipients(projectId, broadcastId);
   const access = useProjectAccess(projectId);
@@ -88,7 +94,11 @@ export function BroadcastDetailPage() {
         column={1}
         items={[
           { key: 'status', label: 'Status', children: <StatusText status={broadcast.status} /> },
-          { key: 'audience', label: 'Audience', children: broadcast.audience.mode },
+          {
+            key: 'audience',
+            label: 'Audience',
+            children: audienceLabel(broadcast.audience, audienceOptions.data),
+          },
           {
             key: 'provider',
             label: 'Provider',
@@ -286,4 +296,21 @@ export function BroadcastDetailPage() {
       </Modal>
     </section>
   );
+}
+
+function audienceLabel(
+  audience: { contactIds?: string[]; mode: string; segmentId?: string },
+  options?: AudienceOptions,
+) {
+  if (audience.mode === 'ALL_ACTIVE') return 'All eligible contacts';
+  if (audience.mode === 'SEGMENT')
+    return (
+      options?.segments.find((segment) => segment.id === audience.segmentId)?.name ??
+      'Saved contact group'
+    );
+  const selected = (audience.contactIds ?? []).map(
+    (id) => options?.contacts.find((contact) => contact.id === id)?.displayName ?? id,
+  );
+  if (selected.length <= 3) return selected.join(', ') || 'Individual contacts';
+  return `${selected.slice(0, 3).join(', ')} +${selected.length - 3} more`;
 }

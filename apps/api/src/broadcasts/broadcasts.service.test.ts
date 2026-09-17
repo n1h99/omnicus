@@ -131,6 +131,44 @@ describe('BroadcastsService', () => {
     });
   });
 
+  it('applies manual contact-group membership when estimating recipients', async () => {
+    const count = vi.fn().mockResolvedValue(2);
+    const instance = service({
+      broadcast: {
+        findUnique: vi.fn().mockResolvedValue({
+          audience: { mode: 'SEGMENT', segmentId: 'segment-a' },
+          connectionId: 'connection-a',
+          content: { kind: 'TEXT', text: 'Hello' },
+          id: 'broadcast-a',
+          projectId: 'project-a',
+        }),
+      },
+      channelConnection: {
+        findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE', type: 'TELEGRAM' }),
+      },
+      channelIdentity: { count },
+      segment: {
+        findFirst: vi.fn().mockResolvedValue({
+          filter: { contactIds: ['contact-a', 'contact-b'] },
+          id: 'segment-a',
+        }),
+      },
+    });
+
+    await expect(instance.estimate('project-a', 'broadcast-a')).resolves.toEqual({
+      eligibleRecipients: 2,
+    });
+    expect(count).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        connectionId: 'connection-a',
+        contact: {
+          is: expect.objectContaining({ id: { in: ['contact-a', 'contact-b'] } }),
+        },
+        projectId: 'project-a',
+      }),
+    });
+  });
+
   it('archives a stopped broadcast without deleting recipients', async () => {
     const row = {
       audience: {},

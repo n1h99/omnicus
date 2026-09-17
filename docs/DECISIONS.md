@@ -1606,3 +1606,28 @@ safe HTML and UNKNOWN/no-blind-retry semantics are required. Global provider dom
 binding requires system-admin authority; mailbox access is additionally scoped by
 assignment. DNS, billing, production migration and live acceptance remain explicit
 operator steps. Full scope and current provider sources: [EMAIL_INBOX.md](EMAIL_INBOX.md).
+
+## ADR-061 — Contact groups share the saved-segment audience contract
+
+**Status:** Accepted and implemented locally, 2026-09-17.
+
+**Context:** Operators need to address every eligible contact, a reusable group,
+or a hand-picked set of contacts in Telegram, WhatsApp and email broadcasts.
+The existing backend already stores declarative Segment filters and snapshots
+broadcast recipients at launch, but the web UI exposed raw filter JSON and the
+channel broadcast form exposed only the all-active option.
+
+**Decision:** Keep one project-owned Segment model and present it as a contact
+group. A group can be manual through an allow-listed `contactIds` predicate or
+dynamic through the existing supported predicates. All audience-capable
+broadcast editors use the same `ALL_ACTIVE | SEGMENT | CONTACTS` contract plus
+optional include/exclude tags. Provider eligibility is applied after audience
+selection, and the launch snapshot remains immutable. Automation remains
+event-triggered; its side-effect-free test may load one existing contact as
+sample data, but this change does not invent a mass scenario-launch path.
+
+**Consequences:** Users can build and reuse groups without a second list model
+or duplicated membership source. Manual membership has no new table or
+migration and is validated within the current project. Merged, inactive,
+unreachable, non-consenting or suppressed contacts can remain referenced by a
+saved definition but are excluded by the channel-specific launch guard.

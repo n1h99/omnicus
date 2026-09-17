@@ -3746,6 +3746,71 @@ button:disabled,
   padding: 16px;
 }
 
+.audience-selector {
+  display: grid;
+  gap: 10px;
+}
+
+.audience-selector-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.audience-selector-grid label {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.audience-selector-contacts {
+  grid-column: span 2;
+}
+
+.broadcast-audience-section {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 18px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.broadcast-audience-section > .ant-typography {
+  margin: 0 !important;
+}
+
+.contact-groups-note {
+  margin-bottom: 18px;
+}
+
+.contact-group-rules {
+  display: grid;
+  gap: 0 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contact-group-rules > .ant-alert {
+  grid-column: span 2;
+  margin-bottom: 20px;
+}
+
+@media (max-width: 720px) {
+  .audience-selector-grid,
+  .contact-group-rules {
+    grid-template-columns: 1fr;
+  }
+
+  .audience-selector-contacts,
+  .contact-group-rules > .ant-alert {
+    grid-column: auto;
+  }
+}
+
 .member-create-form {
   margin-bottom: 18px;
   padding: 16px;

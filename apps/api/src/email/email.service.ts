@@ -1063,6 +1063,10 @@ export class EmailService {
         ? (value as Record<string, Prisma.JsonValue>)
         : {};
     const where: Prisma.ContactWhereInput = {
+      ...(Array.isArray(filter.contactIds) &&
+      filter.contactIds.every((contactId) => typeof contactId === 'string')
+        ? { id: { in: filter.contactIds as string[] } }
+        : {}),
       ...(typeof filter.status === 'string' ? { status: filter.status as never } : {}),
       ...(typeof filter.channel === 'string'
         ? { channelIdentities: { some: { channel: filter.channel as never } } }
