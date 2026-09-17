@@ -195,12 +195,12 @@ export class ContactsService {
               ? `No active ${connection.type === 'WHATSAPP' ? 'WhatsApp' : 'Telegram'} identity on this connection`
               : connection?.type === 'WHATSAPP' && contact.whatsAppConsentStatus !== 'GRANTED'
                 ? 'WhatsApp consent is not granted'
-              : connection?.type === 'WHATSAPP' &&
-                  identity?.whatsAppReachability &&
-                  ['BLOCKED', 'UNAVAILABLE'].includes(identity.whatsAppReachability)
-                ? identity.whatsAppReachability === 'BLOCKED'
-                  ? 'WhatsApp recipient is blocked'
-                  : 'WhatsApp recipient is unavailable'
+                : connection?.type === 'WHATSAPP' &&
+                    identity?.whatsAppReachability &&
+                    ['BLOCKED', 'UNAVAILABLE'].includes(identity.whatsAppReachability)
+                  ? identity.whatsAppReachability === 'BLOCKED'
+                    ? 'WhatsApp recipient is blocked'
+                    : 'WhatsApp recipient is unavailable'
                   : null;
         return {
           automationMode: contact.automationMode,
@@ -1056,6 +1056,10 @@ export class ContactsService {
       await transaction.contactTag.deleteMany({ where: { contactId: secondary.id, projectId } });
       await Promise.all([
         transaction.conversation.updateMany({
+          where: { contactId: secondary.id, projectId },
+          data: { contactId: primary.id },
+        }),
+        transaction.communicationEntry.updateMany({
           where: { contactId: secondary.id, projectId },
           data: { contactId: primary.id },
         }),

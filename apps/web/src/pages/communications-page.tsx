@@ -68,6 +68,7 @@ import {
 import type { MediaKind } from '../media-api';
 import { hasProjectPermission, useProjectAccess } from '../project-access';
 import { useTemplates } from '../templates-api';
+import { TelegramPanel } from '../features/telegram-chat/telegram-panel';
 import {
   assetKindForWhatsAppSlot,
   whatsAppParameterSlots,
@@ -285,6 +286,15 @@ function CommunicationsWorkspace({ projectId }: { projectId: string }) {
                   children:
                     channel === 'EMAIL' ? (
                       <ContactEmailPanel contact={contact.data} projectId={projectId} />
+                    ) : channel === 'TELEGRAM' ? (
+                      <TelegramPanel
+                        key={contact.data.id}
+                        projectId={projectId}
+                        contact={contact.data}
+                        active={selectedChannel === channel}
+                        canSend={canSendMessages}
+                        canManage={hasProjectPermission(access.data, 'project:manage')}
+                      />
                     ) : (
                       <MessengerPanel
                         key={`${contact.data.id}-${channel}`}

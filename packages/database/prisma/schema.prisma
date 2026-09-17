@@ -445,6 +445,7 @@ enum DelayedActionStatus {
 }
 
 model User {
+  communicationEntries CommunicationEntry[]
   id                      String                   @id @default(uuid())
   email                   String
   normalizedEmail         String                   @unique
@@ -698,6 +699,7 @@ model ProjectActiveInviteReservation {
 }
 
 model Project {
+  communicationEntries     CommunicationEntry[]
   id                       String                           @id @default(uuid())
   name                     String
   slug                     String                           @unique
@@ -751,6 +753,7 @@ model Project {
 }
 
 model Contact {
+  communicationEntries CommunicationEntry[]
   id                  String                    @id @default(uuid())
   projectId           String
   displayName         String
@@ -1242,6 +1245,28 @@ model ExternalHttpOperation {
   @@unique([projectId, scenarioExecutionId, nodeId])
   @@index([projectId, scenarioExecutionId, createdAt])
   @@map("external_http_operations")
+}
+
+// Private drafts, internal notes, quick replies and per-user preferences.
+model CommunicationEntry {
+  id          String   @id @default(uuid())
+  projectId   String
+  contactId   String?
+  ownerUserId String
+  namespace   String
+  kind        String
+  key         String
+  data        Json     @default("{}")
+  revision    Int      @default(1)
+  createdAt   DateTime @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(3)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  contact     Contact? @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  owner       User     @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+
+  @@unique([projectId, namespace, key])
+  @@index([projectId, contactId, kind, createdAt])
+  @@map("communication_entries")
 }
 
 model Conversation {

@@ -288,7 +288,36 @@ export class TelegramInboundProcessorService
           },
         });
 
-      if (reactionTarget)
+      if (reactionTarget) {
+        const target = await transaction.message.findFirst({
+          where: { id: reactionTarget.messageId, projectId: claimed.projectId },
+          select: { metadata: true },
+        });
+        const previousMetadata =
+          target?.metadata && typeof target.metadata === 'object' && !Array.isArray(target.metadata)
+            ? (target.metadata as Prisma.JsonObject)
+            : {};
+        const previousAt =
+          typeof previousMetadata.clientReactionOccurredAt === 'string'
+            ? Date.parse(previousMetadata.clientReactionOccurredAt)
+            : 0;
+        const occurredAt =
+          typeof event.content.occurredAt === 'string'
+            ? event.content.occurredAt
+            : eventAt.toISOString();
+        if (!previousAt || Date.parse(occurredAt) >= previousAt) {
+          await transaction.message.updateMany({
+            where: { id: reactionTarget.messageId, projectId: claimed.projectId },
+            data: {
+              metadata: {
+                ...previousMetadata,
+                clientReactions: event.content.newReactions ?? [],
+                clientReactionActor: event.content.actor ?? null,
+                clientReactionOccurredAt: occurredAt,
+              } as Prisma.InputJsonObject,
+            },
+          });
+        }
         await this.queueReactionForCrm(
           transaction,
           claimed,
@@ -296,6 +325,7 @@ export class TelegramInboundProcessorService
           reactionTarget.contactId,
           reactionTarget.messageId,
         );
+      }
 
       if (editTarget) {
         await transaction.message.updateMany({

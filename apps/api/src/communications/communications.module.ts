@@ -6,10 +6,12 @@ import { CrmIntegrationModule } from '../crm-integration/crm-integration.module'
 import { MediaModule } from '../media/media.module';
 import { CommunicationsController } from './communications.controller';
 import { CommunicationsService } from './communications.service';
+import { TelegramWorkspaceController } from './telegram-workspace.controller';
+import { TelegramWorkspaceService } from './telegram-workspace.service';
 
 @Module({
-  controllers: [CommunicationsController],
+  controllers: [CommunicationsController, TelegramWorkspaceController],
   imports: [AccessModule, CrmIntegrationModule, MediaModule, JwtModule.register({})],
-  providers: [CommunicationsService],
+  providers: [CommunicationsService, TelegramWorkspaceService],
 })
 export class CommunicationsModule {}

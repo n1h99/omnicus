@@ -75,6 +75,7 @@ export class CrmOutboundService {
     crmProjectId: string,
     omnicusProjectId: string,
     authenticatedProjectId?: string,
+    native = false,
   ): Promise<void> {
     const project = await this.database.client.project.findUnique({
       include: { crmConfig: true },
@@ -84,8 +85,9 @@ export class CrmOutboundService {
       (authenticatedProjectId !== undefined && authenticatedProjectId !== omnicusProjectId) ||
       !project ||
       project.status !== 'ACTIVE' ||
-      !project.crmConfig?.enabled ||
-      project.crmConfig.crmProjectId !== crmProjectId
+      (native
+        ? crmProjectId !== omnicusProjectId || authenticatedProjectId !== omnicusProjectId
+        : !project.crmConfig?.enabled || project.crmConfig.crmProjectId !== crmProjectId)
     )
       throw new NotFoundException({
         code: 'CRM_PROJECT_ROUTE_NOT_FOUND',
@@ -514,11 +516,13 @@ export class CrmOutboundService {
     scheduleId: string,
     query: CrmScheduledMessageQueryDto,
     authenticatedProjectId?: string,
+    native = false,
   ) {
     await this.assertProjectRoute(
       query.crmProjectId,
       query.omnicusProjectId,
       authenticatedProjectId,
+      native,
     );
     const schedule = await this.database.client.scheduledMessage.findFirst({
       select: {
@@ -545,11 +549,16 @@ export class CrmOutboundService {
     return this.scheduleResponse(schedule);
   }
 
-  async scheduledList(query: CrmScheduledMessageQueryDto, authenticatedProjectId?: string) {
+  async scheduledList(
+    query: CrmScheduledMessageQueryDto,
+    authenticatedProjectId?: string,
+    native = false,
+  ) {
     await this.assertProjectRoute(
       query.crmProjectId,
       query.omnicusProjectId,
       authenticatedProjectId,
+      native,
     );
     const schedules = await this.database.client.scheduledMessage.findMany({
       orderBy: [{ scheduledAt: 'desc' }, { id: 'desc' }],
@@ -584,11 +593,13 @@ export class CrmOutboundService {
     idempotencyKey: string,
     correlationId: string,
     authenticatedProjectId?: string,
+    native = false,
   ) {
     await this.assertProjectRoute(
       query.crmProjectId,
       query.omnicusProjectId,
       authenticatedProjectId,
+      native,
     );
     const scheduledAt = dto.scheduledAt ? new Date(dto.scheduledAt) : undefined;
     if (scheduledAt && (Number.isNaN(scheduledAt.getTime()) || scheduledAt.getTime() <= Date.now()))
@@ -723,11 +734,13 @@ export class CrmOutboundService {
     scheduleId: string,
     query: CrmScheduledMessageQueryDto,
     authenticatedProjectId?: string,
+    native = false,
   ) {
     await this.assertProjectRoute(
       query.crmProjectId,
       query.omnicusProjectId,
       authenticatedProjectId,
+      native,
     );
     return this.database.client.$transaction(async (transaction) => {
       const schedule = await transaction.scheduledMessage.findFirst({

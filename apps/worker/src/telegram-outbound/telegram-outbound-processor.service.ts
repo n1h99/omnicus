@@ -505,11 +505,24 @@ export class TelegramOutboundProcessorService
         },
         where: { projectId_id: { id: group.id, projectId: claimed.projectId } },
       });
-      for (const [position, providerMessageId] of sent.messageIds.entries())
+      for (const [position, providerMessageId] of sent.messageIds.entries()) {
         await transaction.telegramMediaGroupItem.updateMany({
           data: { providerMessageId },
           where: { mediaGroupId: group.id, position, projectId: claimed.projectId },
         });
+        await transaction.message.updateMany({
+          where: {
+            projectId: claimed.projectId,
+            connectionId: claimed.connectionId,
+            direction: 'OUTBOUND',
+            AND: [
+              { metadata: { path: ['mediaGroupId'], equals: group.id } },
+              { metadata: { path: ['mediaGroupPosition'], equals: position } },
+            ],
+          },
+          data: { status: 'SENT', externalMessageId: providerMessageId, sentAt: new Date() },
+        });
+      }
     });
   }
   private async executeBotInterface(
@@ -655,7 +668,15 @@ export class TelegramOutboundProcessorService
             ...metadata,
             ...(claimed.payload.action === 'DELETE_MESSAGE' ? { deleted: true } : {}),
             ...(claimed.payload.action === 'EDIT_MESSAGE'
-              ? { editedAt: new Date().toISOString() }
+              ? {
+                  editedAt: new Date().toISOString(),
+                  ...(typeof mutation.text === 'string' || typeof mutation.caption === 'string'
+                    ? {
+                        entities: mutation.entities ?? [],
+                        linkPreviewOptions: mutation.linkPreviewOptions ?? {},
+                      }
+                    : {}),
+                }
               : {}),
             ...(claimed.payload.action === 'PIN_MESSAGE'
               ? { pinned: mutation.pinned === true }
@@ -1132,7 +1153,7 @@ export class TelegramOutboundProcessorService
             status: { in: ['QUEUED', 'PROCESSING'] },
           },
         });
-      if (claimed.payload.action === 'SEND_MEDIA_GROUP')
+      if (claimed.payload.action === 'SEND_MEDIA_GROUP') {
         await tx.telegramMediaGroup.updateMany({
           data: {
             status: unknown ? 'UNKNOWN' : retry ? 'QUEUED' : 'FAILED',
@@ -1144,6 +1165,20 @@ export class TelegramOutboundProcessorService
             status: { in: ['QUEUED', 'PROCESSING'] },
           },
         });
+        await tx.message.updateMany({
+          where: {
+            projectId: claimed.projectId,
+            connectionId: claimed.connectionId,
+            direction: 'OUTBOUND',
+            status: { in: ['QUEUED', 'PROCESSING'] },
+            metadata: { path: ['mediaGroupId'], equals: claimed.payload.mediaGroupId },
+          },
+          data: {
+            status: unknown ? 'UNKNOWN' : retry ? 'QUEUED' : 'FAILED',
+            ...(retry ? {} : { failedAt: new Date() }),
+          },
+        });
+      }
     });
   }
   private async completeBroadcastIfTerminal(

@@ -1,3 +1,4 @@
+import type { CommunicationProjectScope } from './native-communication-scope';
 import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ChannelSecretsService, type EncryptedSecretEnvelope } from '@omnicus/channel-secrets';
@@ -49,7 +50,10 @@ export class CrmTelegramV3Service {
     this.secrets = new ChannelSecretsService(config.get('CHANNEL_SECRETS_KEY', { infer: true }));
   }
 
-  async capabilities(query: CrmCapabilitiesQueryDto, authenticatedProjectId?: string) {
+  async capabilities(
+    query: CrmCapabilitiesQueryDto,
+    authenticatedProjectId?: CommunicationProjectScope,
+  ) {
     await this.assertProject(query.crmProjectId, query.omnicusProjectId, authenticatedProjectId);
     const connection = await this.database.client.channelConnection.findUnique({
       select: { id: true, status: true, type: true },
@@ -200,7 +204,10 @@ export class CrmTelegramV3Service {
     };
   }
 
-  async botInterface(query: CrmBotInterfaceQueryDto, authenticatedProjectId?: string) {
+  async botInterface(
+    query: CrmBotInterfaceQueryDto,
+    authenticatedProjectId?: CommunicationProjectScope,
+  ) {
     await this.assertProject(query.crmProjectId, query.omnicusProjectId, authenticatedProjectId);
     const connection = await this.database.client.channelConnection.findUnique({
       where: { projectId_id: { id: query.connectionId, projectId: query.omnicusProjectId } },
@@ -238,7 +245,7 @@ export class CrmTelegramV3Service {
     dto: CrmBotInterfaceDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     await this.assertProject(dto.crmProjectId, dto.omnicusProjectId, authenticatedProjectId);
     const connection = await this.database.client.channelConnection.findUnique({
@@ -378,7 +385,10 @@ export class CrmTelegramV3Service {
     return { text: value.text, type: 'web_app', url: url.toString() };
   }
 
-  async automationState(query: CrmAutomationStateQueryDto, authenticatedProjectId?: string) {
+  async automationState(
+    query: CrmAutomationStateQueryDto,
+    authenticatedProjectId?: CommunicationProjectScope,
+  ) {
     const route = await this.resolveIdentity(
       {
         crmProjectId: query.crmProjectId,
@@ -416,7 +426,7 @@ export class CrmTelegramV3Service {
     dto: CrmAutomationStateDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const route = await this.resolveIdentity(dto, authenticatedProjectId);
     const request = {
@@ -614,7 +624,7 @@ export class CrmTelegramV3Service {
     });
   }
 
-  async chatAction(dto: CrmChatActionDto, authenticatedProjectId?: string) {
+  async chatAction(dto: CrmChatActionDto, authenticatedProjectId?: CommunicationProjectScope) {
     const route = await this.resolveIdentity(dto, authenticatedProjectId);
     const actions = {
       RECORD_VIDEO_NOTE: 'record_video_note',
@@ -631,7 +641,7 @@ export class CrmTelegramV3Service {
     return { accepted: true, expiresAt: new Date(Date.now() + 5_000).toISOString() };
   }
 
-  async draft(dto: CrmDraftDto, authenticatedProjectId?: string) {
+  async draft(dto: CrmDraftDto, authenticatedProjectId?: CommunicationProjectScope) {
     if (dto.text && dto.richMessage)
       throw new ConflictException({ code: 'DRAFT_CONTENT_CONFLICT' });
     if (!dto.text && !dto.richMessage)
@@ -729,7 +739,7 @@ export class CrmTelegramV3Service {
     dto: CrmMediaGroupDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const route = await this.resolveIdentity(dto, authenticatedProjectId);
     const kinds = new Set(dto.items.map((item) => item.kind));
@@ -812,6 +822,58 @@ export class CrmTelegramV3Service {
           protectContent: dto.protectContent ?? false,
         },
       });
+      if (
+        typeof authenticatedProjectId === 'object' &&
+        authenticatedProjectId.source === 'omnicus'
+      ) {
+        const now = new Date();
+        const conversation = await transaction.conversation.upsert({
+          where: {
+            projectId_connectionId_externalChatId: {
+              projectId: route.projectId,
+              connectionId: route.connectionId,
+              externalChatId: route.externalChatId,
+            },
+          },
+          create: {
+            projectId: route.projectId,
+            connectionId: route.connectionId,
+            contactId: dto.omnicusContactId,
+            externalChatId: route.externalChatId,
+            lastMessageAt: now,
+          },
+          update: { lastMessageAt: now },
+        });
+        for (const item of items) {
+          await transaction.message.create({
+            data: {
+              projectId: route.projectId,
+              connectionId: route.connectionId,
+              contactId: dto.omnicusContactId,
+              conversationId: conversation.id,
+              direction: 'OUTBOUND',
+              type: item.kind,
+              status: 'QUEUED',
+              mediaAssetId: item.mediaAssetId,
+              createdAt: new Date(now.getTime() + item.position),
+              content: { caption: item.caption ?? '' },
+              metadata: {
+                source: 'omnicus',
+                mediaGroupId: group.id,
+                mediaGroupPosition: item.position,
+                hasSpoiler: item.hasSpoiler ?? false,
+                disableNotification: dto.disableNotification ?? false,
+                protectContent: dto.protectContent ?? false,
+                ...(item.entities ? { entities: item.entities } : {}),
+              } as Prisma.InputJsonObject,
+            },
+          });
+        }
+        await transaction.contact.update({
+          where: { projectId_id: { projectId: route.projectId, id: dto.omnicusContactId } },
+          data: { lastInteractionAt: now },
+        });
+      }
       await transaction.outboxRecord.update({
         data: {
           payload: {
@@ -841,7 +903,7 @@ export class CrmTelegramV3Service {
     dto: CrmMessageMutationDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     if (!dto.text && dto.caption === undefined && dto.inlineKeyboard === undefined)
       throw new ConflictException({ code: 'MESSAGE_MUTATION_REQUIRED' });
@@ -885,7 +947,7 @@ export class CrmTelegramV3Service {
     dto: CrmTelegramScopeDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const target = await this.resolveMessage(messageId, dto, authenticatedProjectId);
     return this.queueAction('DELETE_MESSAGE', target, {}, idempotencyKey, correlationId);
@@ -896,7 +958,7 @@ export class CrmTelegramV3Service {
     dto: CrmReactionDto | CrmTelegramScopeDto,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const target = await this.resolveMessage(messageId, dto, authenticatedProjectId);
     if (('emoji' in dto && dto.emoji !== undefined) || ('type' in dto && (!dto.type || !dto.value)))
@@ -922,7 +984,7 @@ export class CrmTelegramV3Service {
     pinned: boolean,
     idempotencyKey: string,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const target = await this.resolveMessage(messageId, dto, authenticatedProjectId);
     return this.queueAction(
@@ -938,7 +1000,7 @@ export class CrmTelegramV3Service {
     operationId: string,
     dto: CrmRetryOperationDto,
     correlationId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     await this.assertProject(dto.crmProjectId, dto.omnicusProjectId, authenticatedProjectId);
     const source = await this.database.client.outboxRecord.findUnique({
@@ -1065,7 +1127,7 @@ export class CrmTelegramV3Service {
   private async resolveMessage(
     messageId: string,
     dto: CrmTelegramScopeDto,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const route = await this.resolveIdentity(dto, authenticatedProjectId);
     const message = await this.database.client.message.findFirst({
@@ -1088,7 +1150,10 @@ export class CrmTelegramV3Service {
     };
   }
 
-  private async resolveIdentity(dto: CrmTelegramScopeDto, authenticatedProjectId?: string) {
+  private async resolveIdentity(
+    dto: CrmTelegramScopeDto,
+    authenticatedProjectId?: CommunicationProjectScope,
+  ) {
     await this.assertProject(dto.crmProjectId, dto.omnicusProjectId, authenticatedProjectId);
     const identity = await this.database.client.channelIdentity.findUnique({
       include: { connection: true },
@@ -1134,18 +1199,21 @@ export class CrmTelegramV3Service {
   private async assertProject(
     crmProjectId: string,
     omnicusProjectId: string,
-    authenticatedProjectId?: string,
+    authenticatedProjectId?: CommunicationProjectScope,
   ) {
     const project = await this.database.client.project.findUnique({
       include: { crmConfig: true },
       where: { id: omnicusProjectId },
     });
+    const native = typeof authenticatedProjectId === 'object' ? authenticatedProjectId : undefined;
+    const expectedProjectId = native?.projectId ?? authenticatedProjectId;
     if (
-      (authenticatedProjectId && authenticatedProjectId !== omnicusProjectId) ||
+      (expectedProjectId && expectedProjectId !== omnicusProjectId) ||
       !project ||
       project.status !== 'ACTIVE' ||
-      !project.crmConfig?.enabled ||
-      project.crmConfig.crmProjectId !== crmProjectId
+      (native
+        ? native.source !== 'omnicus' || crmProjectId !== omnicusProjectId
+        : !project.crmConfig?.enabled || project.crmConfig.crmProjectId !== crmProjectId)
     )
       throw new NotFoundException({ code: 'CRM_PROJECT_ROUTE_NOT_FOUND' });
   }

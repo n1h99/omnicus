@@ -98,7 +98,12 @@ function createHarness(options: HarnessOptions = {}) {
     },
     inboxRecord: { update: inboxUpdate, updateMany: transactionInboxUpdateMany },
     mediaAsset: { upsert: mediaAssetUpsert },
-    message: { findFirst: messageFindFirst, update: messageUpdate, upsert: messageUpsert },
+    message: {
+      findFirst: messageFindFirst,
+      update: messageUpdate,
+      updateMany: messageUpdate,
+      upsert: messageUpsert,
+    },
     normalizedEvent: { upsert: normalizedUpsert },
     outboxRecord: {
       createMany: crmOutboxCreateMany,

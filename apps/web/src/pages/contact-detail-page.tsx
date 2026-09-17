@@ -198,7 +198,11 @@ export function ContactDetailPage() {
                 <div className="contact-summary-row">
                   <div className="contact-summary-label">Telegram:</div>
                   <div className="contact-summary-value">
-                    {telegramIdentity ? formatIdentityValue(telegramIdentity) : '\u2014'}
+                    {telegramIdentity
+                      ? formatIdentityValue(telegramIdentity)
+                      : value.username
+                        ? `@${value.username.replace(/^@/, '')} · Bot chat not started`
+                        : '\u2014'}
                   </div>
                 </div>
                 <div className="contact-summary-row">
