@@ -1151,8 +1151,14 @@ export class WhatsAppOutboundProcessorService
     const type = string(parameter?.type);
     if (!parameter || !type)
       throw new WhatsAppOutboundPermanentError('whatsapp_template_parameter_invalid');
-    if (type === 'text' && typeof parameter.text === 'string')
-      return { text: parameter.text, type: 'text' };
+    if (type === 'text' && typeof parameter.text === 'string') {
+      const parameterName = string(parameter.parameterName);
+      return {
+        ...(parameterName ? { parameterName } : {}),
+        text: parameter.text,
+        type: 'text',
+      };
+    }
     if (type === 'payload' && typeof parameter.payload === 'string')
       return { payload: parameter.payload, type: 'payload' };
     if (

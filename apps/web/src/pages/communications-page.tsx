@@ -74,6 +74,7 @@ import {
   whatsAppParameterSlots,
   whatsAppTemplateComponents,
   whatsAppTemplateComposerIssue,
+  whatsAppTemplateInitialValues,
 } from '../whatsapp-template-composer';
 import { resolveWhatsAppTemplateMessage } from '../whatsapp-template-message';
 import '../communications.css';
@@ -1417,7 +1418,12 @@ function WhatsAppTemplateModal({
               value={templateId ?? null}
               onChange={(value) => {
                 setTemplateId(value);
-                setValues({});
+                const template = templates.data?.find((candidate) => candidate.id === value);
+                setValues(
+                  template
+                    ? whatsAppTemplateInitialValues(template, contact.templateVariables)
+                    : {},
+                );
               }}
               options={(templates.data ?? []).map((template) => {
                 const templateIssue = whatsAppTemplateComposerIssue(template);
@@ -1430,7 +1436,7 @@ function WhatsAppTemplateModal({
             />
           </label>
         )}
-        {selected ? <TemplatePreview template={selected} /> : null}
+        {selected ? <TemplatePreview template={selected} values={values} /> : null}
         {slots.map((slot) => (
           <label key={slot.key}>
             <span>{slot.label}</span>
@@ -1509,7 +1515,13 @@ function WhatsAppTemplateModal({
   );
 }
 
-function TemplatePreview({ template }: { template: CommunicationTemplate }) {
+function TemplatePreview({
+  template,
+  values,
+}: {
+  template: CommunicationTemplate;
+  values: Record<string, string>;
+}) {
   return (
     <div className="communications-template-preview">
       <span>
@@ -1519,9 +1531,15 @@ function TemplatePreview({ template }: { template: CommunicationTemplate }) {
       <small>
         {template.languageCode} · {template.category.toLowerCase()}
       </small>
-      {template.components.map((component, index) =>
-        component.text ? <p key={`${component.type}-${index}`}>{component.text}</p> : null,
-      )}
+      {template.components.map((component, index) => {
+        if (!component.text) return null;
+        const type = component.type.toLowerCase();
+        const preview = component.text.replace(
+          /\{\{\s*([^{}]+?)\s*\}\}/g,
+          (match, name: string) => values[`${type}-${name.trim()}`]?.trim() || match,
+        );
+        return <p key={`${component.type}-${index}`}>{preview}</p>;
+      })}
     </div>
   );
 }

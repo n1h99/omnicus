@@ -88,6 +88,39 @@ describe('WhatsApp webhook normalization', () => {
 });
 
 describe('WhatsApp Cloud API adapter', () => {
+  it('serializes named template parameters for Meta', async () => {
+    const fetchImplementation = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ messages: [{ id: 'wamid.named' }] }), {
+        headers: { 'content-type': 'application/json' },
+        status: 200,
+      }),
+    );
+    const api = new WhatsAppCloudApi(fetchImplementation);
+    await api.sendMessage({
+      accessToken: 'secret',
+      graphApiVersion: 'v23.0',
+      message: {
+        template: {
+          components: [
+            {
+              parameters: [{ parameterName: 'first_name', text: 'Ada', type: 'text' }],
+              type: 'body',
+            },
+          ],
+          languageCode: 'en_US',
+          name: 'welcome',
+        },
+        type: 'template',
+      },
+      phoneNumberId: '10',
+      to: '20',
+    });
+    const body = JSON.parse(String(fetchImplementation.mock.calls[0]![1]!.body));
+    expect(body.template.components[0].parameters).toEqual([
+      { parameter_name: 'first_name', text: 'Ada', type: 'text' },
+    ]);
+  });
+
   it('serializes template payload parameters and reaction removal exactly once', async () => {
     const fetchImplementation = vi.fn().mockImplementation(
       async () =>
@@ -201,6 +234,41 @@ describe('WhatsApp media validation', () => {
 });
 
 describe('WhatsApp template component validation', () => {
+  it('accepts named variables only when their parameter names match', () => {
+    const body = [
+      {
+        parameterStyle: 'named',
+        text: 'Hello {{first_name}} from {{company}}',
+        type: 'BODY',
+        unsupportedReason: 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED',
+      },
+    ];
+    expect(
+      whatsAppTemplateDisabledReason({ components: body, status: 'APPROVED' }),
+    ).toBeUndefined();
+    expect(() =>
+      assertWhatsAppTemplateComponents(body, [
+        {
+          parameters: [
+            { parameterName: 'first_name', text: 'Ada', type: 'text' },
+            { parameterName: 'company', text: 'Omnicus', type: 'text' },
+          ],
+          type: 'body',
+        },
+      ]),
+    ).not.toThrow();
+    expect(() =>
+      assertWhatsAppTemplateComponents(body, [
+        {
+          parameters: [
+            { text: 'Ada', type: 'text' },
+            { parameterName: 'company', text: 'Omnicus', type: 'text' },
+          ],
+          type: 'body',
+        },
+      ]),
+    ).toThrow();
+  });
   it('allows a static URL without a parameter and requires a dynamic URL suffix', () => {
     expect(() =>
       assertWhatsAppTemplateComponents(

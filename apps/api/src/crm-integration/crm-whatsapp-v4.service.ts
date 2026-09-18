@@ -1275,11 +1275,14 @@ export class CrmWhatsAppV4Service {
               return [];
             const buttonParameterStyle = this.nonEmptyString(button.parameterStyle);
             const buttonUnsupportedReason = this.nonEmptyString(button.unsupportedReason);
+            const buttonUrl = this.nonEmptyString(button.url);
+            const variableName = buttonUrl?.match(/\{\{\s*([^{}]+?)\s*\}\}/)?.[1]?.trim();
             return [
               {
                 ...(typeof button.dynamic === 'boolean' ? { dynamic: button.dynamic } : {}),
                 ...(buttonParameterStyle ? { parameterStyle: buttonParameterStyle } : {}),
                 ...(buttonUnsupportedReason ? { unsupportedReason: buttonUnsupportedReason } : {}),
+                ...(variableName && !/^\d+$/.test(variableName) ? { variableName } : {}),
                 text: buttonText,
                 type: buttonType,
               },
@@ -1306,12 +1309,21 @@ export class CrmWhatsAppV4Service {
       throw new ConflictException({ code: 'CRM_WHATSAPP_TEMPLATE_PARAMETER_INVALID' });
     if (
       type === 'text' &&
-      Object.keys(parameter).every((key) => ['text', 'type'].includes(key)) &&
+      Object.keys(parameter).every((key) => ['parameterName', 'text', 'type'].includes(key)) &&
       typeof parameter.text === 'string' &&
       parameter.text.length >= 1 &&
-      parameter.text.length <= 4_096
+      parameter.text.length <= 4_096 &&
+      (parameter.parameterName === undefined ||
+        (typeof parameter.parameterName === 'string' &&
+          /^[a-zA-Z][a-zA-Z0-9_]{0,127}$/.test(parameter.parameterName)))
     )
-      return { text: parameter.text, type };
+      return {
+        ...(typeof parameter.parameterName === 'string'
+          ? { parameterName: parameter.parameterName }
+          : {}),
+        text: parameter.text,
+        type,
+      };
     if (
       type === 'payload' &&
       Object.keys(parameter).every((key) => ['payload', 'type'].includes(key)) &&

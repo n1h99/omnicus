@@ -5,6 +5,7 @@ import {
   whatsAppParameterSlots,
   whatsAppTemplateComponents,
   whatsAppTemplateComposerIssue,
+  whatsAppTemplateInitialValues,
   whatsAppTemplateParameterValues,
 } from './whatsapp-template-composer';
 import type { WhatsAppMessageTemplate } from './whatsapp-templates-api';
@@ -105,10 +106,38 @@ describe('WhatsApp template composer', () => {
   it('fails closed for provider shapes the safe composer cannot represent', () => {
     expect(whatsAppTemplateComposerIssue(template([], 'AUTHENTICATION'))).toMatch(/OTP-specific/);
     expect(
-      whatsAppTemplateComposerIssue(template([{ text: 'Hello {{customer_name}}', type: 'BODY' }])),
-    ).toMatch(/Named Meta variables/);
-    expect(
       whatsAppTemplateComposerIssue(template([{ format: 'LOCATION', type: 'HEADER' }])),
     ).toMatch(/Location template headers/);
+  });
+
+  it('fills named contact fields, obvious greeting names, and quick-reply payloads', () => {
+    const named = template([
+      { text: 'Hello {{first_name}}, email {{email}}', type: 'BODY' },
+      { buttons: [{ text: 'Continue', type: 'QUICK_REPLY' }], type: 'BUTTONS' },
+    ]);
+    const namedSlots = whatsAppParameterSlots(named);
+    const values = whatsAppTemplateInitialValues(named, {
+      email: 'ada@example.test',
+      firstName: 'Ada',
+    });
+    expect(values).toEqual({
+      'body-email': 'ada@example.test',
+      'body-first_name': 'Ada',
+      'button-0': 'Continue',
+    });
+    expect(whatsAppTemplateComponents(namedSlots, values)).toContainEqual({
+      parameters: [
+        { parameterName: 'first_name', text: 'Ada', type: 'text' },
+        { parameterName: 'email', text: 'ada@example.test', type: 'text' },
+      ],
+      type: 'body',
+    });
+
+    expect(
+      whatsAppTemplateInitialValues(template([{ text: 'Hi {{1}}, welcome!', type: 'BODY' }]), {
+        firstName: 'Kristina',
+        name: 'Kristina Vivcharik',
+      }),
+    ).toEqual({ 'body-1': 'Kristina' });
   });
 });

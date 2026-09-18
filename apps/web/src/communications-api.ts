@@ -61,10 +61,13 @@ export interface CommunicationContact {
   connections: CommunicationConnection[];
   displayName: string;
   email: string | null;
+  firstName: string | null;
   id: string;
   identities: CommunicationIdentity[];
+  lastName: string | null;
   phone: string | null;
   status: string;
+  templateVariables: Record<string, string>;
   username: string | null;
   whatsAppConsentStatus: 'UNKNOWN' | 'GRANTED' | 'REVOKED';
 }

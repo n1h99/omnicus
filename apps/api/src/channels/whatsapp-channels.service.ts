@@ -896,8 +896,8 @@ export class WhatsAppChannelsService {
       let unsupportedReason =
         type === 'HEADER' && format === 'LOCATION'
           ? 'WHATSAPP_TEMPLATE_LOCATION_HEADER_UNSUPPORTED'
-          : parameterStyle === 'named' || parameterStyle === 'mixed'
-            ? 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED'
+          : parameterStyle === 'mixed'
+            ? 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED'
             : undefined;
       const buttons = Array.isArray(component.buttons)
         ? component.buttons.slice(0, 10).flatMap((raw) => {
@@ -907,8 +907,8 @@ export class WhatsAppChannelsService {
             const text = this.text(button.text);
             const url = this.text(button.url);
             const buttonParameterStyle = this.parameterStyle(url);
-            if (buttonParameterStyle === 'named' || buttonParameterStyle === 'mixed')
-              unsupportedReason = 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED';
+            if (buttonParameterStyle === 'mixed')
+              unsupportedReason = 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED';
             if (
               !buttonType ||
               !text ||
@@ -922,9 +922,9 @@ export class WhatsAppChannelsService {
                       ? {
                           dynamic: buttonParameterStyle !== 'none',
                           parameterStyle: buttonParameterStyle,
-                          ...(buttonParameterStyle === 'named' || buttonParameterStyle === 'mixed'
+                          ...(buttonParameterStyle === 'mixed'
                             ? {
-                                unsupportedReason: 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED',
+                                unsupportedReason: 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED',
                               }
                             : {}),
                         }

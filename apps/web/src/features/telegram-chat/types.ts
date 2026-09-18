@@ -267,7 +267,7 @@ export interface TelegramRichMessage {
 }
 
 export type WhatsAppTemplateParameter =
-  | { type: 'text'; text: string }
+  | { type: 'text'; text: string; parameterName?: string }
   | {
       type: 'currency';
       currency: { fallbackValue: string; code: string; amount1000: number };
@@ -316,6 +316,7 @@ export interface WhatsAppMessageTemplate {
       parameterStyle?: 'none' | 'positional' | 'named' | 'mixed';
       unsupportedReason?: string;
       dynamic?: boolean;
+      variableName?: string;
     }>;
   }>;
 }

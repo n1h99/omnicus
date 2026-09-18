@@ -140,11 +140,14 @@ export class CommunicationsService {
       connections: connections.map((connection) => this.safeConnection(connection)),
       displayName: contact.displayName,
       email: contact.email,
+      firstName: contact.firstName,
       id: contact.id,
+      lastName: contact.lastName,
       phone: contact.phone,
       status: contact.status,
       username: contact.username,
       whatsAppConsentStatus: contact.whatsAppConsentStatus,
+      templateVariables: this.templateVariables(contact),
       identities: contact.channelIdentities.map((identity) => {
         const conversation = contact.conversations.find(
           (candidate) =>
@@ -438,6 +441,39 @@ export class CommunicationsService {
       this.text(this.object(value?.richMessage)?.markdown) ??
       this.text(this.object(value?.whatsAppTemplate)?.name) ??
       type.toLowerCase().replaceAll('_', ' ')
+    );
+  }
+
+  private templateVariables(contact: {
+    customFields: Prisma.JsonValue;
+    displayName: string;
+    email: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    phone: string | null;
+    username: string | null;
+  }) {
+    const customFields = this.object(contact.customFields) ?? {};
+    const scalarCustomFields = Object.fromEntries(
+      Object.entries(customFields).flatMap(([key, value]) =>
+        ['boolean', 'number', 'string'].includes(typeof value) && String(value).trim()
+          ? [[key, String(value)]]
+          : [],
+      ),
+    );
+    const nameParts = contact.displayName.trim().split(/\s+/);
+    return Object.fromEntries(
+      Object.entries({
+        ...scalarCustomFields,
+        displayName: contact.displayName,
+        email: contact.email,
+        firstName: contact.firstName ?? nameParts[0],
+        fullName: contact.displayName,
+        lastName: contact.lastName ?? (nameParts.length > 1 ? nameParts.slice(1).join(' ') : null),
+        name: contact.displayName,
+        phone: contact.phone,
+        username: contact.username,
+      }).flatMap(([key, value]) => (value === null || value === undefined ? [] : [[key, value]])),
     );
   }
 

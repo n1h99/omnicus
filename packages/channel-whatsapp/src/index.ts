@@ -269,7 +269,7 @@ export type WhatsAppInteractive =
     };
 
 export type WhatsAppTemplateParameter =
-  | { text: string; type: 'text' }
+  | { parameterName?: string; text: string; type: 'text' }
   | { amount1000: number; code: string; fallbackValue: string; type: 'currency' }
   | { fallbackValue: string; type: 'date_time' }
   | { mediaId: string; type: 'document' | 'image' | 'video' }
@@ -331,29 +331,21 @@ export function whatsAppTemplateDisabledReason(input: {
     if (
       unsupportedReason === 'WHATSAPP_TEMPLATE_LOCATION_HEADER_UNSUPPORTED' ||
       unsupportedReason === 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED' ||
-      unsupportedReason === 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED' ||
       unsupportedReason === 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED'
     )
       return unsupportedReason;
     const parameterStyle = string(component?.parameterStyle);
-    if (parameterStyle === 'named' || parameterStyle === 'mixed')
-      return 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED';
-    if (
-      typeof component?.text === 'string' &&
-      [...component.text.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)].some(
-        (match) => !/^\d+$/.test(match[1]!.trim()),
-      )
-    )
-      return 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED';
+    if (parameterStyle === 'mixed') return 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED';
     if (componentType !== 'BUTTONS' || !Array.isArray(component?.buttons)) continue;
     for (const candidateButton of component.buttons) {
       const button = object(candidateButton);
       const buttonReason = string(button?.unsupportedReason);
-      if (buttonReason === 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED') return buttonReason;
+      if (buttonReason === 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED')
+        return 'WHATSAPP_TEMPLATE_COMPONENT_UNSUPPORTED';
+      if (buttonReason === 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED')
+        return 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED';
       if (button?.type === 'URL' && button.dynamic === true) {
-        if (button.parameterStyle === 'named' || button.parameterStyle === 'mixed')
-          return 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED';
-        if (button.parameterStyle !== 'positional')
+        if (!['named', 'positional'].includes(String(button.parameterStyle)))
           return 'WHATSAPP_TEMPLATE_PARAMETER_STYLE_UNSUPPORTED';
       }
     }
@@ -369,22 +361,30 @@ export function assertWhatsAppTemplateComponents(definition: unknown, input: unk
   if (!supplied || supplied.length > 64) throw new Error('whatsapp_template_components_invalid');
   type Requirement = {
     index?: number;
+    parameterNames?: string[];
     parameterCount: number;
     parameterType?: string;
     subType?: 'quick_reply' | 'url';
     type: 'body' | 'button' | 'header';
   };
   const requirements: Requirement[] = [];
-  const placeholderCount = (value: unknown): number => {
-    if (typeof value !== 'string') return 0;
-    return new Set([...value.matchAll(/\{\{\s*(\d+)\s*\}\}/g)].map((match) => match[1]!)).size;
+  const placeholders = (value: unknown): string[] => {
+    if (typeof value !== 'string') return [];
+    return [
+      ...new Set([...value.matchAll(/\{\{\s*([^{}]+?)\s*\}\}/g)].map((match) => match[1]!.trim())),
+    ];
   };
   for (const candidate of definitions) {
     const component = object(candidate);
     const componentType = string(component?.type)?.toUpperCase();
     if (componentType === 'BODY') {
-      const count = placeholderCount(component?.text);
-      if (count) requirements.push({ parameterCount: count, type: 'body' });
+      const names = placeholders(component?.text);
+      if (names.length)
+        requirements.push({
+          parameterCount: names.length,
+          ...(!names.every((name) => /^\d+$/.test(name)) ? { parameterNames: names } : {}),
+          type: 'body',
+        });
     } else if (componentType === 'HEADER') {
       const format = string(component?.format)?.toUpperCase();
       if (['IMAGE', 'VIDEO', 'DOCUMENT'].includes(format ?? ''))
@@ -394,8 +394,13 @@ export function assertWhatsAppTemplateComponents(definition: unknown, input: unk
           type: 'header',
         });
       else {
-        const count = placeholderCount(component?.text);
-        if (count) requirements.push({ parameterCount: count, type: 'header' });
+        const names = placeholders(component?.text);
+        if (names.length)
+          requirements.push({
+            parameterCount: names.length,
+            ...(!names.every((name) => /^\d+$/.test(name)) ? { parameterNames: names } : {}),
+            type: 'header',
+          });
       }
     } else if (componentType === 'BUTTONS' && Array.isArray(component?.buttons)) {
       component.buttons.forEach((candidateButton, index) => {
@@ -408,14 +413,19 @@ export function assertWhatsAppTemplateComponents(definition: unknown, input: unk
             subType: 'quick_reply',
             type: 'button',
           });
-        else if (button?.type === 'URL' && button.dynamic === true)
+        else if (button?.type === 'URL' && button.dynamic === true) {
+          const names = placeholders(button.url);
           requirements.push({
             index,
+            ...(names.length && !names.every((name) => /^\d+$/.test(name))
+              ? { parameterNames: names }
+              : {}),
             parameterCount: 1,
             parameterType: 'text',
             subType: 'url',
             type: 'button',
           });
+        }
       });
     }
   }
@@ -447,18 +457,25 @@ export function assertWhatsAppTemplateComponents(definition: unknown, input: unk
     );
     if (!requirement || parameters.length !== requirement.parameterCount)
       throw new Error('whatsapp_template_components_invalid');
-    for (const rawParameter of parameters) {
+    for (const [parameterIndex, rawParameter] of parameters.entries()) {
       const parameter = object(rawParameter);
       const parameterType = string(parameter?.type);
       if (!parameter || !parameterType) throw new Error('whatsapp_template_components_invalid');
       if (requirement.parameterType && parameterType !== requirement.parameterType)
         throw new Error('whatsapp_template_components_invalid');
+      if (requirement.parameterNames && parameterType !== 'text')
+        throw new Error('whatsapp_template_components_invalid');
       if (
         (parameterType === 'text' &&
-          (!exactKeys(parameter, ['text', 'type']) ||
+          (!exactKeys(
+            parameter,
+            requirement.parameterNames ? ['parameterName', 'text', 'type'] : ['text', 'type'],
+          ) ||
             typeof parameter.text !== 'string' ||
             parameter.text.length < 1 ||
-            parameter.text.length > 4_096)) ||
+            parameter.text.length > 4_096 ||
+            (requirement.parameterNames !== undefined &&
+              parameter.parameterName !== requirement.parameterNames[parameterIndex]))) ||
         (parameterType === 'payload' &&
           (!exactKeys(parameter, ['payload', 'type']) ||
             typeof parameter.payload !== 'string' ||
@@ -1042,7 +1059,12 @@ export class WhatsAppCloudApi {
         ? { sub_type: component.subType, index: String(component.index) }
         : {}),
       parameters: component.parameters.map((parameter) => {
-        if (parameter.type === 'text') return { text: parameter.text, type: 'text' };
+        if (parameter.type === 'text')
+          return {
+            ...(parameter.parameterName ? { parameter_name: parameter.parameterName } : {}),
+            text: parameter.text,
+            type: 'text',
+          };
         if (parameter.type === 'currency')
           return {
             currency: {

@@ -24,6 +24,43 @@ function activeIdentity() {
 }
 
 describe('CommunicationsService', () => {
+  it('exposes safe contact fields for WhatsApp template autofill', async () => {
+    const client = {
+      channelConnection: { findMany: vi.fn().mockResolvedValue([]) },
+      contact: {
+        findUnique: vi.fn().mockResolvedValue({
+          automationMode: 'ENABLED',
+          channelIdentities: [],
+          conversations: [],
+          customFields: { country_of_residence: 'Portugal', nested: { hidden: true } },
+          displayName: 'Kristina Vivcharik',
+          email: 'kristina@example.test',
+          firstName: null,
+          id: 'contact-a',
+          lastName: null,
+          phone: '+351930000000',
+          status: 'ACTIVE',
+          username: null,
+          whatsAppConsentStatus: 'GRANTED',
+        }),
+      },
+    };
+    const service = new CommunicationsService(
+      { client } as never,
+      { queue: vi.fn() } as never,
+      { queue: vi.fn() } as never,
+    );
+
+    await expect(service.contact('project-a', 'contact-a')).resolves.toMatchObject({
+      templateVariables: {
+        country_of_residence: 'Portugal',
+        firstName: 'Kristina',
+        lastName: 'Vivcharik',
+        name: 'Kristina Vivcharik',
+      },
+    });
+  });
+
   it('queues an official Meta template as an Omnicus operator action', async () => {
     const whatsApp = { queue: vi.fn().mockResolvedValue({ messageId: 'message-a' }) };
     const client = {

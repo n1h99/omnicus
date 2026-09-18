@@ -277,10 +277,10 @@ describe('CrmWhatsAppV4Service', () => {
               {
                 dynamic: true,
                 examples: ['https://example.test/order-1'],
-                parameterStyle: 'positional',
+                parameterStyle: 'named',
                 text: 'Open',
                 type: 'URL',
-                url: 'https://example.test/{{1}}',
+                url: 'https://example.test/{{customer_id}}',
               },
               {
                 phoneNumber: '+15551234567',
@@ -317,9 +317,10 @@ describe('CrmWhatsAppV4Service', () => {
         buttons: [
           {
             dynamic: true,
-            parameterStyle: 'positional',
+            parameterStyle: 'named',
             text: 'Open',
             type: 'URL',
+            variableName: 'customer_id',
           },
           { text: 'Call', type: 'PHONE_NUMBER' },
         ],
@@ -331,7 +332,7 @@ describe('CrmWhatsAppV4Service', () => {
     expect(JSON.stringify(result)).not.toContain('example.test');
   });
 
-  it('rejects named template variables before creating an outbox intent', async () => {
+  it('queues named template variables with their Meta parameter names', async () => {
     const { client, service, transaction } = fixture();
     client.whatsAppMessageTemplate.findUnique.mockResolvedValue({
       category: 'UTILITY',
@@ -344,18 +345,46 @@ describe('CrmWhatsAppV4Service', () => {
       service.queue(
         {
           ...outboundRoute,
-          template: { languageCode: 'en_US', name: 'named_update' },
+          template: {
+            components: [
+              {
+                parameters: [{ parameterName: 'customer_name', text: 'Ada', type: 'text' }],
+                type: 'body',
+              },
+            ],
+            languageCode: 'en_US',
+            name: 'named_update',
+          },
         },
         'template-named-a',
         'correlation-a',
       ),
-    ).rejects.toMatchObject({
-      response: {
-        code: 'CRM_WHATSAPP_TEMPLATE_UNSUPPORTED',
-        reasonCode: 'WHATSAPP_TEMPLATE_NAMED_VARIABLES_UNSUPPORTED',
-      },
-    });
-    expect(transaction.outboxRecord.create).not.toHaveBeenCalled();
+    ).resolves.toMatchObject({ messageId: 'message-a', status: 'QUEUED' });
+    expect(transaction.message.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          content: expect.objectContaining({
+            whatsAppTemplate: expect.objectContaining({
+              components: [
+                {
+                  parameters: [{ parameterName: 'customer_name', text: 'Ada', type: 'text' }],
+                  type: 'body',
+                },
+              ],
+            }),
+          }),
+        }),
+      }),
+    );
+    expect(transaction.outboxRecord.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          payload: expect.objectContaining({
+            messageId: 'message-a',
+          }),
+        }),
+      }),
+    );
   });
 
   it('queues mark-read against the same inbound message without a new bubble', async () => {

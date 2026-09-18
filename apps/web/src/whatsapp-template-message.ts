@@ -1,7 +1,4 @@
-import type {
-  WhatsAppMessageTemplate,
-  WhatsAppTemplateParameter,
-} from './whatsapp-templates-api';
+import type { WhatsAppMessageTemplate, WhatsAppTemplateParameter } from './whatsapp-templates-api';
 
 export interface WhatsAppTemplateMessagePreview {
   body?: string;
@@ -34,8 +31,12 @@ function parameterText(parameter: unknown) {
 }
 
 function renderText(value: string, parameters: unknown[]) {
-  return value.replace(/\{\{\s*(\d+)\s*\}\}/g, (placeholder, index: string) => {
-    return parameterText(parameters[Number(index) - 1]) ?? placeholder;
+  return value.replace(/\{\{\s*([^{}]+?)\s*\}\}/g, (placeholder, name: string) => {
+    const normalized = name.trim();
+    const parameter = /^\d+$/.test(normalized)
+      ? parameters[Number(normalized) - 1]
+      : parameters.find((candidate) => text(object(candidate)?.parameterName) === normalized);
+    return parameterText(parameter) ?? placeholder;
   });
 }
 

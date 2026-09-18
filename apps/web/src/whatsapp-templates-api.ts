@@ -14,6 +14,7 @@ export interface WhatsAppTemplateComponent {
   type: 'HEADER' | 'BODY' | 'FOOTER' | 'BUTTONS';
   format?: 'TEXT' | 'IMAGE' | 'VIDEO' | 'DOCUMENT' | 'LOCATION';
   text?: string;
+  parameterStyle?: 'none' | 'positional' | 'named' | 'mixed';
   unsupportedReason?: string;
   example?: { header_text?: string[]; body_text?: string[][] };
   buttons?: Array<{
@@ -23,6 +24,7 @@ export interface WhatsAppTemplateComponent {
     url?: string;
     phoneNumber?: string;
     examples?: string[];
+    parameterStyle?: 'none' | 'positional' | 'named' | 'mixed';
   }>;
 }
 
@@ -61,7 +63,7 @@ export interface WhatsAppTemplateDraft {
 }
 
 export type WhatsAppTemplateParameter =
-  | { text: string; type: 'text' }
+  | { parameterName?: string; text: string; type: 'text' }
   | { amount1000: number; code: string; fallbackValue: string; type: 'currency' }
   | { fallbackValue: string; type: 'date_time' }
   | { mediaAssetId: string; type: 'document' | 'image' | 'video' }
