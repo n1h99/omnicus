@@ -435,10 +435,13 @@ export class CommunicationsService {
 
   private messagePreview(content: Prisma.JsonValue, type: string) {
     const value = this.object(content);
+    const interactive = this.object(value?.interactive);
     return (
       this.text(value?.text) ??
       this.text(value?.caption) ??
       this.text(this.object(value?.richMessage)?.markdown) ??
+      this.text(interactive?.title) ??
+      this.text(interactive?.displayText) ??
       this.text(this.object(value?.whatsAppTemplate)?.name) ??
       type.toLowerCase().replaceAll('_', ' ')
     );

@@ -1299,6 +1299,8 @@ function messageText(item: CommunicationMessage, templates: CommunicationTemplat
     text(content.caption) ??
     text(object(content.richMessage)?.markdown) ??
     text(object(interactive?.body)?.text) ??
+    text(interactive?.title) ??
+    text(interactive?.displayText) ??
     templatePreview?.body ??
     text(template?.name) ??
     text(structured?.question) ??

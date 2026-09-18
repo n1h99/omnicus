@@ -24,6 +24,23 @@ function activeIdentity() {
 }
 
 describe('CommunicationsService', () => {
+  it('uses the visible WhatsApp button label in communication previews', () => {
+    const service = new CommunicationsService(
+      { client: {} } as never,
+      { queue: vi.fn() } as never,
+      { queue: vi.fn() } as never,
+    ) as unknown as {
+      messagePreview(content: unknown, type: string): string;
+    };
+
+    expect(
+      service.messagePreview(
+        { interactive: { id: 'investment_both', title: 'Both', type: 'button_reply' } },
+        'INTERACTIVE',
+      ),
+    ).toBe('Both');
+  });
+
   it('exposes safe contact fields for WhatsApp template autofill', async () => {
     const client = {
       channelConnection: { findMany: vi.fn().mockResolvedValue([]) },
