@@ -60,6 +60,8 @@ import {
   CrmScheduledMessageUpdateDto,
   CrmTelegramScopeDto,
   CrmWhatsAppTemplateQueryDto,
+  CrmWhatsAppConnectionsQueryDto,
+  CrmWhatsAppConnectDto,
 } from './dto';
 
 @ApiTags('crm integration')
@@ -111,6 +113,31 @@ export class CrmIntegrationController {
   ) {
     this.assertHeaders(idempotencyKey, correlationId);
     return this.contactSync.upsert(
+      dto,
+      idempotencyKey!,
+      correlationId!,
+      request.crmIntegration?.projectId,
+    );
+  }
+
+  @Get('contacts/whatsapp/connections')
+  whatsAppConnections(
+    @Query() query: CrmWhatsAppConnectionsQueryDto,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.contactSync.whatsAppConnections(query, request.crmIntegration?.projectId);
+  }
+
+  @Post('contacts/whatsapp/connect')
+  @HttpCode(200)
+  connectWhatsApp(
+    @Body() dto: CrmWhatsAppConnectDto,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Headers('x-correlation-id') correlationId: string | undefined,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    this.assertHeaders(idempotencyKey, correlationId);
+    return this.contactSync.connectWhatsApp(
       dto,
       idempotencyKey!,
       correlationId!,

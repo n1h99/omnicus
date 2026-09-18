@@ -19,8 +19,24 @@ const input: CrmContactUpsertDto = {
 function fixture(existing: Record<string, unknown> | null = null) {
   const transaction = {
     $executeRaw: vi.fn(),
+    channelConnection: {
+      findUnique: vi.fn().mockResolvedValue({ type: 'WHATSAPP', status: 'ACTIVE' }),
+    },
+    channelIdentity: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      create: vi
+        .fn()
+        .mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'identity-a' })),
+    },
     auditLog: { create: vi.fn() },
     contact: {
+      findUnique: vi
+        .fn()
+        .mockResolvedValue({
+          status: 'ACTIVE',
+          phone: '+994501234567',
+          whatsAppConsentStatus: 'GRANTED',
+        }),
       create: vi.fn().mockImplementation(({ data }) =>
         Promise.resolve({
           ...data,
@@ -55,6 +71,60 @@ function fixture(existing: Record<string, unknown> | null = null) {
 }
 
 describe('CrmContactSyncService', () => {
+  it('synchronizes a new CRM lead before preparing its WhatsApp identity and reuses both on retry', async () => {
+    const { service, transaction } = fixture();
+    const first = await service.connectWhatsApp(
+      { ...input, connectionId: 'sender-a' },
+      'sync-a',
+      'correlation-a',
+      'project-a',
+    );
+    expect(first).toEqual({
+      contactId: 'contact-a',
+      connectionId: 'sender-a',
+      channelIdentityId: 'identity-a',
+      externalUserId: '994501234567',
+    });
+    expect(transaction.channelIdentity.create.mock.invocationCallOrder[0]).toBeGreaterThan(
+      transaction.contact.create.mock.invocationCallOrder[0]!,
+    );
+    transaction.idempotencyRecord.findUnique.mockResolvedValue({
+      resultSafe: transaction.idempotencyRecord.create.mock.calls[0]?.[0]?.data.resultSafe,
+    });
+    transaction.channelIdentity.findUnique.mockResolvedValue({
+      id: first.channelIdentityId,
+      contactId: first.contactId,
+      connectionId: first.connectionId,
+      externalUserId: first.externalUserId,
+      channel: 'WHATSAPP',
+      status: 'ACTIVE',
+      whatsAppReachability: 'PENDING',
+    });
+    await expect(
+      service.connectWhatsApp(
+        { ...input, connectionId: 'sender-a' },
+        'sync-a',
+        'correlation-b',
+        'project-a',
+      ),
+    ).resolves.toEqual(first);
+    expect(transaction.contact.create).toHaveBeenCalledTimes(1);
+    expect(transaction.channelIdentity.create).toHaveBeenCalledTimes(1);
+  });
+  it('does not touch contacts or identities when first-contact project routing is denied', async () => {
+    const { service, transaction, outbound } = fixture();
+    outbound.assertProjectRoute.mockRejectedValue(new ConflictException('Wrong project'));
+    await expect(
+      service.connectWhatsApp(
+        { ...input, connectionId: 'sender-a' },
+        'sync-a',
+        'correlation-a',
+        'foreign-project',
+      ),
+    ).rejects.toThrow('Wrong project');
+    expect(transaction.contact.create).not.toHaveBeenCalled();
+    expect(transaction.$executeRaw).not.toHaveBeenCalled();
+  });
   it('creates a normalized project-scoped contact for a new CRM lead', async () => {
     const { outbound, service, transaction } = fixture();
 

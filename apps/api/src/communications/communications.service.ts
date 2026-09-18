@@ -5,6 +5,7 @@ import type { Prisma } from '@omnicus/database';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { DatabaseService } from '../database/database.service';
+import { ensureWhatsAppContactIdentity } from '../channels/whatsapp-contact-identity';
 import { CrmOutboundService } from '../crm-integration/crm-outbound.service';
 import type { CrmOutboundMessageDto } from '../crm-integration/dto';
 import { CrmWhatsAppV4Service } from '../crm-integration/crm-whatsapp-v4.service';
@@ -325,53 +326,13 @@ export class CommunicationsService {
 
   private async createWhatsAppIdentity(projectId: string, contactId: string, connectionId: string) {
     return this.database.client.$transaction(async (transaction) => {
-      const [contact, connection] = await Promise.all([
-        transaction.contact.findUnique({
-          select: {
-            normalizedPhone: true,
-            phone: true,
-            status: true,
-            whatsAppConsentStatus: true,
-          },
-          where: { projectId_id: { id: contactId, projectId } },
-        }),
-        transaction.channelConnection.findUnique({
-          where: { projectId_id: { id: connectionId, projectId } },
-        }),
-      ]);
-      if (!contact || contact.status !== 'ACTIVE')
-        throw new ConflictException({ code: 'COMMUNICATION_CONTACT_UNAVAILABLE' });
-      if (!connection || connection.type !== 'WHATSAPP' || connection.status !== 'ACTIVE')
-        throw new NotFoundException({ code: 'CHANNEL_CONNECTION_NOT_FOUND' });
-      if (contact.whatsAppConsentStatus !== 'GRANTED')
-        throw new ConflictException({ code: 'COMMUNICATION_WHATSAPP_CONSENT_REQUIRED' });
-      const phone = contact.normalizedPhone ?? contact.phone?.replace(/\D/g, '') ?? '';
-      if (phone.length < 5)
-        throw new ConflictException({ code: 'COMMUNICATION_WHATSAPP_PHONE_REQUIRED' });
-      const existing = await transaction.channelIdentity.findUnique({
-        where: {
-          projectId_connectionId_externalUserId: { connectionId, externalUserId: phone, projectId },
-        },
-      });
-      if (existing && existing.contactId !== contactId)
-        throw new ConflictException({ code: 'COMMUNICATION_WHATSAPP_IDENTITY_CONFLICT' });
-      if (existing?.whatsAppReachability === 'BLOCKED')
-        throw new ConflictException({ code: 'COMMUNICATION_WHATSAPP_RECIPIENT_BLOCKED' });
-      const identity =
-        existing ??
-        (await transaction.channelIdentity.create({
-          data: {
-            channel: 'WHATSAPP',
-            connectionId,
-            contactId,
-            externalUserId: phone,
-            metadata: { source: 'omnicus_communications' },
-            projectId,
-            status: 'ACTIVE',
-            whatsAppReachability: 'PENDING',
-            whatsAppReachabilityCheckedAt: new Date(),
-          },
-        }));
+      const identity = await ensureWhatsAppContactIdentity(
+        transaction,
+        projectId,
+        contactId,
+        connectionId,
+        'omnicus_communications',
+      );
       await this.queueCrmIdentitySync(transaction, projectId, contactId, connectionId, identity.id);
       return identity;
     });

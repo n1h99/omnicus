@@ -74,6 +74,7 @@ describe('CommunicationsService', () => {
     const whatsApp = { queue: vi.fn().mockResolvedValue({ messageId: 'message-a' }) };
     const client = {
       $transaction: vi.fn(async (callback: (transaction: unknown) => unknown) => callback(client)),
+      $executeRaw: vi.fn().mockResolvedValue(1),
       channelConnection: {
         findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE', type: 'WHATSAPP' }),
       },

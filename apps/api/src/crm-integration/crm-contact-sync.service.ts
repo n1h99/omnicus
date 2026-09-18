@@ -4,7 +4,12 @@ import { ConflictException, Inject, Injectable } from '@nestjs/common';
 import type { Prisma } from '@omnicus/database';
 
 import { DatabaseService } from '../database/database.service';
-import type { CrmContactUpsertDto } from './dto';
+import { ensureWhatsAppContactIdentity } from '../channels/whatsapp-contact-identity';
+import type {
+  CrmContactUpsertDto,
+  CrmWhatsAppConnectDto,
+  CrmWhatsAppConnectionsQueryDto,
+} from './dto';
 import { CrmOutboundService } from './crm-outbound.service';
 
 type SyncResult = {
@@ -20,6 +25,54 @@ export class CrmContactSyncService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(CrmOutboundService) private readonly outbound: CrmOutboundService,
   ) {}
+
+  async whatsAppConnections(
+    input: CrmWhatsAppConnectionsQueryDto,
+    authenticatedProjectId?: string,
+  ) {
+    await this.outbound.assertProjectRoute(
+      input.crmProjectId,
+      input.omnicusProjectId,
+      authenticatedProjectId,
+    );
+    const connections = await this.database.client.channelConnection.findMany({
+      where: { projectId: input.omnicusProjectId, type: 'WHATSAPP', status: 'ACTIVE' },
+      orderBy: { createdAt: 'asc' },
+    });
+    return {
+      connections: connections.map((connection) => {
+        const metadata = this.object(connection.webhookMetadata);
+        const name = typeof metadata?.name === 'string' ? metadata.name : 'WhatsApp Business';
+        const phone =
+          typeof metadata?.displayPhoneNumber === 'string' ? metadata.displayPhoneNumber : null;
+        return { id: connection.id, name, phone };
+      }),
+    };
+  }
+
+  async connectWhatsApp(
+    input: CrmWhatsAppConnectDto,
+    idempotencyKey: string,
+    correlationId: string,
+    authenticatedProjectId?: string,
+  ) {
+    const synced = await this.upsert(input, idempotencyKey, correlationId, authenticatedProjectId);
+    const identity = await this.database.client.$transaction((transaction) =>
+      ensureWhatsAppContactIdentity(
+        transaction,
+        input.omnicusProjectId,
+        synced.contactId,
+        input.connectionId,
+        'crm',
+      ),
+    );
+    return {
+      contactId: synced.contactId,
+      connectionId: identity.connectionId,
+      channelIdentityId: identity.id,
+      externalUserId: identity.externalUserId,
+    };
+  }
 
   async upsert(
     input: CrmContactUpsertDto,

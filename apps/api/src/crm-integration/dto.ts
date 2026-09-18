@@ -68,6 +68,21 @@ export class CrmContactUpsertDto {
   status?: 'ACTIVE' | 'ARCHIVED';
 }
 
+export class CrmWhatsAppConnectionsQueryDto {
+  @IsString()
+  @Length(1, 128)
+  crmProjectId!: string;
+
+  @IsString()
+  @Length(1, 128)
+  omnicusProjectId!: string;
+}
+
+export class CrmWhatsAppConnectDto extends CrmContactUpsertDto {
+  @IsUUID()
+  connectionId!: string;
+}
+
 export class CrmOutboundIdentityDto {
   @ApiProperty({ type: String })
   @IsString()
