@@ -764,7 +764,7 @@ model Contact {
   email               String?
   normalizedPhone     String?
   normalizedEmail     String?
-  whatsAppConsentStatus MarketingConsentStatus @default(UNKNOWN)
+  whatsAppConsentStatus MarketingConsentStatus @default(GRANTED)
   whatsAppConsentSource String?
   whatsAppConsentAt     DateTime?               @db.Timestamptz(3)
   whatsAppOptOutAt      DateTime?               @db.Timestamptz(3)

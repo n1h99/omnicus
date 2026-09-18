@@ -360,9 +360,9 @@ export class ContactsService {
                     whatsAppOptOutAt: new Date(),
                   }
                 : {
-                    whatsAppConsentAt: null,
-                    whatsAppConsentSource: null,
-                    whatsAppConsentStatus: 'UNKNOWN',
+                    whatsAppConsentAt: new Date(),
+                    whatsAppConsentSource: 'default_granted',
+                    whatsAppConsentStatus: 'GRANTED',
                     whatsAppOptOutAt: null,
                   }),
           ...(input.username === undefined ? {} : { username: input.username }),
@@ -1103,7 +1103,7 @@ export class ContactsService {
           : primary.whatsAppConsentStatus === 'GRANTED' ||
               secondary.whatsAppConsentStatus === 'GRANTED'
             ? 'GRANTED'
-            : 'UNKNOWN';
+            : 'GRANTED';
       const consentSourceContact =
         primary.whatsAppConsentStatus === whatsAppConsentStatus ? primary : secondary;
       await transaction.contact.update({

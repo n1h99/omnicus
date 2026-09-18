@@ -386,7 +386,6 @@ export function ContactDetailPage() {
                   >
                     <Select
                       options={[
-                        { label: 'Unknown', value: 'UNKNOWN' },
                         { label: 'Granted', value: 'GRANTED' },
                         { label: 'Revoked', value: 'REVOKED' },
                       ]}

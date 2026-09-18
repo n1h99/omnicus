@@ -425,6 +425,52 @@ describe('WhatsApp outbound terminal semantics', () => {
     expect(event.retryable).toBe(false);
   });
 
+  it('maps Meta marketing frequency limits without marking the recipient invalid', async () => {
+    const { fail, instance } = sendingHarness(
+      new WhatsAppApiError(
+        400,
+        undefined,
+        131049,
+        undefined,
+        false,
+        'OAuthException',
+        'This message was not delivered to maintain healthy ecosystem engagement.',
+      ),
+    );
+
+    await instance.process({ outboxRecordId: 'outbox-a' });
+
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_MARKETING_LIMITED',
+    );
+  });
+
+  it('does not treat an unrelated word containing "to" as an invalid recipient', async () => {
+    const { fail, instance } = sendingHarness(
+      new WhatsAppApiError(
+        400,
+        undefined,
+        100,
+        undefined,
+        false,
+        'OAuthException',
+        'Button payload is too long',
+      ),
+    );
+
+    await instance.process({ outboxRecordId: 'outbox-a' });
+
+    expect(fail).toHaveBeenCalledWith(
+      claim(),
+      'whatsapp_outbound_rejected',
+      'message-a',
+      'GRAPH_API_PROVIDER_REJECTED',
+    );
+  });
+
   it('maps 401 to GRAPH_API_UNAUTHORIZED with safe diagnostics', async () => {
     const { fail, instance, retry, unknown } = sendingHarness(
       new WhatsAppApiError(

@@ -30,13 +30,11 @@ function fixture(existing: Record<string, unknown> | null = null) {
     },
     auditLog: { create: vi.fn() },
     contact: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue({
-          status: 'ACTIVE',
-          phone: '+994501234567',
-          whatsAppConsentStatus: 'GRANTED',
-        }),
+      findUnique: vi.fn().mockResolvedValue({
+        status: 'ACTIVE',
+        phone: '+994501234567',
+        whatsAppConsentStatus: 'GRANTED',
+      }),
       create: vi.fn().mockImplementation(({ data }) =>
         Promise.resolve({
           ...data,
@@ -146,6 +144,9 @@ describe('CrmContactSyncService', () => {
         phone: '+994 50 123 45 67',
         projectId: 'project-a',
         username: 'ada',
+        whatsAppConsentAt: new Date(input.sourceUpdatedAt),
+        whatsAppConsentSource: 'default_granted',
+        whatsAppConsentStatus: 'GRANTED',
       }),
     });
     expect(transaction.auditLog.create).toHaveBeenCalledWith(
@@ -187,6 +188,40 @@ describe('CrmContactSyncService', () => {
     expect(transaction.contact.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'UNSUBSCRIBED' }),
+      }),
+    );
+  });
+
+  it('promotes legacy UNKNOWN WhatsApp consent while preserving an explicit opt-out', async () => {
+    const unknown = fixture({
+      crmSourceUpdatedAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'contact-a',
+      status: 'ACTIVE',
+      whatsAppConsentAt: null,
+      whatsAppConsentSource: null,
+      whatsAppConsentStatus: 'UNKNOWN',
+    });
+    await unknown.service.upsert(input, 'sync-unknown', 'correlation-a', 'project-a');
+    expect(unknown.transaction.contact.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          whatsAppConsentAt: new Date(input.sourceUpdatedAt),
+          whatsAppConsentSource: 'default_granted',
+          whatsAppConsentStatus: 'GRANTED',
+        }),
+      }),
+    );
+
+    const revoked = fixture({
+      crmSourceUpdatedAt: new Date('2026-09-17T08:00:00.000Z'),
+      id: 'contact-b',
+      status: 'ACTIVE',
+      whatsAppConsentStatus: 'REVOKED',
+    });
+    await revoked.service.upsert(input, 'sync-revoked', 'correlation-b', 'project-a');
+    expect(revoked.transaction.contact.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.not.objectContaining({ whatsAppConsentStatus: 'GRANTED' }),
       }),
     );
   });

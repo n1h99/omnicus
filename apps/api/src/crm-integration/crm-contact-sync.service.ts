@@ -141,6 +141,14 @@ export class CrmContactSyncService {
                         ? 'ACTIVE'
                         : existing.status,
                 username,
+                ...(existing.whatsAppConsentStatus === 'UNKNOWN'
+                  ? {
+                      whatsAppConsentAt: existing.whatsAppConsentAt ?? sourceUpdatedAt,
+                      whatsAppConsentSource: existing.whatsAppConsentSource ?? 'default_granted',
+                      whatsAppOptOutAt: null,
+                      whatsAppConsentStatus: 'GRANTED' as const,
+                    }
+                  : {}),
               },
               where: {
                 projectId_id: { id: existing.id, projectId: input.omnicusProjectId },
@@ -159,6 +167,9 @@ export class CrmContactSyncService {
                 projectId: input.omnicusProjectId,
                 status: input.status ?? 'ACTIVE',
                 username,
+                whatsAppConsentAt: sourceUpdatedAt,
+                whatsAppConsentSource: 'default_granted',
+                whatsAppConsentStatus: 'GRANTED',
               },
             });
       const result: SyncResult = {

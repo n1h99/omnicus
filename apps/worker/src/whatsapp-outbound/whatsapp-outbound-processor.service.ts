@@ -58,10 +58,12 @@ type SendFailureSafeReason =
   | 'RECIPIENT_MISSING'
   | 'GRAPH_API_INVALID_PHONE_NUMBER_ID'
   | 'GRAPH_API_INVALID_RECIPIENT'
+  | 'GRAPH_API_MARKETING_LIMITED'
   | 'GRAPH_API_PERMISSION_DENIED'
   | 'GRAPH_API_PROVIDER_REJECTED'
   | 'GRAPH_API_RATE_LIMITED'
   | 'GRAPH_API_REQUEST_INVALID'
+  | 'GRAPH_API_SPAM_RATE_LIMITED'
   | 'GRAPH_API_TEMPLATE_REQUIRED'
   | 'GRAPH_API_TIMEOUT'
   | 'GRAPH_API_UNKNOWN_RESULT'
@@ -642,13 +644,19 @@ export class WhatsAppOutboundProcessorService
         };
       }
       if (error.status >= 400 && error.status < 500) {
-        const hasRecipientError = /(phone|recipient|contact|to)/i.test(error.providerMessage ?? '');
-        const hasRecipientErrorInSafeMessage = /(recipient|to)/i.test(providerSafeMessage ?? '');
-        if ((error.providerCode === 100 || error.providerCode === 131000) && hasRecipientError)
+        if (error.providerCode === 131049)
+          return { ...base, mode: 'FAIL', safeReason: 'GRAPH_API_MARKETING_LIMITED' };
+        if (error.providerCode === 131048)
+          return { ...base, mode: 'FAIL', safeReason: 'GRAPH_API_SPAM_RATE_LIMITED' };
+        if (error.providerCode === 131026 || error.providerCode === 131030)
           return { ...base, mode: 'FAIL', safeReason: 'GRAPH_API_INVALID_RECIPIENT' };
+        const hasExplicitRecipientError =
+          /(?:invalid|unsupported|unknown|unavailable) (?:phone|recipient|contact)|(?:phone|recipient|contact)(?: number)? (?:is |was )?(?:invalid|not valid|not registered|not on whatsapp|unavailable)|not (?:a )?(?:valid|registered) whatsapp/i.test(
+            providerSafeMessage ?? '',
+          );
         if (
           (error.providerCode === 100 && !safeContext.recipientPresent) ||
-          hasRecipientErrorInSafeMessage
+          hasExplicitRecipientError
         )
           return { ...base, mode: 'FAIL', safeReason: 'GRAPH_API_INVALID_RECIPIENT' };
         if (/(phone.?number.?id|phone number id|sender)/i.test(providerSafeMessage ?? '')) {
@@ -658,7 +666,13 @@ export class WhatsAppOutboundProcessorService
             safeReason: 'GRAPH_API_INVALID_PHONE_NUMBER_ID',
           };
         }
-        if (/template/i.test(providerSafeMessage ?? '')) {
+        if (
+          error.providerCode === 131047 ||
+          (error.providerCode !== undefined &&
+            error.providerCode >= 132000 &&
+            error.providerCode < 133000) ||
+          /template/i.test(providerSafeMessage ?? '')
+        ) {
           return {
             ...base,
             mode: 'FAIL',
