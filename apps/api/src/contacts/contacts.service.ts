@@ -1143,9 +1143,7 @@ export class ContactsService {
                 secondary.whatsAppConsentAt)
               : null,
           whatsAppConsentSource:
-            whatsAppConsentStatus === 'UNKNOWN'
-              ? null
-              : (consentSourceContact.whatsAppConsentSource ?? 'contact_merge'),
+            consentSourceContact.whatsAppConsentSource ?? 'contact_merge',
           whatsAppConsentStatus,
           whatsAppOptOutAt:
             whatsAppConsentStatus === 'REVOKED'
