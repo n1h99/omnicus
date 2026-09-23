@@ -641,7 +641,17 @@ export async function prepareMediaForTelegram(input: MediaValidationInput): Prom
 export async function prepareMediaForEmail(input: MediaValidationInput): Promise<PreparedMedia> {
   if (input.kind !== 'DOCUMENT' && input.kind !== 'PHOTO')
     throw new MediaValidationError('email_media_kind_unsupported');
-  const validationInput = input.kind === 'PHOTO' ? { ...input, kind: 'DOCUMENT' as const } : input;
+  const extension = input.filename?.split('.').at(-1)?.toLowerCase();
+  // M4A and MP4 share an ISO-BMFF signature. Restrict this distinction to email,
+  // preserving messenger validation and still checking the actual file signature.
+  const kind: MediaKind = input.kind === 'DOCUMENT' && extension === 'm4a' ? 'AUDIO' : 'DOCUMENT';
+  const validationInput = {
+    ...input,
+    kind,
+    ...(extension === 'zip' && input.declaredMimeType === 'application/x-zip-compressed'
+      ? { declaredMimeType: 'application/zip' }
+      : {}),
+  };
   const validated = validateMedia(validationInput);
   if (input.kind === 'PHOTO' && !validated.mimeType.startsWith('image/'))
     throw new MediaValidationError('email_image_type_rejected');

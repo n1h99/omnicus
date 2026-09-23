@@ -40,24 +40,68 @@ function fixture() {
   return { tx, mailbox };
 }
 describe('mailbox delivery snapshots', () => {
-  it('saves a quoted sender and durable reply token without a provider request', async () => {
+  it('saves a quoted sender and the readable mailbox reply address', async () => {
     const { tx } = fixture();
     await attachMailboxDelivery(tx as never, 'd1', { projectId: 'p1', textBody: 'Hello' });
     expect(tx.emailDelivery.update).toHaveBeenCalledWith({
       where: { id: 'd1' },
       data: expect.objectContaining({
         senderSnapshot: '"Company, LLC" <sales@example.com>',
-        replyToSnapshot: expect.stringMatching(/^reply\+[a-f0-9]{36}@example\.com$/),
+        replyToSnapshot: 'sales@example.com',
       }),
     });
     expect(tx.emailMessage.create.mock.calls[0]![0].data.textBody).toBe('Hello');
+    expect(tx.emailMessage.create.mock.calls[0]![0].data.replyToAddress).toBe('sales@example.com');
+  });
+  it('uses the selected mailbox address rather than a fixed support address', async () => {
+    const { tx, mailbox } = fixture();
+    mailbox.address = 'info@company.example';
+    mailbox.domain.receivingReady = false;
+    await attachMailboxDelivery(tx as never, 'd1', { projectId: 'p1' });
+    expect(tx.emailDelivery.update.mock.calls[0]![0].data.replyToSnapshot).toBe(
+      'info@company.example',
+    );
+  });
+  it('does not add a reply address to send-only mail', async () => {
+    const { tx, mailbox } = fixture();
+    mailbox.mode = 'SEND_ONLY';
+    await attachMailboxDelivery(tx as never, 'd1', { projectId: 'p1' });
+    expect(tx.emailDelivery.update.mock.calls[0]![0].data.replyToSnapshot).toBeNull();
+    expect(tx.emailMessage.create.mock.calls[0]![0].data.replyToAddress).toBeNull();
+  });
+  it('preserves RFC reply headers while using a readable Reply-To', async () => {
+    const { tx } = fixture();
+    tx.emailThread.findFirst.mockResolvedValue({ id: 't1' } as never);
+    tx.emailMessage.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      rfcMessageId: '<parent@example.com>',
+      referencesHeader: '<first@example.com>',
+    } as never);
+    await attachMailboxDelivery(tx as never, 'd1', {
+      projectId: 'p1',
+      threadId: 't1',
+      replyToMessageId: 'parent',
+    });
+    expect(tx.emailDelivery.update.mock.calls[0]![0].data).toMatchObject({
+      replyToSnapshot: 'sales@example.com',
+      headersSnapshot: {
+        'In-Reply-To': '<parent@example.com>',
+        References: '<first@example.com> <parent@example.com>',
+      },
+    });
+    expect(tx.emailMessage.create.mock.calls[0]![0].data).toMatchObject({
+      threadId: 't1',
+      inReplyTo: '<parent@example.com>',
+      referencesHeader: '<first@example.com> <parent@example.com>',
+    });
   });
   it('keeps existing message snapshots unchanged on delivery retries', async () => {
     const { tx } = fixture();
-    tx.emailMessage.findFirst.mockResolvedValue({ id: 'existing' } as never);
-    expect(await attachMailboxDelivery(tx as never, 'd1', { projectId: 'p1' })).toEqual({
+    const existing = {
       id: 'existing',
-    });
+      replyToAddress: 'reply+' + 'a'.repeat(36) + '@example.com',
+    };
+    tx.emailMessage.findFirst.mockResolvedValue(existing as never);
+    expect(await attachMailboxDelivery(tx as never, 'd1', { projectId: 'p1' })).toEqual(existing);
     expect(tx.emailDelivery.update).not.toHaveBeenCalled();
     expect(tx.emailThread.create).not.toHaveBeenCalled();
   });

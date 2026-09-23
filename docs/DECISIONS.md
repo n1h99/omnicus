@@ -1684,3 +1684,53 @@ cannot regress a newer profile. The two databases do not share a transaction;
 queue state and idempotency provide convergence. Existing leads synchronize on
 their next general edit because no automatic bulk startup scan is approved.
 Details: [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md).
+
+## ADR-064 — Readable mailbox Reply-To with RFC threading
+
+**Status:** Accepted, 2026-09-23; local implementation, deployment/live acceptance pending.
+
+**Context:** Generated `reply+<token>` addresses look untrustworthy to recipients.
+The user requested a normal-looking reply address throughout Omnicus and CRM.
+ADR-060 already stores provider RFC Message-IDs and imports replies by exact headers.
+
+**Decision:** New TWO_WAY mailbox deliveries snapshot the selected mailbox address
+as Reply-To. All entry points reuse `attachMailboxDelivery`; there is no fixed
+support address or separate CRM implementation. SEND_ONLY and legacy EMAIL_FROM
+semantics stay unchanged. Incoming mail still matches project/mailbox/peer-scoped
+RFC references, and the existing reply-alias route remains for older emails.
+Do not rewrite already queued/sent delivery snapshots, tokens, DNS or history.
+
+**Consequences:** The signed sending webhooks, including `email.sent`, must remain
+enabled to record provider-issued Message-IDs before matching incoming replies.
+Missing/unmatched RFC references create a new conversation; subject/peer similarity
+never authorizes merging threads or releasing automation waits. No schema migration
+is needed. Provider contract rechecked 2026-09-23 against
+[Resend Message-ID support](https://resend.com/changelog/message-id-for-sent-emails)
+and [reply threading](https://resend.com/docs/dashboard/receiving/reply-to-emails).
+
+## ADR-065 — Email attachment UX and lead-scoped CRM transport
+
+**Status:** Accepted, 2026-09-23; local implementation, deployment/live acceptance pending.
+
+**Decision:** Reuse MediaAsset/S3, email validation, delivery attachment snapshots and
+EmailAssetReference retention for interactive attachments. No schema migration or
+provider contract changes. CRM uploads use deterministic request IDs and atomically
+store `providerMetadata.crmEmail = { contactId, userId }`; only that authenticated
+CRM actor/contact can attach them. Downloads recheck project route, CRM lead access,
+shared mailbox, thread contact and message-to-asset membership. History includes
+safe outgoing filename, size and type metadata, not storage keys or public URLs.
+
+**UX:** Multiple selection/drop, removal before sending, loading/error states,
+authenticated download and on-demand image/PDF preview in Inbox, Conversations and
+CRM. Pending/failed uploads block send; ambiguous sends retain immutable attachments.
+Use existing limits: 20 files, 20 MiB/file, 25 MiB total; server content validation
+remains authoritative. Removing a selection never deletes a stored/history file.
+PDF preview renders canvas only with local PDF.js, no scripts, links or embedded
+document frames. Images are limited to verified raster signatures. PDF.js API
+checked against [official examples](https://mozilla.github.io/pdf.js/examples/)
+and [API reference](https://mozilla.github.io/pdf.js/api/draft/module-pdfjsLib.html)
+on 2026-09-23.
+
+Email-only validation additionally recognizes M4A's shared MP4 container signature
+as audio when the filename is M4A, and normalizes the Windows ZIP MIME alias before
+the existing content/structure checks. Messenger validation rules are unchanged.

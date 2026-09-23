@@ -474,6 +474,41 @@ export class EmailInboxService {
         },
       },
     });
+    const assetIds = [
+      ...new Set(
+        rows
+          .slice(0, 50)
+          .flatMap((row) =>
+            Array.isArray(row.delivery?.attachmentAssetIds)
+              ? row.delivery.attachmentAssetIds.filter((id): id is string => typeof id === 'string')
+              : [],
+          ),
+      ),
+    ];
+    const assets = assetIds.length
+      ? await this.database.client.mediaAsset.findMany({
+          where: { projectId, id: { in: assetIds } },
+          select: {
+            id: true,
+            originalFilename: true,
+            detectedMimeType: true,
+            sizeBytes: true,
+            status: true,
+          },
+        })
+      : [];
+    const attachments = new Map(
+      assets.map((asset) => [
+        asset.id,
+        {
+          id: asset.id,
+          filename: safeMailFilename(asset.originalFilename ?? 'attachment'),
+          contentType: asset.detectedMimeType,
+          sizeBytes: Number(asset.sizeBytes ?? 0),
+          status: asset.status,
+        },
+      ]),
+    );
     return {
       ...thread,
       starred: state?.starred ?? false,
@@ -484,7 +519,23 @@ export class EmailInboxService {
       messages: rows
         .slice(0, 50)
         .reverse()
-        .map(({ requestHash: _hash, requestKey: _key, ...message }) => message),
+        .map(({ requestHash: _hash, requestKey: _key, ...message }) => ({
+          ...message,
+          outgoingAttachments: Array.isArray(message.delivery?.attachmentAssetIds)
+            ? message.delivery.attachmentAssetIds
+                .filter((id): id is string => typeof id === 'string')
+                .map(
+                  (id) =>
+                    attachments.get(id) ?? {
+                      id,
+                      filename: 'Attachment unavailable',
+                      contentType: null,
+                      sizeBytes: 0,
+                      status: 'UNAVAILABLE',
+                    },
+                )
+            : [],
+        })),
       nextCursor: rows.length > 50 ? rows[49]!.id : null,
     };
   }
@@ -714,12 +765,25 @@ export class EmailInboxService {
   private async assets(projectId: string, assetIds: string[], actor: InboxActor) {
     if (
       assetIds.length &&
-      (isCrmActor(actor) ||
-        !(await this.access.hasProjectPermission(actor.userId, projectId, 'media:read')))
+      !isCrmActor(actor) &&
+      !(await this.access.hasProjectPermission(actor.userId, projectId, 'media:read'))
     )
       throw new ForbiddenException('email_attachment_access_denied');
     const assets = await this.database.client.mediaAsset.findMany({
-      where: { projectId, id: { in: assetIds }, status: 'AVAILABLE' },
+      where: {
+        projectId,
+        id: { in: assetIds },
+        status: 'AVAILABLE',
+        ...(isCrmActor(actor)
+          ? {
+              AND: [
+                { providerMetadata: { path: ['validationChannel'], equals: 'email' } },
+                { providerMetadata: { path: ['crmEmail', 'contactId'], equals: actor.contactId } },
+                { providerMetadata: { path: ['crmEmail', 'userId'], equals: actor.userId } },
+              ],
+            }
+          : {}),
+      },
     });
     if (assets.length !== assetIds.length)
       throw new BadRequestException('email_attachment_unavailable');
@@ -827,13 +891,14 @@ export class EmailInboxService {
     return { deleted: true };
   }
 
-  async attachment(projectId: string, id: string, actor: AuthenticatedUser) {
+  async attachment(projectId: string, id: string, actor: InboxActor) {
     const attachment = await this.database.client.emailAttachment.findFirst({
       where: { projectId, id },
-      include: { message: { select: { mailboxId: true } } },
+      include: { message: { select: { mailboxId: true, threadId: true } } },
     });
     if (!attachment) throw new NotFoundException('email_attachment_not_found');
     await this.assertMailbox(projectId, attachment.message.mailboxId, actor);
+    if (isCrmActor(actor)) await this.assertThread(projectId, attachment.message.threadId, actor);
     if (attachment.status !== 'AVAILABLE' || !attachment.bucketKey)
       throw new ConflictException('email_attachment_unavailable');
     return this.storedAttachment(attachment.bucketKey, attachment.filename);
@@ -843,7 +908,7 @@ export class EmailInboxService {
     projectId: string,
     messageId: string,
     assetId: string,
-    actor: AuthenticatedUser,
+    actor: InboxActor,
   ) {
     const message = await this.database.client.emailMessage.findFirst({
       where: { projectId, id: messageId },
@@ -851,6 +916,7 @@ export class EmailInboxService {
     });
     if (!message) throw new NotFoundException('email_message_not_found');
     await this.assertMailbox(projectId, message.mailboxId, actor);
+    if (isCrmActor(actor)) await this.assertThread(projectId, message.threadId, actor);
     if (
       !Array.isArray(message.delivery?.attachmentAssetIds) ||
       !message.delivery.attachmentAssetIds.includes(assetId)

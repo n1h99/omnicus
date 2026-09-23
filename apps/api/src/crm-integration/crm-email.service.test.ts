@@ -27,6 +27,7 @@ function fixture() {
         }),
       },
       emailMessage: { findFirst: vi.fn().mockResolvedValue(null) },
+      project: { findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE' }) },
     },
   };
   const outbound = { assertProjectRoute: vi.fn() };
@@ -35,16 +36,73 @@ function fixture() {
     threads: vi.fn(),
     thread: vi.fn(),
     send: vi.fn(),
+    assertMailbox: vi.fn(),
+    attachment: vi.fn(),
+    outgoingAttachment: vi.fn(),
   };
+  const media = { uploadFromService: vi.fn() };
   return {
     database,
     outbound,
     inbox,
-    service: new CrmEmailService(database as never, outbound as never, inbox as never),
+    media,
+    service: new CrmEmailService(
+      database as never,
+      outbound as never,
+      inbox as never,
+      media as never,
+    ),
   };
 }
 
 describe('CRM email boundary', () => {
+  it('uploads only after checking the active contact, project and shared sending mailbox', async () => {
+    const f = fixture();
+    const input = { ...scope, requestId: 'request', mailboxId: 'mailbox' };
+    const file = {
+      buffer: Buffer.from('pdf'),
+      size: 3,
+      originalname: 'offer.pdf',
+      mimetype: 'application/pdf',
+    };
+    await f.service.upload(input, file, scope.omnicusProjectId);
+    expect(f.inbox.assertMailbox).toHaveBeenCalledWith(
+      scope.omnicusProjectId,
+      'mailbox',
+      actor,
+      true,
+    );
+    expect(f.media.uploadFromService).toHaveBeenCalledWith(
+      scope.omnicusProjectId,
+      'DOCUMENT',
+      file,
+      JSON.stringify(['contact-a', 'manager-a', 'request']),
+      'request',
+      'email',
+      { contactId: 'contact-a', userId: 'manager-a' },
+    );
+    f.inbox.assertMailbox.mockRejectedValueOnce(new Error('private mailbox'));
+    await expect(f.service.upload(input, file)).rejects.toThrow('private mailbox');
+    expect(f.media.uploadFromService).toHaveBeenCalledTimes(1);
+    f.database.client.project.findUnique.mockResolvedValue({ status: 'ARCHIVED' });
+    await expect(f.service.upload(input, file)).rejects.toThrow('email_project_not_active');
+    expect(f.media.uploadFromService).toHaveBeenCalledTimes(1);
+  });
+  it('passes the mapped contact and authenticated actor for both download paths', async () => {
+    const f = fixture();
+    await f.service.attachment(scope, 'incoming');
+    await f.service.outgoingAttachment(scope, 'message', 'asset');
+    expect(f.inbox.attachment).toHaveBeenCalledWith(scope.omnicusProjectId, 'incoming', actor);
+    expect(f.inbox.outgoingAttachment).toHaveBeenCalledWith(
+      scope.omnicusProjectId,
+      'message',
+      'asset',
+      actor,
+    );
+    f.outbound.assertProjectRoute.mockRejectedValueOnce(new Error('route'));
+    await expect(f.service.attachment(scope, 'incoming', 'foreign')).rejects.toThrow('route');
+    expect(f.inbox.attachment).toHaveBeenCalledTimes(1);
+  });
   it('reconciles a repeated CRM send without creating another delivery', async () => {
     const input = {
       requestId: 'request-a',
@@ -53,14 +111,12 @@ describe('CRM email boundary', () => {
       subject: 'Hello',
       text: 'Test',
     };
-    const findUnique = vi
-      .fn()
-      .mockResolvedValue({
-        id: 'message-a',
-        threadId: 'thread-a',
-        deliveryId: 'delivery-a',
-        requestHash: createHash('sha256').update(JSON.stringify(input)).digest('hex'),
-      });
+    const findUnique = vi.fn().mockResolvedValue({
+      id: 'message-a',
+      threadId: 'thread-a',
+      deliveryId: 'delivery-a',
+      requestHash: createHash('sha256').update(JSON.stringify(input)).digest('hex'),
+    });
     const transaction = vi.fn();
     const inbox = new EmailInboxService(
       { client: { emailMessage: { findUnique }, $transaction: transaction } } as never,
@@ -138,6 +194,7 @@ describe('CRM email boundary', () => {
       to: 'LEAD@example.com',
       subject: 'Hello',
       text: 'Test',
+      assetIds: ['asset-a'],
     };
     await f.service.send(input);
     expect(f.inbox.send).toHaveBeenCalledWith(
@@ -148,6 +205,7 @@ describe('CRM email boundary', () => {
         to: 'lead@example.com',
         subject: 'Hello',
         text: 'Test',
+        assetIds: ['asset-a'],
       },
       actor,
     );

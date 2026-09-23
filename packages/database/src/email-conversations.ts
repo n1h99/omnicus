@@ -94,12 +94,9 @@ export async function attachMailboxDelivery(
     parentId && /^<[^<>\s\x00-\x1f]{1,900}>$/.test(parentId)
       ? { 'In-Reply-To': parentId, References: references.join(' ') }
       : {};
-  const replyTo =
-    mailbox.mode === 'TWO_WAY' && mailbox.domain.receivingReady
-      ? 'reply+' + thread.replyToken + '@' + mailbox.address.split('@')[1]
-      : mailbox.mode === 'TWO_WAY'
-        ? mailbox.address
-        : null;
+  // Replies use the visible mailbox address; RFC headers identify the conversation.
+  // Existing delivery snapshots and incoming legacy reply aliases remain unchanged.
+  const replyTo = mailbox.mode === 'TWO_WAY' ? mailbox.address : null;
   const message = await transaction.emailMessage.create({
     data: {
       projectId: delivery.projectId,

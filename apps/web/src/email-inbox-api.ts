@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiRequest, ApiError } from './api';
 import { useAuth } from './auth';
 import { readApiBaseUrl } from './env';
+import { readEmailFileResponse } from './email-file-utils';
 
 export type Mailbox = {
   id: string;
@@ -42,6 +43,7 @@ export type MailAttachment = {
   sizeBytes: number;
   status: string;
   errorCode: string | null;
+  contentType?: string | null;
 };
 export type MailMessage = {
   id: string;
@@ -56,6 +58,7 @@ export type MailMessage = {
   occurredAt: string;
   isAutomatic: boolean;
   attachments: MailAttachment[];
+  outgoingAttachments?: Omit<MailAttachment, 'errorCode'>[];
   delivery: null | {
     status: string;
     lastError: string | null;
@@ -116,6 +119,16 @@ export function useInboxActions(projectId: string | undefined) {
     client.invalidateQueries({ queryKey: ['email-inbox', identity?.userId, projectId] });
   return {
     refresh,
+    async attachment(path: string, signal: AbortSignal) {
+      if (!accessToken) throw new Error('Sign in to download attachments.');
+      return readEmailFileResponse(
+        await fetch(`${readApiBaseUrl()}/api/v1/projects/${projectId}/email-inbox/${path}`, {
+          headers: { Authorization: 'Bearer ' + accessToken },
+          credentials: 'omit',
+          signal,
+        }),
+      );
+    },
     async request<T>(path: string, method: string, input?: unknown) {
       const result = await apiRequest<T>(
         `/api/v1/projects/${projectId}/email-inbox/${path}`,

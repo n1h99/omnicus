@@ -1,4 +1,15 @@
-import { IsEmail, IsOptional, IsString, IsUUID, Length, Matches, MaxLength } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
+  IsEmail,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+  Matches,
+  MaxLength,
+} from 'class-validator';
 
 export class CrmEmailScopeDto {
   @IsString() @Length(1, 128) crmProjectId!: string;
@@ -18,4 +29,15 @@ export class CrmSendEmailDto extends CrmEmailScopeDto {
   @IsString() @MaxLength(100000) text!: string;
   @IsOptional() @IsUUID() threadId?: string;
   @IsOptional() @IsUUID() replyToMessageId?: string;
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  assetIds?: string[];
+}
+
+export class CrmEmailUploadDto extends CrmEmailScopeDto {
+  @IsUUID() requestId!: string;
+  @IsUUID() mailboxId!: string;
 }

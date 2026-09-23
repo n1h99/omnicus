@@ -40,6 +40,47 @@ function fixture() {
 }
 
 describe('MediaService provider validation metadata', () => {
+  it('atomically binds CRM email uploads to their contact and user without exposing this metadata', async () => {
+    const { client, service } = fixture();
+    const buffer = Buffer.from('%PDF-1.4\nexample\n%%EOF');
+    client.mediaAsset.findUnique.mockResolvedValue(null);
+    client.mediaAsset.create.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => data,
+    );
+    client.mediaAsset.update.mockImplementation(
+      async ({ where }: { where: { projectId_id: { id: string; projectId: string } } }) => ({
+        ...where.projectId_id,
+        sizeBytes: BigInt(buffer.length),
+        source: 'USER_UPLOAD',
+        status: 'AVAILABLE',
+        providerMetadata: {
+          validationChannel: 'email',
+          crmEmail: { contactId: 'contact', userId: 'manager' },
+        },
+      }),
+    );
+    const result = await service.uploadFromService(
+      'project',
+      'DOCUMENT',
+      { buffer, size: buffer.length, originalname: 'offer.pdf', mimetype: 'application/pdf' },
+      'scoped-request',
+      'request',
+      'email',
+      { contactId: 'contact', userId: 'manager' },
+    );
+    expect(client.mediaAsset.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        projectId: 'project',
+        providerMetadata: {
+          validationChannel: 'email',
+          crmEmail: { contactId: 'contact', userId: 'manager' },
+        },
+      }),
+    });
+    expect(result).not.toHaveProperty('providerMetadata');
+    expect(result).not.toHaveProperty('bucketKey');
+    expect(result.validationChannel).toBe('email');
+  });
   it('returns a normalized validation channel without leaking raw provider metadata', async () => {
     const { client, service } = fixture();
     client.mediaAsset.findMany.mockResolvedValue([

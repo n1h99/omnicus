@@ -290,3 +290,82 @@ remain explicit local skips. No executed test failed.
 This was a test/integration regression run, not a replacement for every command
 in the full local quality gate above. The web production build required by the
 task graph completed successfully.
+
+## 2026-09-23 email spacing and Reply-To
+
+Scope: `apps/web/src/email-inbox.css` removes the inner table gap in both
+email-address and domain-DNS tables, uses a 12px outer gap and constrains the
+settings grid on mobile. `packages/database/src/email-conversations.ts` snapshots
+the selected TWO_WAY mailbox address as Reply-To. Existing snapshots, incoming
+legacy aliases, RFC threading and modal structure are unchanged. Contract:
+ADR-064 in `DECISIONS.md` and `EMAIL_INBOX.md`.
+
+Regression coverage was added in `packages/database/src/email-conversations.test.ts`,
+`apps/worker/src/email/email-inbound.service.test.ts` and `e2e/email-inbox.spec.ts`.
+Checked on Node 24.18.0 / pnpm 10.5.0:
+
+- Production build and minimal runtime artifacts, typecheck, Prisma validation,
+  changed-file Prettier/ESLint and `git diff --check` pass.
+- Database tests: 34 passed (including local PGlite migrations); worker unit tests:
+  153 passed; web unit tests: 88 passed. Email Inbox/API/CRM email suites pass.
+- API integration: 6 passed, 1 explicit service-dependent skip. Worker service
+  integration: 4 explicit skips without isolated PostgreSQL/Redis services.
+- Email browser regression: final serial run 21/21 passed, including 1440px and
+  390px settings, Inbox and Conversations. Screenshots visually inspected; browser
+  layout inspection also confirmed no page overflow and no internal header gap.
+  Earlier concurrent runs had page-load timeouts; the final run used one worker.
+
+The full repository gate is **not green**: existing Prettier issues remain in five
+unmodified files; ESLint reports three pre-existing type-import errors in the
+Telegram workspace/CRM controllers and service. API unit tests have 230 passing
+and one existing failure in `api-exception.filter.test.ts`: 16 workspace error
+codes lack human-readable mappings. No API source was changed by this patch.
+
+No real email was sent, no DNS/config/database migration was applied, and no
+commit/push/deployment was performed. After release, verify a new email's readable
+Reply-To and a real reply in the same thread, with signed sending webhooks enabled.
+
+## 2026-09-23 interactive email attachments (ADR-065)
+
+Scope: Omnicus Inbox/Conversations plus CRM frontend/backend on `staging`.
+New reusable email file controls include multiple selection/drop, compact cards,
+pending/error/removal/retry, authenticated binary download and lazy raster/PDF
+preview. CRM v1 upload/download transport enforces mapped lead/contact, authenticated
+manager, project and shared-mailbox boundaries; outgoing history gets safe metadata.
+See `EMAIL_INBOX.md` for the additive API contract and deployment order.
+
+Checks on Node 24.18.0 / pnpm 10.5.0 (CRM uses npm):
+
+- Omnicus typecheck: 34/34 tasks pass; production compilation and runtime artifacts
+  pass; Prisma schema validation passes, no migration needed.
+- Omnicus focused API attachment/inbox/CRM/media suites: 37 passing tests.
+  Full API: 239 passed, the same pre-existing human-readable error-map test fails.
+  Web: 97 passed; worker: 153 passed; media core: 38 passed. Media checks include
+  email-only M4A, Windows ZIP MIME alias and unchanged messenger regressions.
+- API integration rerun: 6 passed, 1 explicit isolated-service skip. Worker
+  isolated-service integrations remain explicit skips (no live services used).
+- Inbox/Conversations browser regression: final serial run 24/24 passed. Covers PDF canvas/local worker,
+  authenticated download, files-only send, immutable ambiguous retry payload,
+  upload failure/removal, library-only permissions and 390px layout. Screenshots
+  of compose, PDF preview and mobile errors were visually reviewed.
+- CRM frontend: production build and full ESLint pass; focused email suites
+  21/21 pass. Full frontend test run has 86 passed and one pre-existing WhatsApp
+  source-text assertion failure in `whatsapp-chat-v4.test.ts:125` (unchanged source).
+- CRM browser fixtures: 3/3 pass, including 1440/390px attachment compose,
+  files-only send, unchanged retry payload, incoming/outgoing filenames,
+  image preview and authenticated download. Reproduce with `npm run test:browser`.
+  Fixtures use local mocked data and are not production build entries.
+- CRM backend: build, targeted changed-file ESLint and lead-email suite (5/5) pass.
+  The touched service has an unrelated existing enum-comparison lint finding at
+  `conversations.service.ts:226`; its new email forwarding signature is clean.
+
+Omnicus full lint/format gates still include the unrelated type-import findings
+documented above, four previously unformatted non-email files, and two browser-global
+lint findings in the pre-existing local `tmp/email-settings-preview.js`. Changed
+attachment files pass ESLint/Prettier; existing output PDFs and prior uncommitted
+Reply-To/spacing changes are preserved. Full gates are not represented as green.
+
+No commit/push, deployment, real provider email, DNS/config change or database
+migration was performed. After deploying Omnicus and both CRM staging services,
+perform one approved real send/reply with attachments and verify a second user's
+lead permissions. Mocked browser/API tests do not establish live provider delivery.

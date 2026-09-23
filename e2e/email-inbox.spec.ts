@@ -13,6 +13,25 @@ const mailboxId = '11111111-1111-4111-8111-111111111111';
 const threadId = '22222222-2222-4222-8222-222222222222';
 const messageId = '33333333-3333-4333-8333-333333333333';
 const assetId = '44444444-4444-4444-8444-444444444444';
+function previewPdf() {
+  const stream = 'BT /F1 18 Tf 30 120 Td (Attachment preview) Tj ET';
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 320 180] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = objects.map((object, index) => {
+    const offset = pdf.length;
+    pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    return offset;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.map((offset) => `${String(offset).padStart(10, '0')} 00000 n \n`).join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  return Buffer.from(pdf);
+}
 const mailbox = {
   id: mailboxId,
   domainId: 'domain-a',
@@ -74,6 +93,7 @@ async function mockInbox(
     failSendOnce?: boolean;
     failSaveOnce?: boolean;
     mediaRead?: boolean;
+    mediaUpload?: boolean;
     reply?: { htmlBody?: string; textBody?: string };
     outgoing?: { htmlBody?: string; textBody?: string };
   } = {},
@@ -103,6 +123,7 @@ async function mockInbox(
           'broadcasts:read',
           ...(options.send === false ? [] : ['email:send']),
           ...(options.mediaRead ? ['media:read'] : []),
+          ...(options.mediaUpload ? ['media:manage'] : []),
         ],
         projectRoleName: 'Project Admin',
       });
@@ -233,7 +254,15 @@ async function mockInbox(
                 status: 'verified',
                 sendingEnabled: true,
                 receivingReady: true,
-                dnsRecords: [],
+                dnsRecords: [
+                  {
+                    record: 'DKIM',
+                    type: 'TXT',
+                    name: 'resend._domainkey',
+                    value: 'fixture-public-dns-value',
+                    status: 'verified',
+                  },
+                ],
                 region: 'eu-west-1',
                 lastCheckedAt: '2026-09-15T00:00:00Z',
               },
@@ -260,6 +289,134 @@ async function mockInbox(
   return mutations;
 }
 
+test('multiple uploaded files can be removed and sent without text; ambiguous retries preserve file IDs', async ({
+  page,
+}) => {
+  const mutations = await mockInbox(page, {
+    mediaRead: true,
+    mediaUpload: true,
+    failSendOnce: true,
+  });
+  const uploads: string[] = [];
+  let release!: () => void;
+  const paused = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/media-assets/upload/**', async (route) => {
+    const first = uploads.length === 0;
+    const name = first ? 'offer.pdf' : 'photo.pdf';
+    uploads.push(name);
+    if (first) await paused;
+    await route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        data: {
+          id: first ? assetId : '55555555-5555-4555-8555-555555555555',
+          originalFilename: name,
+          sizeBytes: '50',
+          status: 'AVAILABLE',
+          detectedMimeType: 'application/pdf',
+        },
+        meta: {},
+      }),
+    });
+  });
+  await page.goto('/projects/project-a/email-inbox');
+  await page.getByRole('button', { name: 'Compose', exact: true }).click();
+  await page.getByLabel('To', { exact: true }).fill('julia@example.com');
+  await page.getByLabel('Subject', { exact: true }).fill('Documents');
+  await page.locator('input[type=file]').setInputFiles([
+    { name: 'offer.pdf', mimeType: 'application/pdf', buffer: previewPdf() },
+    { name: 'photo.pdf', mimeType: 'application/pdf', buffer: previewPdf() },
+  ]);
+  await expect(page.getByRole('button', { name: 'Send email', exact: true })).toBeDisabled();
+  await expect(page.getByText('Uploading…').first()).toBeVisible();
+  release();
+  await expect(page.getByRole('button', { name: 'Send email', exact: true })).toBeEnabled();
+  await expect(page.locator('.email-file')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Remove photo.pdf' }).click();
+  await expect(page.locator('.email-file')).toHaveCount(1);
+  await page.screenshot({ path: 'test-results/email-compose-files.png', fullPage: true });
+  await page.getByRole('button', { name: 'Send email', exact: true }).click();
+  await expect(page.locator('.ant-modal .ant-alert')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remove offer.pdf' })).toBeDisabled();
+  await page.getByRole('button', { name: 'Send email', exact: true }).click();
+  await expect(page.getByText('Email queued.', { exact: false })).toBeVisible();
+  const sends = mutations.filter((item) => item.path.endsWith('/messages'));
+  expect(sends).toHaveLength(2);
+  expect(sends[0]?.body).toEqual(sends[1]?.body);
+  expect(sends[0]?.body.assetIds).toEqual([assetId]);
+  expect(sends[0]?.body.text).toBe('');
+});
+
+test('PDF preview uses the local worker, download is authenticated and the reader stays compact', async ({
+  page,
+}) => {
+  await mockInbox(page);
+  const tokens: string[] = [];
+  await page.route('**/email-inbox/attachments/file-1', async (route) => {
+    tokens.push(route.request().headers().authorization ?? '');
+    await route.fulfill({ contentType: 'application/octet-stream', body: previewPdf() });
+  });
+  await page.goto('/projects/project-a/email-inbox');
+  await page
+    .locator('.mail-thread-list')
+    .getByRole('button', { name: /julia@example.com/ })
+    .click();
+  await page.getByRole('button', { name: 'Preview booking-notes.pdf' }).click();
+  await expect(page.getByRole('dialog').locator('canvas')).toBeVisible();
+  await expect(page.getByText('Page 1 / 1', { exact: true })).toBeVisible();
+  await expect(page.getByRole('dialog').locator('.ant-spin')).toHaveCount(0);
+  expect(
+    await page
+      .getByRole('dialog')
+      .locator('canvas')
+      .evaluate((element) => (element as HTMLCanvasElement).width),
+  ).toBeGreaterThan(100);
+  await expect(page.getByRole('dialog').locator('iframe,object,embed')).toHaveCount(0);
+  await page.screenshot({ path: 'test-results/email-file-pdf-preview.png', fullPage: true });
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('dialog').getByRole('button', { name: 'Download', exact: true }).click();
+  expect((await downloaded).suggestedFilename()).toBe('booking-notes.pdf');
+  expect(tokens).toEqual(['Bearer mock-session']);
+});
+
+test('failed attachment uploads stay visible and can be removed on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockInbox(page, { mediaRead: true, mediaUpload: true });
+  await page.route('**/media-assets/upload/**', (route) =>
+    route.fulfill({
+      status: 400,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        error: { code: 'media_signature_rejected', message: 'Media file was rejected' },
+      }),
+    }),
+  );
+  await page.goto('/projects/project-a/email-inbox');
+  await page.getByRole('button', { name: 'Compose', exact: true }).click();
+  await page.locator('input[type=file]').setInputFiles({
+    name: 'file-with-a-long-name-for-the-client.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('invalid'),
+  });
+  await expect(
+    page.getByText('This file format or its contents are not supported. Choose another file.'),
+  ).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Send email', exact: true })).toBeDisabled();
+  expect(
+    await page
+      .getByRole('dialog')
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  await page.screenshot({ path: 'test-results/email-files-mobile-error.png', fullPage: true });
+  await page
+    .getByRole('button', { name: 'Remove file-with-a-long-name-for-the-client.pdf' })
+    .click();
+  await expect(page.locator('.email-file')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Send email', exact: true })).toBeEnabled();
+});
+
 test('email onboarding and settings are useful before a domain is connected', async ({ page }) => {
   await mockInbox(page, { empty: true });
   await page.goto('/projects/project-a/email-inbox');
@@ -269,6 +426,38 @@ test('email onboarding and settings are useful before a domain is connected', as
   await expect(page.getByText('Provider billing', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Add address' })).toBeDisabled();
 });
+
+for (const width of [1440, 390]) {
+  test(`email settings tables have no empty strip inside their border at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 1050 });
+    await mockInbox(page);
+    await page.goto('/projects/project-a/email-settings');
+    await page.locator('.mail-settings .ant-collapse-header').click();
+    const tables = page.locator('.mail-settings .ant-table-wrapper');
+    await expect(tables).toHaveCount(2);
+    for (const table of await tables.all()) {
+      await expect(table.locator('thead')).toBeVisible();
+      await expect(table.locator('.ant-table')).toHaveCSS('margin-top', '0px');
+      await expect(table).toHaveCSS('margin-top', '12px');
+      await expect
+        .poll(() =>
+          table.evaluate((element) => {
+            const header = element.querySelector('thead')!;
+            return Math.abs(
+              header.getBoundingClientRect().top - element.getBoundingClientRect().top,
+            );
+          }),
+        )
+        .toBeLessThanOrEqual(2);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+    ).toBe(true);
+    await page.screenshot({ path: `test-results/email-settings-${width}.png`, fullPage: true });
+  });
+}
 
 test('desktop inbox groups campaign and reply, isolates HTML and preserves sender on reply', async ({
   page,
@@ -562,7 +751,7 @@ test('Conversations formats email safely and preserves the reply context', async
     await page.evaluate(() => (window as unknown as Record<string, unknown>).__mailXss),
   ).toBeUndefined();
   expect(trackers).toEqual([]);
-  await expect(card.getByText('1 attachment(s)', { exact: true })).toBeVisible();
+  await expect(card.getByRole('button', { name: 'Download booking-notes.pdf' })).toBeVisible();
   await expect(page.locator(communicationCards).first().locator('iframe')).toHaveCount(0);
   await expect(page.locator(communicationCards).first()).toContainText('Hi Julia');
   await page.screenshot({ path: 'test-results/communications-email-desktop.png', fullPage: true });

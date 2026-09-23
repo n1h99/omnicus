@@ -10,13 +10,17 @@ import {
   Query,
   Req,
   UseGuards,
+  StreamableFile,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   CrmIntegrationAuthGuard,
   type AuthenticatedCrmIntegrationRequest,
 } from './crm-integration-auth.guard';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Runtime DTO metadata is required for request validation.
-import { CrmEmailScopeDto, CrmSendEmailDto } from './crm-email.dto';
+import { CrmEmailScopeDto, CrmSendEmailDto, CrmEmailUploadDto } from './crm-email.dto';
 import { CrmEmailService } from './crm-email.service';
 
 @UseGuards(CrmIntegrationAuthGuard)
@@ -47,5 +51,51 @@ export class CrmEmailController {
   @HttpCode(200)
   send(@Body() input: CrmSendEmailDto, @Req() request: AuthenticatedCrmIntegrationRequest) {
     return this.email.send(input, request.crmIntegration?.projectId);
+  }
+
+  @Post('attachments')
+  @UseInterceptors(
+    FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024, files: 1, fields: 6 } }),
+  )
+  upload(
+    @Body() input: CrmEmailUploadDto,
+    @UploadedFile()
+    file: { buffer: Buffer; mimetype: string; originalname: string; size: number } | undefined,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.email.upload(input, file, request.crmIntegration?.projectId);
+  }
+
+  @Get('attachments/:attachmentId')
+  async attachment(
+    @Query() input: CrmEmailScopeDto,
+    @Param('attachmentId', new ParseUUIDPipe()) id: string,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.file(await this.email.attachment(input, id, request.crmIntegration?.projectId));
+  }
+
+  @Get('messages/:messageId/assets/:assetId')
+  async outgoingAttachment(
+    @Query() input: CrmEmailScopeDto,
+    @Param('messageId', new ParseUUIDPipe()) messageId: string,
+    @Param('assetId', new ParseUUIDPipe()) assetId: string,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.file(
+      await this.email.outgoingAttachment(
+        input,
+        messageId,
+        assetId,
+        request.crmIntegration?.projectId,
+      ),
+    );
+  }
+
+  private file(file: { bytes: Buffer; filename: string }) {
+    return new StreamableFile(file.bytes, {
+      type: 'application/octet-stream',
+      disposition: `attachment; filename*=UTF-8''${encodeURIComponent(file.filename)}`,
+    });
   }
 }

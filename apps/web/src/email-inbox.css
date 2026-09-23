@@ -372,6 +372,7 @@
 }
 .mail-settings {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 20px;
   max-width: 1150px;
   margin: 0 auto;
@@ -379,8 +380,8 @@
 .mail-settings-connect {
   margin-top: 20px;
 }
-.mail-settings .ant-table {
-  margin-top: 16px;
+.mail-settings .ant-table-wrapper {
+  margin-top: 12px;
 }
 @media (max-width: 1250px) {
   .mail-layout {

@@ -27,6 +27,16 @@ project; domain names/provider IDs cannot belong to multiple projects.
 Legacy EMAIL_FROM continues to work without falsely claiming reply support.
 Historical content/senders not previously retained cannot be reconstructed.
 
+Reply-address update (2026-09-23, ADR-064): new two-way mailbox deliveries use the
+selected mailbox's readable address as Reply-To (for example, `support@company.com`),
+not a generated `reply+…` address. This applies to Inbox, Communications, CRM,
+campaigns and automations through their shared sender. RFC Message-ID/In-Reply-To/
+References identify the conversation; keep sending events including `email.sent`
+enabled on the signed webhook so outgoing Message-IDs are recorded. Existing queued
+delivery snapshots are immutable, and replies to older aliases remain supported
+while that domain/mailbox still routes incoming mail here. Without matching RFC
+headers, mail is a new conversation, never a subject/peer-based guess.
+
 The desktop layout uses folders on the left, a conversation list in the middle
 and a reader on the right. Mobile uses list/reader navigation. Threads show the
 source (campaign, automation or manual), delivery status and downloadable files.
@@ -53,7 +63,7 @@ live acceptance remains deferred at the user's request.
 - Signed `email.received` callbacks save bounded durable receipts; no provider
   requests inside webhook processing. Worker fetches full content/attachments.
 - Exact configured recipient and project-scoped mailbox determine ownership.
-  RFC Message-ID/In-Reply-To/References and random reply aliases identify threads;
+  RFC Message-ID/In-Reply-To/References and legacy reply aliases identify threads;
   never group by subject alone. Sender must match thread peer to resume a wait.
 - Automatic replies and delivery reports are visible but cannot resume scenarios.
   Email headers are not identity authentication or marketing consent.
@@ -174,6 +184,41 @@ Sources:
 - https://resend.com/pricing
 
 ## Acceptance
+
+### Interactive attachments (ADR-065)
+
+Inbox, Conversations and the CRM lead email modal support multiple file selection,
+drag/drop, compact filename/size cards, removal before sending, retryable upload
+errors, authenticated downloads and raster image/PDF previews. Limits are 20 files,
+20 MiB per upload (or the lower configured storage limit), 25 MiB combined. Uploads
+use the existing email content validator: PDF, DOCX/XLSX/PPTX, ZIP, JPEG/PNG/WebP/GIF,
+MP4/M4A/MP3/OGG; executable/HTML/SVG files remain unsupported. Preview is optional;
+corrupt, encrypted or unsupported documents can still be downloaded when available.
+No remote document viewer receives the file. PDF.js is lazy-loaded with a same-origin
+module worker; `server.mjs` serves `.mjs` as JavaScript and permits `worker-src 'self'`.
+
+Pending or failed uploads block sending/saving; remove failed files or retry first.
+Discarding a compose aborts uploads and prevents late results joining a new message.
+An ambiguous send locks the exact payload, including attachment IDs. Removing a
+selection never deletes history/storage; normal unreferenced-asset retention applies.
+
+CRM integration v1 additions (CRM staging front + back must be deployed together):
+
+- `POST /integrations/v1/crm/email/attachments`: multipart `file`, `requestId`,
+  `mailboxId` and the existing four CRM scope fields. Returns the safe MediaAsset DTO.
+- `POST .../messages`: optional unique `assetIds` UUID array (maximum 20).
+- `GET .../attachments/:attachmentId` and `GET .../messages/:messageId/assets/:assetId`:
+  scope query, authenticated `application/octet-stream` attachment response.
+- Thread messages expose additive `outgoingAttachments` metadata; existing
+  `delivery.attachmentAssetIds` is unchanged. Missing assets are explicit unavailable
+  cards. Legacy messages with stored asset references gain names without a backfill.
+
+CRM browser uses the corresponding `/conversations/leads/:leadId/email` proxy.
+Lead access and project route are resolved server-side; the browser cannot choose
+`crmUserId`, `crmLeadId` or project scope. CRM uploads store the contact/user scope in
+MediaAsset providerMetadata atomically, and send validates this scope. Downloads
+check the contact-owned thread as well as shared mailbox and message/asset binding.
+No database migration, DNS changes or new Resend events are required.
 
 Automated: validation, mailbox/tenant isolation, signatures, duplicate and reordered
 events, send idempotency/UNKNOWN, exact threading, drafts, safe HTML/attachments,

@@ -46,6 +46,7 @@ function fixture(duplicate = false) {
     emailThread: {
       create: vi.fn().mockImplementation(async ({ data }) => ({ ...thread, ...data })),
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
       update: vi.fn(),
     },
     contact: { findMany: vi.fn().mockResolvedValue([{ id: 'c1' }]) },
@@ -71,6 +72,104 @@ function fixture(duplicate = false) {
 }
 
 describe('durable incoming email import', () => {
+  it.each([
+    { 'In-Reply-To': '<sent@example.com>' },
+    { References: '<older@example.com> <sent@example.com>' },
+  ])('routes replies to the plain mailbox by RFC headers: %j', async (headers) => {
+    const { service, tx, incoming, saved } = fixture();
+    incoming.headers = headers;
+    tx.emailMessage.findMany.mockResolvedValue([
+      {
+        rfcMessageId: '<sent@example.com>',
+        thread: {
+          id: 'original-thread',
+          peerEmail: 'alice@example.com',
+          contactId: 'c1',
+          lastMessageAt: new Date(0),
+          lastInboundAt: null,
+        },
+      },
+    ] as never);
+    await service.process('receipt');
+    expect(saved).toMatchObject({
+      threadId: 'original-thread',
+      toAddress: 'sales@example.com',
+      automationStatus: 'AWAITING_CONTENT',
+    });
+    expect(tx.emailThread.create).not.toHaveBeenCalled();
+    expect(tx.emailMessage.findMany).toHaveBeenCalledWith({
+      where: {
+        projectId: 'p1',
+        mailboxId: 'm1',
+        rfcMessageId: { in: expect.arrayContaining(['<sent@example.com>']) },
+      },
+      include: { thread: true },
+      take: 30,
+    });
+  });
+  it('prefers the direct parent over older References from the same peer', async () => {
+    const { service, tx, incoming, saved } = fixture();
+    incoming.headers = {
+      'In-Reply-To': '<parent@example.com>',
+      References: '<older@example.com>',
+    };
+    tx.emailMessage.findMany.mockResolvedValue(
+      ['older', 'parent'].map((id) => ({
+        rfcMessageId: `<${id}@example.com>`,
+        thread: {
+          id,
+          peerEmail: 'alice@example.com',
+          contactId: 'c1',
+          lastMessageAt: new Date(0),
+        },
+      })) as never,
+    );
+    await service.process('receipt');
+    expect(saved.threadId).toBe('parent');
+    expect(tx.emailThread.create).not.toHaveBeenCalled();
+  });
+  it('does not attach a referenced message from another peer', async () => {
+    const { service, tx, incoming, saved } = fixture();
+    incoming.headers = { 'In-Reply-To': '<foreign@example.com>' };
+    tx.emailMessage.findMany.mockResolvedValue([
+      {
+        rfcMessageId: '<foreign@example.com>',
+        thread: { id: 'foreign', peerEmail: 'bob@example.com' },
+      },
+    ] as never);
+    await service.process('receipt');
+    expect(tx.emailThread.create).toHaveBeenCalledTimes(1);
+    expect(saved.threadId).toBe('t1');
+  });
+  it('starts a new thread without matching headers instead of guessing by subject or peer', async () => {
+    const { service, tx, saved } = fixture();
+    await service.process('receipt');
+    expect(tx.emailMessage.findMany).not.toHaveBeenCalled();
+    expect(tx.emailThread.findMany).not.toHaveBeenCalled();
+    expect(tx.emailThread.create).toHaveBeenCalledTimes(1);
+    expect(saved.threadId).toBe('t1');
+  });
+  it('still accepts legacy reply aliases without RFC headers', async () => {
+    const { service, tx, incoming, receipt, saved } = fixture();
+    const token = 'a'.repeat(36);
+    receipt.recipient = `reply+${token}@example.com`;
+    incoming.to = [receipt.recipient];
+    tx.emailThread.findMany.mockResolvedValue([
+      {
+        id: 'legacy-thread',
+        peerEmail: 'alice@example.com',
+        contactId: 'c1',
+        lastMessageAt: new Date(0),
+      },
+    ] as never);
+    await service.process('receipt');
+    expect(tx.emailThread.findMany).toHaveBeenCalledWith({
+      where: { projectId: 'p1', mailboxId: 'm1', replyToken: token },
+      take: 5,
+    });
+    expect(tx.emailThread.create).not.toHaveBeenCalled();
+    expect(saved.threadId).toBe('legacy-thread');
+  });
   it('stores HTML and safe extracted text, links only a unique active contact, then queues automation', async () => {
     const { service, tx, saved } = fixture();
     await service.process('receipt');

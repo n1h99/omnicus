@@ -1,21 +1,12 @@
-import { PaperClipOutlined, SendOutlined } from '@ant-design/icons';
-import {
-  Alert,
-  App,
-  Button,
-  Form,
-  Input,
-  Modal,
-  Select,
-  Space,
-  Tag,
-  Typography,
-  Upload,
-} from 'antd';
-import { useEffect, useRef, useState } from 'react';
-import { ApiError, getUserErrorMessage } from './api';
-import { useMediaAssets, useMediaMutations } from './media-api';
+import { SendOutlined } from '@ant-design/icons';
+import { Alert, App, Button, Form, Input, Modal, Select, Space, Typography } from 'antd';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { apiRequest, ApiError, getUserErrorMessage } from './api';
+import { useMediaAssets, type MediaAsset } from './media-api';
 import { useInboxActions, type Mailbox, type MailDraft } from './email-inbox-api';
+import { EmailFilePicker } from './email-files';
+import { useEmailFiles } from './email-file-utils';
+import { useAuth } from './auth';
 
 export type ComposeInitial = {
   mailboxId?: string;
@@ -48,8 +39,45 @@ export function EmailCompose({
   const actions = useInboxActions(projectId);
   const { message, modal } = App.useApp();
   const media = useMediaAssets(projectId, canReadMedia);
-  const mediaActions = useMediaMutations(projectId);
-  const [assetIds, setAssetIds] = useState<string[]>(initial.draft?.assetIds ?? []);
+  const { accessToken } = useAuth();
+  const availableFiles = useMemo(
+    () =>
+      media.data?.map((asset) => ({
+        id: asset.id,
+        filename: asset.originalFilename ?? 'Attached file',
+        sizeBytes: Number(asset.sizeBytes ?? 0),
+        status: asset.status,
+        contentType: asset.detectedMimeType,
+      })),
+    [media.data],
+  );
+  const files = useEmailFiles(
+    (initial.draft?.assetIds ?? []).map((id) => ({
+      id,
+      filename: 'Attached file',
+      sizeBytes: 0,
+      status: 'LOADING',
+    })),
+    async (file, _requestId, signal) => {
+      const body = new FormData();
+      body.set('file', file);
+      const asset = await apiRequest<MediaAsset>(
+        `/api/v1/projects/${projectId}/media-assets/upload/DOCUMENT?channel=email`,
+        { method: 'POST', body, signal },
+        accessToken,
+      );
+      void media.refetch();
+      return {
+        id: asset.id,
+        filename: asset.originalFilename ?? file.name,
+        sizeBytes: Number(asset.sizeBytes ?? file.size),
+        contentType: asset.detectedMimeType,
+        status: asset.status,
+      };
+    },
+    availableFiles,
+  );
+  const assetIds = files.assetIds;
   const [revision, setRevision] = useState(initial.draft?.revision ?? 0);
   const [dirty, setDirty] = useState(!initial.draft);
   const [busy, setBusy] = useState(false);
@@ -83,6 +111,7 @@ export function EmailCompose({
     else onClose();
   };
   const save = async () => {
+    if (busy || files.isBlocked()) return;
     if (sendAttempt.current) {
       setError(
         'Retry the pending send with unchanged content, or check Sent before saving another draft.',
@@ -116,8 +145,9 @@ export function EmailCompose({
     }
   };
   const send = async () => {
+    if (busy || files.isBlocked()) return;
     const values = await form.validateFields().catch(() => null);
-    if (!values) return;
+    if (!values || files.isBlocked()) return;
     const body = {
       ...values,
       assetIds,
@@ -161,7 +191,10 @@ export function EmailCompose({
       maskClosable={false}
       footer={
         <div className="mail-compose-footer">
-          <Button disabled={busy} onClick={() => void save()}>
+          <Button
+            disabled={busy || files.blocked || Boolean(sendAttempt.current)}
+            onClick={() => void save()}
+          >
             Save draft
           </Button>
           <Space>
@@ -173,7 +206,7 @@ export function EmailCompose({
               aria-label="Send email"
               icon={<SendOutlined />}
               loading={busy}
-              disabled={!mailbox?.sendingReady}
+              disabled={!mailbox?.sendingReady || files.blocked}
               onClick={() => void send()}
             >
               Send email
@@ -186,7 +219,7 @@ export function EmailCompose({
       <Form
         form={form}
         layout="vertical"
-        disabled={busy}
+        disabled={busy || Boolean(sendAttempt.current)}
         onValuesChange={changed}
         initialValues={{
           mailboxId:
@@ -201,7 +234,7 @@ export function EmailCompose({
       >
         <Form.Item label="From" name="mailboxId" rules={[{ required: true }]}>
           <Select
-            disabled={!!threadId || busy}
+            disabled={!!threadId || busy || Boolean(sendAttempt.current)}
             options={mailboxes.map((item) => ({
               value: item.id,
               label: `${item.displayName} <${item.address}>${item.sendingReady ? '' : ' · not ready'}`,
@@ -209,7 +242,11 @@ export function EmailCompose({
           />
         </Form.Item>
         <Form.Item label="To" name="to" rules={[{ required: true, type: 'email' }]}>
-          <Input disabled={!!threadId || busy} maxLength={254} placeholder="client@example.com" />
+          <Input
+            disabled={!!threadId || busy || Boolean(sendAttempt.current)}
+            maxLength={254}
+            placeholder="client@example.com"
+          />
         </Form.Item>
         <Form.Item
           label="Subject"
@@ -245,61 +282,39 @@ export function EmailCompose({
             <div>{mailbox.signature}</div>
           </div>
         )}
-        {assetIds.map((id) => (
-          <Tag
-            key={id}
-            closable={!busy}
-            onClose={() => {
-              setAssetIds((current) => current.filter((item) => item !== id));
-              changed();
-            }}
-          >
-            {media.data?.find((item) => item.id === id)?.originalFilename ?? 'Attached file'}
-          </Tag>
-        ))}
+        <EmailFilePicker
+          files={files}
+          canUpload={canReadMedia && canUploadMedia}
+          disabled={busy || Boolean(sendAttempt.current)}
+          onChange={changed}
+        />
         {canReadMedia && (
           <Space wrap className="mail-attachments-picker">
             <Select
               mode="multiple"
               aria-label="Choose files from Content library"
-              disabled={busy}
+              disabled={busy || files.blocked || Boolean(sendAttempt.current)}
               placeholder="Choose files from Content library"
               value={assetIds}
               onChange={(ids: string[]) => {
-                setAssetIds(ids);
+                files.select(
+                  ids.map(
+                    (id) =>
+                      availableFiles?.find((file) => file.id === id) ??
+                      files.items.find((file) => file.id === id)!,
+                  ),
+                );
                 changed();
               }}
               maxCount={20}
               style={{ minWidth: 270, maxWidth: '100%' }}
               options={(media.data ?? [])
-                .filter((item) => item.status === 'AVAILABLE')
+                .filter(
+                  (item) =>
+                    item.status === 'AVAILABLE' && ['DOCUMENT', 'PHOTO'].includes(item.kind),
+                )
                 .map((item) => ({ value: item.id, label: item.originalFilename ?? item.id }))}
             />
-            {canUploadMedia && (
-              <Upload
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  if (assetIds.length >= 20) {
-                    setError('Up to 20 attachments per email.');
-                    return false;
-                  }
-                  setBusy(true);
-                  void mediaActions.upload
-                    .mutateAsync({ file, kind: 'DOCUMENT', channel: 'EMAIL' })
-                    .then((asset) => {
-                      setAssetIds((current) => [...new Set([...current, asset.id])]);
-                      changed();
-                    })
-                    .catch((err: unknown) => setError(getUserErrorMessage(err)))
-                    .finally(() => setBusy(false));
-                  return false;
-                }}
-              >
-                <Button disabled={busy} icon={<PaperClipOutlined />}>
-                  Upload file
-                </Button>
-              </Upload>
-            )}
           </Space>
         )}
         {!mailbox?.receivingReady && (

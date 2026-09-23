@@ -1,0 +1,94 @@
+.email-files,
+.email-files-picker {
+  margin: 10px 0;
+  min-width: 0;
+}
+.email-files-list {
+  display: grid;
+  gap: 6px;
+  padding: 0;
+  margin: 0 0 8px;
+  list-style: none;
+}
+.email-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  min-width: 0;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fafafa;
+}
+.email-file-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.email-file-info > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.email-file-info > small {
+  font-size: 11px;
+  color: #667085;
+  overflow-wrap: anywhere;
+}
+.email-file > .ant-btn {
+  flex-shrink: 0;
+}
+.email-files-picker .ant-upload-drag {
+  background: #fafafa;
+}
+.email-files-picker .ant-upload-drag .ant-upload-btn {
+  padding: 10px 12px;
+}
+.email-files-prompt {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  font-size: 13px;
+}
+.email-files-prompt > span:last-child,
+.email-files-hint {
+  color: #667085;
+}
+.email-files-hint {
+  display: block;
+  margin: 6px 0;
+  font-size: 11px;
+}
+.email-file-preview {
+  display: grid;
+  place-items: center;
+  min-height: 150px;
+  max-height: 72vh;
+  overflow: auto;
+}
+.email-image-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 68vh;
+  object-fit: contain;
+}
+.email-pdf-preview {
+  width: 100%;
+  text-align: center;
+}
+.email-pdf-preview canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 12px auto 0;
+}
+.email-pdf-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}

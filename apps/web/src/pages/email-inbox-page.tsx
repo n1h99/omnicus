@@ -4,7 +4,6 @@ import {
   EditOutlined,
   InboxOutlined,
   MailOutlined,
-  PaperClipOutlined,
   ReloadOutlined,
   SendOutlined,
   SettingOutlined,
@@ -42,6 +41,7 @@ import {
 } from '../email-inbox-api';
 import { EmailCompose, type ComposeInitial } from '../email-compose';
 import { EmailHtmlFrame } from '../email-html-frame';
+import { EmailMessageAttachments } from '../email-message-attachments';
 import { replySubject } from '@omnicus/email-core';
 import '../email-inbox.css';
 
@@ -580,13 +580,7 @@ function EmailMessageCard({
 }) {
   const [open, setOpen] = useState(expanded);
   const [mode, setMode] = useState('Formatted');
-  const actions = useInboxActions(projectId);
-  const { message } = App.useApp();
   const hasHtml = Boolean(email.htmlBody.trim());
-  const download = (path: string, filename: string) =>
-    void actions
-      .download(path, filename)
-      .catch((err: unknown) => message.error(getUserErrorMessage(err)));
   return (
     <article
       className={
@@ -653,30 +647,7 @@ function EmailMessageCard({
           ) : (
             <div className="mail-plain-text">{email.textBody || 'No plain-text content.'}</div>
           )}
-          <div className="mail-attachment-list">
-            {email.attachments.map((file) => (
-              <Button
-                key={file.id}
-                icon={<PaperClipOutlined />}
-                disabled={file.status !== 'AVAILABLE'}
-                onClick={() => download('attachments/' + file.id, file.filename)}
-              >
-                {file.filename} · {Math.ceil(file.sizeBytes / 1024)} KB
-                {file.status !== 'AVAILABLE' ? ' · ' + file.status.toLowerCase() : ''}
-              </Button>
-            ))}
-            {email.delivery?.attachmentAssetIds.map((id, index) => (
-              <Button
-                key={id}
-                icon={<PaperClipOutlined />}
-                onClick={() =>
-                  download(`messages/${email.id}/assets/${id}`, `attachment-${index + 1}`)
-                }
-              >
-                Attachment {index + 1}
-              </Button>
-            ))}
-          </div>
+          <EmailMessageAttachments projectId={projectId} email={email} />
           {canReply && (
             <Button type="text" onClick={onReply}>
               Reply

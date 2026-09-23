@@ -109,7 +109,8 @@ export class MediaService {
     file: UploadedFile | undefined,
     idempotencyKey: string,
     correlationId: string,
-    channel: 'telegram' | 'whatsapp' = 'telegram',
+    channel: 'email' | 'telegram' | 'whatsapp' = 'telegram',
+    crmEmailScope?: { contactId: string; userId: string },
   ) {
     const digest = createHash('sha256')
       .update(
@@ -122,7 +123,7 @@ export class MediaService {
       13,
       16,
     )}-a${digest.slice(17, 20)}-${digest.slice(20, 32)}`;
-    const stored = await this.store(projectId, kind, file, id, channel);
+    const stored = await this.store(projectId, kind, file, id, channel, crmEmailScope);
     await this.audit.record({
       action: 'crm.media_uploaded',
       actorType: 'SERVICE',
@@ -141,6 +142,7 @@ export class MediaService {
     file: UploadedFile | undefined,
     requestedId?: string,
     channel: 'email' | 'telegram' | 'whatsapp' = 'telegram',
+    crmEmailScope?: { contactId: string; userId: string },
   ) {
     if (!file)
       throw new BadRequestException({ code: 'MEDIA_FILE_REQUIRED', message: 'A file is required' });
@@ -168,6 +170,10 @@ export class MediaService {
     const id = requestedId ?? randomUUID();
     const bucketKey = `${projectId}/assets/${channel}/${id}.${validated.extension}`;
     const checksumSha256 = createHash('sha256').update(validated.bytes).digest('hex');
+    const providerMetadata = {
+      validationChannel: channel,
+      ...(crmEmailScope ? { crmEmail: crmEmailScope } : {}),
+    };
     const existing = await this.database.client.mediaAsset.findUnique({
       where: { projectId_id: { id, projectId } },
     });
@@ -196,7 +202,7 @@ export class MediaService {
             detectedMimeType: validated.mimeType,
             extension: validated.extension,
             originalFilename: file.originalname,
-            providerMetadata: { validationChannel: channel },
+            providerMetadata,
             sizeBytes: BigInt(validated.sizeBytes),
             status: 'PENDING_UPLOAD',
           },
@@ -212,7 +218,7 @@ export class MediaService {
             id,
             kind,
             originalFilename: file.originalname,
-            providerMetadata: { validationChannel: channel },
+            providerMetadata,
             projectId,
             sizeBytes: BigInt(validated.sizeBytes),
             source: 'USER_UPLOAD',
@@ -513,14 +519,14 @@ export class MediaService {
   private validationChannel(
     source: unknown,
     providerMetadata: unknown,
-  ): 'telegram' | 'whatsapp' | undefined {
+  ): 'email' | 'telegram' | 'whatsapp' | undefined {
     if (
       providerMetadata &&
       typeof providerMetadata === 'object' &&
       !Array.isArray(providerMetadata)
     ) {
       const value = (providerMetadata as Record<string, unknown>).validationChannel;
-      if (value === 'telegram' || value === 'whatsapp') return value;
+      if (value === 'email' || value === 'telegram' || value === 'whatsapp') return value;
     }
     if (source === 'TELEGRAM') return 'telegram';
     if (source === 'WHATSAPP') return 'whatsapp';

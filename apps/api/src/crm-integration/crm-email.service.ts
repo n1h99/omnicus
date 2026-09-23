@@ -8,7 +8,8 @@ import {
 import { DatabaseService } from '../database/database.service';
 import { EmailInboxService, type CrmEmailActor } from '../email-inbox/email-inbox.service';
 import { CrmOutboundService } from './crm-outbound.service';
-import type { CrmEmailScopeDto, CrmSendEmailDto } from './crm-email.dto';
+import { MediaService } from '../media/media.service';
+import type { CrmEmailScopeDto, CrmSendEmailDto, CrmEmailUploadDto } from './crm-email.dto';
 
 @Injectable()
 export class CrmEmailService {
@@ -16,6 +17,7 @@ export class CrmEmailService {
     @Inject(DatabaseService) private readonly database: DatabaseService,
     @Inject(CrmOutboundService) private readonly outbound: CrmOutboundService,
     @Inject(EmailInboxService) private readonly inbox: EmailInboxService,
+    @Inject(MediaService) private readonly media: MediaService,
   ) {}
 
   private async scope(input: CrmEmailScopeDto, authenticatedProjectId?: string) {
@@ -92,10 +94,50 @@ export class CrmEmailService {
         to,
         subject: input.subject,
         text: input.text,
+        ...(input.assetIds ? { assetIds: input.assetIds } : {}),
         ...(input.threadId ? { threadId: input.threadId } : {}),
         ...(input.replyToMessageId ? { replyToMessageId: input.replyToMessageId } : {}),
       },
       actor,
     );
+  }
+
+  async upload(
+    input: CrmEmailUploadDto,
+    file: { buffer: Buffer; mimetype: string; originalname: string; size: number } | undefined,
+    projectId?: string,
+  ) {
+    const { contact, actor } = await this.scope(input, projectId);
+    if (contact.status !== 'ACTIVE') throw new ConflictException('CRM_EMAIL_CONTACT_NOT_ACTIVE');
+    const project = await this.database.client.project.findUnique({
+      where: { id: input.omnicusProjectId },
+      select: { status: true },
+    });
+    if (project?.status !== 'ACTIVE') throw new ConflictException('email_project_not_active');
+    await this.inbox.assertMailbox(input.omnicusProjectId, input.mailboxId, actor, true);
+    return this.media.uploadFromService(
+      input.omnicusProjectId,
+      'DOCUMENT',
+      file,
+      JSON.stringify([actor.contactId, actor.userId, input.requestId]),
+      input.requestId,
+      'email',
+      { contactId: actor.contactId, userId: actor.userId },
+    );
+  }
+
+  async attachment(input: CrmEmailScopeDto, id: string, projectId?: string) {
+    const { actor } = await this.scope(input, projectId);
+    return this.inbox.attachment(input.omnicusProjectId, id, actor);
+  }
+
+  async outgoingAttachment(
+    input: CrmEmailScopeDto,
+    messageId: string,
+    assetId: string,
+    projectId?: string,
+  ) {
+    const { actor } = await this.scope(input, projectId);
+    return this.inbox.outgoingAttachment(input.omnicusProjectId, messageId, assetId, actor);
   }
 }

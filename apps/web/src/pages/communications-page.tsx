@@ -58,6 +58,7 @@ import {
   useCommunicationTemplates,
 } from '../communications-api';
 import { EmailCompose, type ComposeInitial } from '../email-compose';
+import { EmailMessageAttachments } from '../email-message-attachments';
 import {
   type MailMessage,
   type MailThread,
@@ -1717,9 +1718,7 @@ function ContactEmailConversation({
               <time>{new Date(email.occurredAt).toLocaleString()}</time>
             </span>
             <CommunicationsEmailBody email={email} />
-            {email.attachments.length ? (
-              <small>{email.attachments.length} attachment(s)</small>
-            ) : null}
+            <EmailMessageAttachments projectId={projectId} email={email} />
             {canSend ? (
               <Button type="link" size="small" onClick={() => reply(email)}>
                 Reply
