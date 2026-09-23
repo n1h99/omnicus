@@ -260,7 +260,10 @@ describe('workspace lifecycle UI contracts', () => {
     expect(activity).toContain('Contact journeys');
     expect(activity).toContain('Why runs stopped or paused');
     expect(activity).toContain('screens.lg === false ? { scroll: { x: 1_050 } } : {}');
-    expect(source('./pages/project-detail-page.tsx')).toContain("label: 'Automation activity'");
+    expect(source('./project-sections.ts')).toContain("path: 'automation-activity'");
+    expect(source('./pages/project-detail-page.tsx')).toContain(
+      'availableProjectSections(access.data)',
+    );
     expect(source('./navigation.tsx')).not.toContain("key: 'automation-activity'");
     expect(roles).toContain('humanizePermission');
     expect(users).not.toContain('<Tooltip');

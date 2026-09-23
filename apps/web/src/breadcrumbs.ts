@@ -1,3 +1,10 @@
+import {
+  projectSectionFor,
+  projectSectionPath,
+  projectSections,
+  type ProjectSection,
+} from './project-sections';
+
 export interface AppBreadcrumb {
   label: string;
   path?: string;
@@ -6,19 +13,20 @@ export interface AppBreadcrumb {
 const sectionLabels: Record<string, string> = {
   broadcasts: 'Broadcasts',
   channels: 'Channels',
-  communications: 'Communications',
+  communications: 'By contact',
   contacts: 'Contacts',
   'crm-config': 'CRM integration',
   'custom-fields': 'Custom fields',
-  'email-sms-broadcast': 'Email & SMS Broadcast',
+  'email-sms-broadcast': 'Email broadcasts',
   'email-inbox': 'Email Inbox',
+  'email-settings': 'Email setup',
   'media-assets': 'Content library',
   members: 'Members',
   operations: 'Operations & audit',
   'automation-activity': 'Automation activity',
   roles: 'Roles',
   scenarios: 'Automation',
-  segments: 'Segments',
+  segments: 'Contact groups',
   tags: 'Tags',
   templates: 'Templates',
   settings: 'Settings',
@@ -37,7 +45,11 @@ const newLabels: Record<string, string> = {
   scenarios: 'New scenario',
 };
 
-export function breadcrumbsFor(pathname: string, projectName?: string): AppBreadcrumb[] {
+export function breadcrumbsFor(
+  pathname: string,
+  projectName?: string,
+  availableSections: readonly ProjectSection[] = projectSections,
+): AppBreadcrumb[] {
   const segments = pathname.split('/').filter(Boolean);
 
   if (segments[0] === 'users') return [{ label: 'Users' }];
@@ -62,6 +74,14 @@ export function breadcrumbsFor(pathname: string, projectName?: string): AppBread
   if (!section) return breadcrumbs;
 
   const sectionLabel = sectionLabels[section] ?? section;
+  const group = projectSectionFor(pathname);
+  if (group && group.label !== sectionLabel) {
+    const available = availableSections.find((item) => item.key === group.key);
+    breadcrumbs.push({
+      label: group.label,
+      ...(available ? { path: projectSectionPath(projectId, available) } : {}),
+    });
+  }
 
   if (segments.length === 3) {
     breadcrumbs.push({ label: sectionLabel });

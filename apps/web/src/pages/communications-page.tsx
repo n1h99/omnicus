@@ -43,6 +43,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
+import { CommunicationsEmailBody } from '../communications-email-body';
 import {
   type CommunicationChannel,
   type CommunicationContact,
@@ -1715,7 +1716,7 @@ function ContactEmailConversation({
               </strong>
               <time>{new Date(email.occurredAt).toLocaleString()}</time>
             </span>
-            <p>{email.textBody || '(No text content)'}</p>
+            <CommunicationsEmailBody email={email} />
             {email.attachments.length ? (
               <small>{email.attachments.length} attachment(s)</small>
             ) : null}

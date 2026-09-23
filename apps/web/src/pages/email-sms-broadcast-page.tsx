@@ -215,7 +215,7 @@ export function EmailSmsBroadcastPage() {
       <div className="email-broadcast-hero">
         <div>
           <Typography.Text className="email-hero-kicker">OUTBOUND STUDIO</Typography.Text>
-          <Typography.Title level={2}>Email & SMS Broadcast</Typography.Title>
+          <Typography.Title level={2}>Email broadcasts</Typography.Title>
           <Typography.Paragraph>
             Design personal campaigns, manage recipients and follow delivery from inbox to CRM.
           </Typography.Paragraph>
@@ -226,7 +226,7 @@ export function EmailSmsBroadcastPage() {
           onChange={(value) => setChannel(value as ChannelView)}
           options={[
             { icon: <MailOutlined />, label: 'Email', value: 'email' },
-            { icon: <SendOutlined />, label: 'SMS', value: 'sms' },
+            { icon: <SendOutlined />, label: 'SMS · Coming soon', value: 'sms', disabled: true },
           ]}
           value={channel}
         />

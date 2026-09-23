@@ -28,7 +28,7 @@ import {
   Typography,
 } from 'antd';
 import { useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router';
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from 'react-router';
 import { getUserErrorMessage } from '../api';
 import { hasProjectPermission, useProjectAccess } from '../project-access';
 import {
@@ -41,7 +41,6 @@ import {
   type MailThreadDetail,
 } from '../email-inbox-api';
 import { EmailCompose, type ComposeInitial } from '../email-compose';
-import { EmailInboxSettings } from '../email-inbox-settings';
 import { EmailHtmlFrame } from '../email-html-frame';
 import { replySubject } from '@omnicus/email-core';
 import '../email-inbox.css';
@@ -67,6 +66,7 @@ export function EmailInboxPage() {
 }
 function EmailInboxWorkspace({ projectId }: { projectId: string }) {
   const [params, setParams] = useSearchParams();
+  const navigate = useNavigate();
   const access = useProjectAccess(projectId);
   const mailboxes = useMailboxes(projectId);
   const actions = useInboxActions(projectId);
@@ -76,6 +76,12 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
   const canReadMedia = hasProjectPermission(access.data, 'media:read');
   const canUploadMedia = canReadMedia && hasProjectPermission(access.data, 'media:manage');
   const settings = params.get('view') === 'settings' && canManage;
+  const settingsParams = new URLSearchParams(params);
+  settingsParams.delete('view');
+  const settingsLocation = {
+    pathname: `/projects/${projectId}/email-settings`,
+    search: settingsParams.toString(),
+  };
   const folder = folders.some((item) => item.key === params.get('folder'))
     ? params.get('folder')!
     : 'inbox';
@@ -125,6 +131,7 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
       setBusy(false);
     }
   };
+  if (settings) return <Navigate replace to={settingsLocation} />;
   return (
     <section className="email-workspace">
       <div className="page-heading-row">
@@ -137,18 +144,13 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
         <Space wrap>
           <Link to={`/projects/${projectId}/email-sms-broadcast`}>Campaigns</Link>
           {canManage && (
-            <Button
-              icon={<SettingOutlined />}
-              onClick={() => change({ view: settings ? null : 'settings' })}
-            >
-              {settings ? 'Back to inbox' : 'Settings'}
+            <Button icon={<SettingOutlined />} onClick={() => void navigate(settingsLocation)}>
+              Email setup
             </Button>
           )}
         </Space>
       </div>
-      {settings ? (
-        <EmailInboxSettings projectId={projectId} mailboxes={mailboxes.data ?? []} />
-      ) : mailboxes.isLoading ? (
+      {mailboxes.isLoading ? (
         <div className="mail-empty">
           <Spin />
           <p>Loading your mailboxes…</p>
@@ -175,7 +177,7 @@ function EmailInboxWorkspace({ projectId }: { projectId: string }) {
             <Button
               type="primary"
               icon={<PlusMailIcon />}
-              onClick={() => change({ view: 'settings' })}
+              onClick={() => void navigate(settingsLocation)}
             >
               Set up email
             </Button>

@@ -1,4 +1,5 @@
 import {
+  AppstoreOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuOutlined,
@@ -6,7 +7,17 @@ import {
   RightOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import { Breadcrumb, Button, Drawer, Grid, Layout, Menu, Tag, Typography } from 'antd';
+import {
+  Breadcrumb,
+  Button,
+  Drawer,
+  Grid,
+  Layout,
+  Menu,
+  Tag,
+  Typography,
+  type MenuProps,
+} from 'antd';
 import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useDispatch, useSelector } from 'react-redux';
@@ -17,7 +28,16 @@ import { apiRequest } from './api';
 import { breadcrumbsFor } from './breadcrumbs';
 import { navigationItems } from './navigation';
 import { ProfileSettingsModal } from './profile-settings-modal';
+import { useProjectAccess } from './project-access';
+import { projectSectionIcons } from './project-section-icons';
+import { ProjectSectionNav } from './project-section-nav';
+import {
+  availableProjectSections,
+  projectSectionFor,
+  projectSectionPath,
+} from './project-sections';
 import { shellActions, type AppDispatch, type RootState } from './store';
+import './project-navigation.css';
 
 const { Content, Header, Sider } = Layout;
 const { useBreakpoint } = Grid;
@@ -49,6 +69,13 @@ export function AppShell() {
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const projectId = location.pathname.match(/^\/projects\/([^/]+)/)?.[1];
+  const projectAccess = useProjectAccess(projectId);
+  const sections = useMemo(
+    () => availableProjectSections(projectAccess.data),
+    [projectAccess.data],
+  );
+  const currentSection = projectSectionFor(location.pathname);
+  const visibleSection = sections.find((section) => section.key === currentSection?.key);
   const availableNavigation = useMemo(() => {
     return navigationItems.filter(
       (item) =>
@@ -71,29 +98,92 @@ export function AppShell() {
     ?.split('-')
     .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
     .join(' ');
-  const menuItems = availableNavigation.map(({ icon, key, label }) => ({ icon, key, label }));
+  const globalItems = availableNavigation.map(({ icon, key, label, path }) => ({
+    icon,
+    key,
+    label: <Link to={path}>{label}</Link>,
+  }));
+  const menuPaths = new Map(availableNavigation.map((item) => [item.key, item.path]));
+  if (projectId) {
+    menuPaths.set('project-overview', `/projects/${projectId}`);
+    for (const section of sections) {
+      menuPaths.set(
+        `section:${section.key}`,
+        currentSection?.key === section.key
+          ? location.pathname + location.search
+          : projectSectionPath(projectId, section),
+      );
+    }
+  }
+  const menuItems: MenuProps['items'] = projectId
+    ? [
+        globalItems.find((item) => item.key === 'projects')!,
+        {
+          icon: <AppstoreOutlined />,
+          key: 'project-overview',
+          label: <Link to={`/projects/${projectId}`}>Overview</Link>,
+        },
+        ...(['workspace', 'administration'] as const).flatMap((area) => {
+          const items = sections.filter((section) => section.area === area);
+          return items.length
+            ? [
+                {
+                  type: 'group' as const,
+                  key: area,
+                  label: area === 'workspace' ? 'Workspace' : 'Administration',
+                  children: items.map((section) => ({
+                    key: `section:${section.key}`,
+                    icon: projectSectionIcons[section.key],
+                    label: (
+                      <Link to={menuPaths.get(`section:${section.key}`)!}>{section.label}</Link>
+                    ),
+                  })),
+                },
+              ]
+            : [];
+        }),
+        ...(globalItems.length > 1
+          ? [
+              {
+                key: 'system',
+                icon: <SettingOutlined />,
+                label: 'System administration',
+                children: globalItems.filter((item) => item.key !== 'projects'),
+              },
+            ]
+          : []),
+      ]
+    : globalItems;
   const project = useQuery({
     enabled: Boolean(projectId),
     queryFn: () => apiRequest<{ name: string }>(`/api/v1/projects/${projectId}`, {}, accessToken),
     queryKey: ['project', projectId, accessToken],
   });
-  const breadcrumbs = breadcrumbsFor(location.pathname, project.data?.name);
+  const breadcrumbs = breadcrumbsFor(location.pathname, project.data?.name, sections);
 
   const navigation = (
     <>
       <Brand compact={!isMobile && collapsed} />
       <Menu
+        aria-label={projectId ? 'Project navigation' : 'Application navigation'}
         className="app-navigation"
         items={menuItems}
         mode="inline"
-        onClick={({ key }) => {
-          const item = availableNavigation.find((candidate) => candidate.key === key);
-          if (item) {
-            void navigate(item.path);
-            setMobileNavigationOpen(false);
-          }
+        onClick={({ key, domEvent }) => {
+          setMobileNavigationOpen(false);
+          // Links handle pointer clicks/new tabs themselves. Menu rows also need
+          // to activate from the keyboard or when their icon is clicked.
+          if (domEvent.target instanceof Element && domEvent.target.closest('a')) return;
+          const path = menuPaths.get(key);
+          if (path) void navigate(path);
         }}
-        selectedKeys={[selectedKey]}
+        selectedKeys={[
+          projectId
+            ? visibleSection
+              ? `section:${visibleSection.key}`
+              : 'project-overview'
+            : selectedKey,
+        ]}
       />
       <div className="sidebar-footer">
         {!collapsed || isMobile ? (
@@ -161,7 +251,9 @@ export function AppShell() {
             />
             <div>
               <Typography.Text className="header-title">
-                {selectedItem?.label ?? 'Omnicus'}
+                {projectId
+                  ? (currentSection?.label ?? project.data?.name ?? 'Project')
+                  : (selectedItem?.label ?? 'Omnicus')}
               </Typography.Text>
             </div>
           </div>
@@ -197,6 +289,14 @@ export function AppShell() {
                   separator={<RightOutlined />}
                 />
               </nav>
+            ) : null}
+            {projectId && visibleSection ? (
+              <ProjectSectionNav
+                projectId={projectId}
+                section={visibleSection}
+                pathname={location.pathname}
+                search={location.search}
+              />
             ) : null}
             <Outlet />
           </div>

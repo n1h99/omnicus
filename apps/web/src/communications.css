@@ -838,7 +838,25 @@
   font-size: 11px;
 }
 
-.communications-email-message-list p {
+.communications-email-message-body {
+  margin-top: 8px;
+}
+
+.communications-email-format-toggle {
+  margin-bottom: 4px;
+}
+
+.communications-email-message-body .mail-html-frame {
+  display: block;
+  width: 100%;
+  min-height: 24px;
+  height: 24px;
+  margin: 0;
+  border: 0;
+}
+
+.communications-email-plain-text {
+  margin: 0 0 8px;
   color: var(--text-soft);
   line-height: 1.55;
   white-space: pre-wrap;

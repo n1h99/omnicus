@@ -1,0 +1,95 @@
+.app-navigation {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.app-navigation .ant-menu-item-group-title {
+  padding: 14px 14px 4px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.app-navigation .ant-menu-submenu-title {
+  margin-inline: 0;
+  padding-inline: 14px !important;
+  font-size: 12px;
+}
+
+.app-navigation.ant-menu-inline-collapsed .ant-menu-item-group-title {
+  height: 12px;
+  padding: 0;
+  overflow: hidden;
+  font-size: 0;
+}
+
+.brand,
+.sidebar-footer {
+  flex-shrink: 0;
+}
+
+.project-section-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  padding: 5px;
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  scrollbar-width: thin;
+}
+
+.project-section-tabs a {
+  flex-shrink: 0;
+  padding: 9px 15px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 20px;
+  white-space: nowrap;
+  border-radius: 10px;
+}
+
+.project-section-tabs a:hover,
+.project-section-tabs a[aria-current='page'] {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.project-section-tabs a:focus-visible,
+.project-navigation-card:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.project-administration {
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.project-administration-heading {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.project-administration .project-navigation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.project-administration .project-navigation-card {
+  min-height: 74px;
+  box-shadow: none;
+}
+
+@media (max-width: 640px) {
+  .project-administration .project-navigation-grid {
+    grid-template-columns: 1fr;
+  }
+}

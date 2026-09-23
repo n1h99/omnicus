@@ -75,6 +75,7 @@ async function mockInbox(
     failSaveOnce?: boolean;
     mediaRead?: boolean;
     reply?: { htmlBody?: string; textBody?: string };
+    outgoing?: { htmlBody?: string; textBody?: string };
   } = {},
 ) {
   const mutations: Array<{ path: string; method: string; body: Record<string, unknown> }> = [];
@@ -96,6 +97,7 @@ async function mockInbox(
       return respond({
         permissions: [
           'project:read',
+          'communications:read',
           'email:read',
           'email:manage',
           'broadcasts:read',
@@ -108,6 +110,40 @@ async function mockInbox(
       return respond([{ id: 'project-a', name: 'Customer workspace', status: 'ACTIVE' }]);
     if (path === '/api/v1/projects/project-a')
       return respond({ id: 'project-a', name: 'Customer workspace', status: 'ACTIVE' });
+    if (path.endsWith('/communications/contacts'))
+      return respond({
+        items: [
+          {
+            channels: ['EMAIL'],
+            displayName: 'Julia Taylor',
+            email: thread.peerEmail,
+            id: thread.contactId,
+            lastInteractionAt: thread.lastMessageAt,
+            phone: null,
+            preview: thread.preview,
+            status: 'ACTIVE',
+          },
+        ],
+        page: 1,
+        pageSize: 40,
+        total: 1,
+      });
+    if (path.endsWith('/communications/contacts/' + thread.contactId))
+      return respond({
+        automationMode: 'ENABLED',
+        connections: [],
+        displayName: 'Julia Taylor',
+        email: thread.peerEmail,
+        firstName: 'Julia',
+        id: thread.contactId,
+        identities: [],
+        lastName: 'Taylor',
+        phone: null,
+        status: 'ACTIVE',
+        templateVariables: {},
+        username: null,
+        whatsAppConsentStatus: 'UNKNOWN',
+      });
     if (method !== 'GET') {
       const body = request.postDataJSON() as Record<string, unknown> | null;
       mutations.push({ path, method, body: body ?? {} });
@@ -160,6 +196,7 @@ async function mockInbox(
             occurredAt: '2026-09-15T10:00:00Z',
             textBody: 'Hi Julia, your booking is confirmed. Let us know if you need anything.',
             htmlBody: '',
+            ...options.outgoing,
             attachments: [],
             delivery: {
               status: 'DELIVERED',
@@ -499,4 +536,145 @@ test('mobile uses a single reading pane and read-only access has no send action'
   await expect(
     page.locator('.mail-thread-list').getByRole('button', { name: /julia@example.com/ }),
   ).toBeVisible();
+});
+
+const communicationsUrl = '/projects/project-a/communications?contact=contact-a&channel=email';
+const communicationCards = '.communications-email-message-list article';
+
+test('Conversations formats email safely and preserves the reply context', async ({ page }) => {
+  await page.setViewportSize({ width: 1560, height: 1050 });
+  const mutations = await mockInbox(page);
+  const trackers: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('tracking.invalid')) trackers.push(request.url());
+  });
+  await page.goto(communicationsUrl);
+  await expect(page.getByRole('heading', { name: 'Communications', exact: true })).toBeVisible();
+  const card = page.locator(communicationCards).last();
+  const frame = card.locator('iframe');
+  await expect(frame.contentFrame().locator('strong')).toHaveText('updated itinerary');
+  await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+  await expect(frame).toHaveAttribute('referrerpolicy', 'no-referrer');
+  await expect(frame.contentFrame().locator('script,img,style:not(head style),a,form')).toHaveCount(
+    0,
+  );
+  expect(
+    await page.evaluate(() => (window as unknown as Record<string, unknown>).__mailXss),
+  ).toBeUndefined();
+  expect(trackers).toEqual([]);
+  await expect(card.getByText('1 attachment(s)', { exact: true })).toBeVisible();
+  await expect(page.locator(communicationCards).first().locator('iframe')).toHaveCount(0);
+  await expect(page.locator(communicationCards).first()).toContainText('Hi Julia');
+  await page.screenshot({ path: 'test-results/communications-email-desktop.png', fullPage: true });
+
+  await card.getByRole('button', { name: 'Reply', exact: true }).click();
+  await expect(page.getByLabel('To', { exact: true })).toHaveValue(thread.peerEmail);
+  await expect(page.getByLabel('To', { exact: true })).toBeDisabled();
+  await page.getByLabel('Message', { exact: true }).fill('Here is the updated plan.');
+  await page.getByRole('button', { name: 'Send email', exact: true }).click();
+  await expect(page.getByText('Email queued.', { exact: false })).toBeVisible();
+  expect(mutations.find((item) => item.path.endsWith('/messages'))?.body).toMatchObject({
+    mailboxId,
+    threadId,
+    replyToMessageId: messageId,
+    to: thread.peerEmail,
+  });
+});
+
+test('Conversations keeps short replies compact and display modes independent', async ({
+  page,
+}) => {
+  const textBody = 'Reply test\n\n> Original message';
+  await mockInbox(page, {
+    outgoing: { htmlBody: '<p>Earlier <em>formatted</em> email</p>' },
+    reply: {
+      textBody,
+      htmlBody: '<p>Reply <strong>test</strong></p><blockquote>Original message</blockquote>',
+    },
+  });
+  await page.goto(communicationsUrl);
+  const card = page.locator(communicationCards).last();
+  const earlier = page.locator(communicationCards).first();
+  const frame = card.locator('iframe');
+  await expect(frame.contentFrame().locator('blockquote')).toHaveText('Original message');
+  await expect(frame.contentFrame().locator('blockquote')).toHaveCSS('border-left-width', '3px');
+  await expect
+    .poll(() => frame.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeLessThan(150);
+  await expect
+    .poll(() => frame.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeGreaterThan(24);
+  await card.getByText('Plain text', { exact: true }).click();
+  await expect(frame).toHaveCount(0);
+  await expect(card.locator('.communications-email-plain-text')).toHaveText(textBody);
+  await expect(earlier.locator('iframe').contentFrame().locator('em')).toHaveText('formatted');
+  await card.getByText('Formatted', { exact: true }).click();
+  await expect(frame.contentFrame().locator('blockquote')).toBeVisible();
+});
+
+for (const sample of [
+  { name: 'text-only', htmlBody: ' \n ', textBody: '<b>Plain</b>\n\n> Original' },
+  { name: 'HTML-only', htmlBody: '<p>Formatted only</p>', textBody: '' },
+  { name: 'empty', htmlBody: '', textBody: '' },
+]) {
+  test(`Conversations handles ${sample.name} email`, async ({ page }) => {
+    await mockInbox(page, { reply: sample });
+    await page.goto(communicationsUrl);
+    const card = page.locator(communicationCards).last();
+    if (sample.name === 'HTML-only') {
+      await expect(card.locator('iframe').contentFrame().getByText('Formatted only')).toBeVisible();
+      await card.getByText('Plain text', { exact: true }).click();
+    } else {
+      await expect(card.locator('.communications-email-format-toggle')).toHaveCount(0);
+    }
+    await expect(card.locator('iframe')).toHaveCount(0);
+    await expect(card.locator('.communications-email-plain-text')).toHaveText(
+      sample.textBody || 'No plain-text content.',
+    );
+    await expect(card.locator('.communications-email-plain-text b')).toHaveCount(0);
+  });
+}
+
+test('Conversations resizes long email without inner vertical scrollbars', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1560, height: 1050 });
+  await mockInbox(page, {
+    reply: {
+      htmlBody: '<p>' + 'Long reply with wrapping text. '.repeat(180) + '</p>',
+    },
+  });
+  await page.goto(communicationsUrl);
+  const frame = page.locator(communicationCards).last().locator('iframe');
+  const frameHeight = () => frame.evaluate((element) => element.getBoundingClientRect().height);
+  const remainingOverflow = () =>
+    frame.evaluate(
+      (element: HTMLIFrameElement) =>
+        element.contentDocument!.documentElement.scrollHeight - element.clientHeight,
+    );
+  await expect.poll(frameHeight).toBeGreaterThan(300);
+  await expect.poll(remainingOverflow).toBeLessThanOrEqual(1);
+  const desktopHeight = await frameHeight();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(frameHeight).toBeGreaterThan(desktopHeight);
+  await expect.poll(remainingOverflow).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1560, height: 1050 });
+  await expect
+    .poll(async () => Math.abs((await frameHeight()) - desktopHeight))
+    .toBeLessThanOrEqual(1);
+  expect(errors).toEqual([]);
+});
+
+test('Conversations formats mobile email with read-only access', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockInbox(page, { send: false });
+  await page.goto(communicationsUrl);
+  const frame = page.locator(communicationCards).last().locator('iframe');
+  await expect(frame.contentFrame().locator('strong')).toHaveText('updated itinerary');
+  await expect(page.getByRole('button', { name: /New email$/ })).toBeDisabled();
+  await expect(page.getByRole('button', { name: /Reply/ })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await page.screenshot({ path: 'test-results/communications-email-mobile.png', fullPage: true });
 });

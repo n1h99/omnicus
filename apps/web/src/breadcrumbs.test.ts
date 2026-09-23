@@ -16,6 +16,7 @@ describe('breadcrumbsFor', () => {
     expect(breadcrumbsFor('/projects/project-a/channels/new', 'Omnicus Local')).toEqual([
       { label: 'Projects', path: '/projects' },
       { label: 'Omnicus Local', path: '/projects/project-a' },
+      { label: 'Connections', path: '/projects/project-a/channels' },
       { label: 'Channels', path: '/projects/project-a/channels' },
       { label: 'Connect a channel' },
     ]);
@@ -37,7 +38,27 @@ describe('breadcrumbsFor', () => {
     expect(breadcrumbsFor('/projects/project-a/communications', 'Omnicus Local')).toEqual([
       { label: 'Projects', path: '/projects' },
       { label: 'Omnicus Local', path: '/projects/project-a' },
-      { label: 'Communications' },
+      { label: 'Conversations', path: '/projects/project-a/communications' },
+      { label: 'By contact' },
+    ]);
+  });
+
+  it('groups old subsection URLs without exposing inaccessible destinations', () => {
+    expect(
+      breadcrumbsFor('/projects/project-a/operations', 'Example', [
+        {
+          key: 'settings',
+          label: 'Settings',
+          description: '',
+          area: 'administration',
+          tabs: [{ path: 'members', label: 'Members', permissions: ['project:read'] }],
+        },
+      ]),
+    ).toEqual([
+      { label: 'Projects', path: '/projects' },
+      { label: 'Example', path: '/projects/project-a' },
+      { label: 'Settings', path: '/projects/project-a/members' },
+      { label: 'Operations & audit' },
     ]);
   });
 });
