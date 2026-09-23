@@ -38,6 +38,12 @@ import type {
 } from './dto';
 
 type Json = Prisma.InputJsonValue;
+export type CrmEmailActor = { kind: 'crm'; userId: string; contactId: string; crmLeadId: string };
+// CRM users have no Omnicus membership: expose shared mailboxes and the mapped
+// contact only, and audit their actions as CRM rather than an Omnicus user.
+type InboxActor = AuthenticatedUser | CrmEmailActor;
+const isCrmActor = (actor: InboxActor): actor is CrmEmailActor =>
+  'kind' in actor && actor.kind === 'crm';
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 
 @Injectable()
@@ -55,8 +61,9 @@ export class EmailInboxService {
 
   private async mailboxFilter(
     projectId: string,
-    actor: AuthenticatedUser,
+    actor: InboxActor,
   ): Promise<Prisma.EmailMailboxWhereInput> {
+    if (isCrmActor(actor)) return { projectId, shared: true };
     return {
       projectId,
       ...((await this.manager(projectId, actor))
@@ -70,7 +77,7 @@ export class EmailInboxService {
     };
   }
 
-  async assertMailbox(projectId: string, id: string, actor: AuthenticatedUser, send = false) {
+  async assertMailbox(projectId: string, id: string, actor: InboxActor, send = false) {
     const mailbox = await this.database.client.emailMailbox.findFirst({
       include: { domain: true },
       where: { ...(await this.mailboxFilter(projectId, actor)), id },
@@ -99,7 +106,7 @@ export class EmailInboxService {
     return mailbox.id;
   }
 
-  async mailboxes(projectId: string, actor: AuthenticatedUser) {
+  async mailboxes(projectId: string, actor: InboxActor) {
     const rows = await this.database.client.emailMailbox.findMany({
       where: await this.mailboxFilter(projectId, actor),
       include: { domain: true, members: { select: { userId: true } } },
@@ -322,7 +329,7 @@ export class EmailInboxService {
 
   async threads(
     projectId: string,
-    actor: AuthenticatedUser,
+    actor: InboxActor,
     query: {
       mailboxId?: string | undefined;
       folder?: string | undefined;
@@ -337,7 +344,7 @@ export class EmailInboxService {
     const page = Math.max(1, Math.min(10_000, Number(query.page) || 1));
     if (!Number.isInteger(page)) throw new BadRequestException('email_page_invalid');
     const search = (query.q ?? '').trim().slice(0, 200);
-    const state = { userId: actor.userId };
+    const state = { userId: isCrmActor(actor) ? 'crm:' + actor.userId : actor.userId };
     const where: Prisma.EmailThreadWhereInput = {
       projectId,
       mailbox: {
@@ -346,7 +353,11 @@ export class EmailInboxService {
           ...(query.mailboxId ? { id: query.mailboxId } : {}),
         },
       },
-      ...(query.contactId ? { contactId: query.contactId } : {}),
+      ...(isCrmActor(actor)
+        ? { contactId: actor.contactId }
+        : query.contactId
+          ? { contactId: query.contactId }
+          : {}),
       ...(folder === 'inbox'
         ? {
             lastInboundAt: { not: null },
@@ -396,11 +407,12 @@ export class EmailInboxService {
     };
   }
 
-  async assertThread(projectId: string, threadId: string, actor: AuthenticatedUser) {
+  async assertThread(projectId: string, threadId: string, actor: InboxActor) {
     const thread = await this.database.client.emailThread.findFirst({
       where: {
         id: threadId,
         projectId,
+        ...(isCrmActor(actor) ? { contactId: actor.contactId } : {}),
         mailbox: { is: await this.mailboxFilter(projectId, actor) },
       },
     });
@@ -408,7 +420,7 @@ export class EmailInboxService {
     return thread;
   }
 
-  async thread(projectId: string, id: string, actor: AuthenticatedUser, before?: string) {
+  async thread(projectId: string, id: string, actor: InboxActor, before?: string) {
     const { replyToken: _token, ...thread } = await this.assertThread(projectId, id, actor);
     void _token;
     if (before && !uuidPattern.test(before)) throw new BadRequestException('email_cursor_invalid');
@@ -418,9 +430,11 @@ export class EmailInboxService {
         })
       : null;
     if (before && !cursor) throw new BadRequestException('email_cursor_invalid');
-    const state = await this.database.client.emailThreadUserState.findUnique({
-      where: { projectId_threadId_userId: { projectId, threadId: id, userId: actor.userId } },
-    });
+    const state = isCrmActor(actor)
+      ? null
+      : await this.database.client.emailThreadUserState.findUnique({
+          where: { projectId_threadId_userId: { projectId, threadId: id, userId: actor.userId } },
+        });
     const rows = await this.database.client.emailMessage.findMany({
       where: {
         projectId,
@@ -547,7 +561,7 @@ export class EmailInboxService {
     return { accepted: true, ignored: routes.size === 0 };
   }
 
-  async send(projectId: string, input: SendInboxEmailDto, actor: AuthenticatedUser) {
+  async send(projectId: string, input: SendInboxEmailDto, actor: InboxActor) {
     const mailbox = await this.assertMailbox(projectId, input.mailboxId, actor);
     const to = mailboxAddressSchema.parse(input.to);
     if (!input.text.trim() && !input.assetIds?.length)
@@ -557,7 +571,11 @@ export class EmailInboxService {
       if (thread.mailboxId !== mailbox.id || thread.peerEmail !== to)
         throw new BadRequestException('email_thread_recipient_mismatch');
     }
-    const requestKey = 'manual:' + actor.userId + ':' + input.requestId;
+    const requestKey =
+      (isCrmActor(actor) ? 'crm:' + actor.crmLeadId + ':' : 'manual:') +
+      actor.userId +
+      ':' +
+      input.requestId;
     const requestHash = createHash('sha256')
       .update(JSON.stringify({ ...input, to }))
       .digest('hex');
@@ -619,7 +637,12 @@ export class EmailInboxService {
             throw new ConflictException('email_draft_changed');
         }
         const contacts = await tx.contact.findMany({
-          where: { projectId, normalizedEmail: to, status: 'ACTIVE' },
+          where: {
+            projectId,
+            normalizedEmail: to,
+            status: 'ACTIVE',
+            ...(isCrmActor(actor) ? { id: actor.contactId } : {}),
+          },
           take: 2,
           select: { id: true },
         });
@@ -688,10 +711,11 @@ export class EmailInboxService {
     }
   }
 
-  private async assets(projectId: string, assetIds: string[], actor: AuthenticatedUser) {
+  private async assets(projectId: string, assetIds: string[], actor: InboxActor) {
     if (
       assetIds.length &&
-      !(await this.access.hasProjectPermission(actor.userId, projectId, 'media:read'))
+      (isCrmActor(actor) ||
+        !(await this.access.hasProjectPermission(actor.userId, projectId, 'media:read')))
     )
       throw new ForbiddenException('email_attachment_access_denied');
     const assets = await this.database.client.mediaAsset.findMany({
@@ -854,13 +878,18 @@ export class EmailInboxService {
     return { bytes: Buffer.from(object.bytes), filename: safeMailFilename(filename) };
   }
 
-  private record(action: string, projectId: string, entityId: string, actor: AuthenticatedUser) {
+  private record(action: string, projectId: string, entityId: string, actor: InboxActor) {
     return this.audit.record({
       action,
       projectId,
       entityId,
       entityType: 'EmailInbox',
-      actorUserId: actor.userId,
+      ...(isCrmActor(actor)
+        ? {
+            actorType: 'CRM',
+            afterSafeJson: { crmUserId: actor.userId, crmLeadId: actor.crmLeadId },
+          }
+        : { actorUserId: actor.userId }),
       correlationId: 'email-inbox',
     });
   }
