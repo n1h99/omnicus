@@ -27,7 +27,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router';
 import { getUserErrorMessage } from '../api';
 import { hasProjectPermission, useProjectAccess } from '../project-access';
@@ -42,7 +42,7 @@ import {
 } from '../email-inbox-api';
 import { EmailCompose, type ComposeInitial } from '../email-compose';
 import { EmailInboxSettings } from '../email-inbox-settings';
-import { safeEmailDocument } from '../email-safe-html';
+import { EmailHtmlFrame } from '../email-html-frame';
 import { replySubject } from '@omnicus/email-core';
 import '../email-inbox.css';
 
@@ -580,10 +580,7 @@ function EmailMessageCard({
   const [mode, setMode] = useState('Formatted');
   const actions = useInboxActions(projectId);
   const { message } = App.useApp();
-  const html = useMemo(
-    () => (open && email.htmlBody ? safeEmailDocument(email.htmlBody) : ''),
-    [email.htmlBody, open],
-  );
+  const hasHtml = Boolean(email.htmlBody.trim());
   const download = (path: string, filename: string) =>
     void actions
       .download(path, filename)
@@ -635,27 +632,22 @@ function EmailMessageCard({
               description={email.delivery.lastError}
             />
           )}
-          {html && (
+          {hasHtml && (
             <div className="mail-format-toggle">
               <Typography.Text type="secondary">
                 External images and links are disabled for safety.
               </Typography.Text>
               <Segmented
                 size="small"
+                aria-label="Email display format"
                 value={mode}
                 onChange={(value) => setMode(String(value))}
                 options={['Formatted', 'Plain text']}
               />
             </div>
           )}
-          {html && mode === 'Formatted' ? (
-            <iframe
-              title={'Email from ' + email.fromAddress}
-              sandbox=""
-              referrerPolicy="no-referrer"
-              srcDoc={html}
-              className="mail-html-frame"
-            />
+          {hasHtml && mode === 'Formatted' ? (
+            <EmailHtmlFrame html={email.htmlBody} title={'Email from ' + email.fromAddress} />
           ) : (
             <div className="mail-plain-text">{email.textBody || 'No plain-text content.'}</div>
           )}

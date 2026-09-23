@@ -74,6 +74,7 @@ async function mockInbox(
     failSendOnce?: boolean;
     failSaveOnce?: boolean;
     mediaRead?: boolean;
+    reply?: { htmlBody?: string; textBody?: string };
   } = {},
 ) {
   const mutations: Array<{ path: string; method: string; body: Record<string, unknown> }> = [];
@@ -168,7 +169,7 @@ async function mockInbox(
               scenarioExecutionId: null,
             },
           },
-          mail,
+          { ...mail, ...options.reply },
         ],
         nextCursor: null,
       });
@@ -274,6 +275,129 @@ test('desktop inbox groups campaign and reply, isolates HTML and preserves sende
   });
 });
 
+test('formatted replies stay compact and can switch to the original plain text', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  const textBody = 'Reply test\n\n> Original message';
+  await mockInbox(page, {
+    reply: {
+      textBody,
+      htmlBody: '<p>Reply <strong>test</strong></p><blockquote>Original message</blockquote>',
+    },
+  });
+  await page.goto('/projects/project-a/email-inbox');
+  await page
+    .locator('.mail-thread-list')
+    .getByRole('button', { name: /julia@example.com/ })
+    .click();
+  const card = page.locator('.mail-message-card').last();
+  const frame = card.locator('iframe');
+  await expect(frame).toBeVisible();
+  await expect(frame).toHaveAttribute('sandbox', 'allow-same-origin');
+  await expect(frame).not.toHaveAttribute('sandbox', /allow-scripts/);
+  await expect(frame.contentFrame().locator('blockquote')).toHaveText('Original message');
+  await expect(frame.contentFrame().locator('blockquote')).toHaveCSS('border-left-width', '3px');
+  await expect
+    .poll(() => frame.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeLessThan(150);
+  await expect
+    .poll(() => frame.evaluate((element) => element.getBoundingClientRect().height))
+    .toBeGreaterThan(24);
+  await page.screenshot({ path: 'test-results/email-inbox-formatted.png', fullPage: true });
+
+  await card.getByText('Plain text', { exact: true }).click();
+  await expect(frame).toHaveCount(0);
+  await expect(card.locator('.mail-plain-text')).toHaveText(textBody);
+  await card.locator('.mail-message-summary').click();
+  await expect(card.locator('.mail-message-body')).toHaveCount(0);
+  await card.locator('.mail-message-summary').click();
+  await expect(card.locator('.mail-plain-text')).toHaveText(textBody);
+  await card.getByText('Formatted', { exact: true }).click();
+  await expect(frame.contentFrame().locator('blockquote')).toBeVisible();
+
+  const earlier = page.locator('.mail-message-card').first();
+  await earlier.locator('.mail-message-summary').click();
+  await expect(earlier.locator('.mail-plain-text')).toContainText('Hi Julia');
+  await expect(earlier.locator('.mail-format-toggle')).toHaveCount(0);
+  await expect(frame).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('long formatted replies resize with the reader without nested vertical scrolling', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.setViewportSize({ width: 1560, height: 1050 });
+  await mockInbox(page, {
+    reply: {
+      htmlBody:
+        '<p>' +
+        'Long reply with wrapping text. '.repeat(180) +
+        '</p><blockquote>Original</blockquote>',
+    },
+  });
+  await page.goto('/projects/project-a/email-inbox');
+  await page
+    .locator('.mail-thread-list')
+    .getByRole('button', { name: /julia@example.com/ })
+    .click();
+  const frame = page.locator('.mail-html-frame');
+  const frameHeight = () => frame.evaluate((element) => element.getBoundingClientRect().height);
+  const remainingOverflow = () =>
+    frame.evaluate(
+      (element: HTMLIFrameElement) =>
+        element.contentDocument!.documentElement.scrollHeight - element.clientHeight,
+    );
+  await expect.poll(frameHeight).toBeGreaterThan(300);
+  await expect.poll(remainingOverflow).toBeLessThanOrEqual(1);
+  const desktopHeight = await frameHeight();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(frameHeight).toBeGreaterThan(desktopHeight);
+  await expect.poll(remainingOverflow).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1560, height: 1050 });
+  await expect
+    .poll(async () => Math.abs((await frameHeight()) - desktopHeight))
+    .toBeLessThanOrEqual(1);
+  expect(errors).toEqual([]);
+});
+
+for (const sample of [
+  {
+    name: 'text-only',
+    htmlBody: ' \n ',
+    textBody: 'Plain reply\n\n> Original',
+    expected: 'Plain reply\n\n> Original',
+  },
+  {
+    name: 'HTML-only',
+    htmlBody: '<p>Formatted only</p>',
+    textBody: '',
+    expected: 'No plain-text content.',
+  },
+  { name: 'empty', htmlBody: '', textBody: '', expected: 'No plain-text content.' },
+]) {
+  test(`the reader handles ${sample.name} messages`, async ({ page }) => {
+    await mockInbox(page, { reply: { htmlBody: sample.htmlBody, textBody: sample.textBody } });
+    await page.goto('/projects/project-a/email-inbox');
+    await page
+      .locator('.mail-thread-list')
+      .getByRole('button', { name: /julia@example.com/ })
+      .click();
+    const card = page.locator('.mail-message-card').last();
+    if (sample.name === 'HTML-only') {
+      await expect(card.locator('iframe').contentFrame().getByText('Formatted only')).toBeVisible();
+      await card.getByText('Plain text', { exact: true }).click();
+    } else {
+      await expect(card.locator('.mail-format-toggle')).toHaveCount(0);
+    }
+    await expect(card.locator('iframe')).toHaveCount(0);
+    await expect(card.locator('.mail-plain-text')).toHaveText(sample.expected);
+  });
+}
+
 test('private drafts can be saved and reopened without sending', async ({ page }) => {
   const mutations = await mockInbox(page);
   await page.goto('/projects/project-a/email-inbox');
@@ -326,7 +450,7 @@ test('an operator with media read access can attach an existing file without upl
   await page.goto('/projects/project-a/email-inbox');
   await page.getByRole('button', { name: 'Compose', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Upload file' })).toHaveCount(0);
-  await page.getByRole('combobox', { name: 'Choose files from Media' }).click();
+  await page.getByRole('combobox', { name: 'Choose files from Content library' }).click();
   await page.getByText('itinerary.pdf', { exact: true }).click();
   await page.getByLabel('To', { exact: true }).fill('client@example.com');
   await page.getByLabel('Subject', { exact: true }).fill('Your itinerary');
