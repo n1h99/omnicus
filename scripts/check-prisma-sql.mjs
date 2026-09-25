@@ -74,6 +74,7 @@ const expectedTables = new Set([
   'inbox_records',
   'normalized_events',
   'conversations',
+  'communication_entries',
   'messages',
   'outbox_records',
   'idempotency_records',
@@ -113,6 +114,7 @@ const expectedTables = new Set([
   'email_mailbox_members',
   'email_threads',
   'email_messages',
+  'email_message_crm_reads',
   'email_inbound_receipts',
   'email_thread_user_states',
   'email_drafts',
@@ -130,6 +132,8 @@ if (
 }
 
 const requiredSql = [
+  'CREATE TABLE "email_message_crm_reads"',
+  'FOREIGN KEY ("projectId", "messageId") REFERENCES "email_messages"("projectId", "id") ON DELETE CASCADE',
   'CREATE TABLE "global_active_invite_reservations"',
   'CREATE TABLE "project_active_invite_reservations"',
   'CREATE UNIQUE INDEX "global_active_invite_reservations_inviteTokenId_key"',

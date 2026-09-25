@@ -1,5 +1,6 @@
 import {
   ArrayMaxSize,
+  ArrayMinSize,
   ArrayUnique,
   IsArray,
   IsEmail,
@@ -40,4 +41,26 @@ export class CrmSendEmailDto extends CrmEmailScopeDto {
 export class CrmEmailUploadDto extends CrmEmailScopeDto {
   @IsUUID() requestId!: string;
   @IsUUID() mailboxId!: string;
+}
+
+export class CrmEmailReadDto extends CrmEmailScopeDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(200)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  messageIds!: string[];
+}
+
+export class CrmEmailUnreadSummaryDto {
+  @IsString() @Length(1, 128) crmProjectId!: string;
+  @IsString() @Length(1, 128) omnicusProjectId!: string;
+  @IsString() @Length(1, 128) crmUserId!: string;
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(500)
+  @ArrayUnique()
+  @IsString({ each: true })
+  @Length(1, 128, { each: true })
+  crmLeadIds!: string[];
 }

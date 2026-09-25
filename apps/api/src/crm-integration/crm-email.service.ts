@@ -9,7 +9,13 @@ import { DatabaseService } from '../database/database.service';
 import { EmailInboxService, type CrmEmailActor } from '../email-inbox/email-inbox.service';
 import { CrmOutboundService } from './crm-outbound.service';
 import { MediaService } from '../media/media.service';
-import type { CrmEmailScopeDto, CrmSendEmailDto, CrmEmailUploadDto } from './crm-email.dto';
+import type {
+  CrmEmailScopeDto,
+  CrmSendEmailDto,
+  CrmEmailUploadDto,
+  CrmEmailReadDto,
+  CrmEmailUnreadSummaryDto,
+} from './crm-email.dto';
 
 @Injectable()
 export class CrmEmailService {
@@ -56,16 +62,111 @@ export class CrmEmailService {
 
   async threads(input: CrmEmailScopeDto, projectId?: string) {
     const { actor } = await this.scope(input, projectId);
-    return this.inbox.threads(input.omnicusProjectId, actor, {
+    const page = await this.inbox.threads(input.omnicusProjectId, actor, {
       folder: 'all',
       contactId: actor.contactId,
       page: input.page,
     });
+    const counts = await this.database.client.emailMessage.groupBy({
+      by: ['threadId'],
+      where: {
+        projectId: input.omnicusProjectId,
+        threadId: { in: page.items.map((thread) => thread.id) },
+        direction: 'INBOUND',
+        crmRead: { is: null },
+      },
+      _count: { _all: true },
+    });
+    const unread = new Map(counts.map((row) => [row.threadId, row._count._all]));
+    return {
+      ...page,
+      items: page.items.map((thread) => ({
+        ...thread,
+        unreadCount: unread.get(thread.id) ?? 0,
+        unread: (unread.get(thread.id) ?? 0) > 0,
+      })),
+    };
   }
 
   async thread(input: CrmEmailScopeDto, threadId: string, projectId?: string) {
     const { actor } = await this.scope(input, projectId);
-    return this.inbox.thread(input.omnicusProjectId, threadId, actor, input.before);
+    const thread = await this.inbox.thread(input.omnicusProjectId, threadId, actor, input.before);
+    const where = {
+      projectId: input.omnicusProjectId,
+      threadId,
+      direction: 'INBOUND',
+      crmRead: { is: null },
+    };
+    const [unreadCount, unreadMessages] = await Promise.all([
+      this.database.client.emailMessage.count({ where }),
+      this.database.client.emailMessage.findMany({
+        where: { ...where, id: { in: thread.messages.map((message) => message.id) } },
+        select: { id: true },
+      }),
+    ]);
+    return {
+      ...thread,
+      unreadCount,
+      unread: unreadCount > 0,
+      readMessageIds: unreadMessages.map((message) => message.id),
+    };
+  }
+
+  async unreadSummary(input: CrmEmailUnreadSummaryDto, projectId?: string) {
+    await this.outbound.assertProjectRoute(input.crmProjectId, input.omnicusProjectId, projectId);
+    const threads = await this.database.client.emailThread.findMany({
+      where: {
+        projectId: input.omnicusProjectId,
+        mailbox: { is: { projectId: input.omnicusProjectId, shared: true } },
+        contact: {
+          is: {
+            projectId: input.omnicusProjectId,
+            crmLeadId: { in: input.crmLeadIds },
+            status: { not: 'MERGED' },
+          },
+        },
+        messages: { some: { direction: 'INBOUND', crmRead: { is: null } } },
+      },
+      select: {
+        contact: { select: { crmLeadId: true } },
+        _count: {
+          select: { messages: { where: { direction: 'INBOUND', crmRead: { is: null } } } },
+        },
+      },
+    });
+    const counts = new Map(input.crmLeadIds.map((id) => [id, 0]));
+    for (const thread of threads) {
+      const leadId = thread.contact?.crmLeadId;
+      if (leadId && counts.has(leadId))
+        counts.set(leadId, counts.get(leadId)! + thread._count.messages);
+    }
+    return { items: [...counts].map(([leadId, unreadCount]) => ({ leadId, unreadCount })) };
+  }
+
+  async markRead(input: CrmEmailReadDto, threadId: string, projectId?: string) {
+    const { actor } = await this.scope(input, projectId);
+    await this.inbox.assertThread(input.omnicusProjectId, threadId, actor);
+    const messages = await this.database.client.emailMessage.findMany({
+      where: {
+        projectId: input.omnicusProjectId,
+        threadId,
+        direction: 'INBOUND',
+        id: { in: input.messageIds },
+      },
+      select: { id: true },
+    });
+    if (messages.length !== new Set(input.messageIds).size)
+      throw new NotFoundException('CRM_EMAIL_MESSAGE_NOT_FOUND');
+    // Explicit IDs, not "read through now": concurrent or backdated arrivals remain unread.
+    await this.database.client.emailMessageCrmRead.createMany({
+      data: messages.map(({ id }) => ({
+        projectId: input.omnicusProjectId,
+        messageId: id,
+        readByUserId: actor.userId,
+      })),
+      skipDuplicates: true,
+    });
+    return { ok: true };
   }
 
   async send(input: CrmSendEmailDto, projectId?: string) {

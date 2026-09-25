@@ -26,14 +26,17 @@ function fixture() {
           status: 'ACTIVE',
         }),
       },
-      emailMessage: { findFirst: vi.fn().mockResolvedValue(null) },
+      emailMessage: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        groupBy: vi.fn().mockResolvedValue([]),
+      },
       project: { findUnique: vi.fn().mockResolvedValue({ status: 'ACTIVE' }) },
     },
   };
   const outbound = { assertProjectRoute: vi.fn() };
   const inbox = {
     mailboxes: vi.fn().mockResolvedValue([]),
-    threads: vi.fn(),
+    threads: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 30 }),
     thread: vi.fn(),
     send: vi.fn(),
     assertMailbox: vi.fn(),

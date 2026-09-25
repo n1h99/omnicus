@@ -20,13 +20,38 @@ import {
   type AuthenticatedCrmIntegrationRequest,
 } from './crm-integration-auth.guard';
 // eslint-disable-next-line @typescript-eslint/consistent-type-imports -- Runtime DTO metadata is required for request validation.
-import { CrmEmailScopeDto, CrmSendEmailDto, CrmEmailUploadDto } from './crm-email.dto';
+import {
+  CrmEmailScopeDto,
+  CrmSendEmailDto,
+  CrmEmailUploadDto,
+  CrmEmailReadDto,
+  CrmEmailUnreadSummaryDto,
+} from './crm-email.dto';
 import { CrmEmailService } from './crm-email.service';
 
 @UseGuards(CrmIntegrationAuthGuard)
 @Controller('integrations/v1/crm/email')
 export class CrmEmailController {
   constructor(@Inject(CrmEmailService) private readonly email: CrmEmailService) {}
+
+  @Post('unread-summary')
+  @HttpCode(200)
+  unreadSummary(
+    @Body() input: CrmEmailUnreadSummaryDto,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.email.unreadSummary(input, request.crmIntegration?.projectId);
+  }
+
+  @Post('threads/:threadId/read')
+  @HttpCode(200)
+  markRead(
+    @Body() input: CrmEmailReadDto,
+    @Param('threadId', new ParseUUIDPipe()) threadId: string,
+    @Req() request: AuthenticatedCrmIntegrationRequest,
+  ) {
+    return this.email.markRead(input, threadId, request.crmIntegration?.projectId);
+  }
 
   @Get('context')
   context(@Query() input: CrmEmailScopeDto, @Req() request: AuthenticatedCrmIntegrationRequest) {

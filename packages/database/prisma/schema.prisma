@@ -1610,6 +1610,7 @@ model EmailMessage {
   delivery           EmailDelivery? @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Restrict)
   attachments        EmailAttachment[]
   resolvedWaits      WaitState[]
+  crmRead            EmailMessageCrmRead?
 
   @@unique([projectId, id])
   @@unique([projectId, deliveryId])
@@ -1619,6 +1620,18 @@ model EmailMessage {
   @@index([projectId, threadId, occurredAt])
   @@index([automationStatus, occurredAt])
   @@map("email_messages")
+}
+
+// CRM conversations use a team-wide read state, independent of Omnicus user inboxes.
+model EmailMessageCrmRead {
+  projectId    String
+  messageId    String
+  readByUserId String
+  readAt       DateTime @default(now()) @db.Timestamptz(3)
+  message      EmailMessage @relation(fields: [projectId, messageId], references: [projectId, id], onDelete: Cascade)
+
+  @@id([projectId, messageId])
+  @@map("email_message_crm_reads")
 }
 
 model EmailInboundReceipt {

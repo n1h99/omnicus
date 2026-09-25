@@ -113,6 +113,39 @@ describe('Email inbox PostgreSQL migration', () => {
         direction: 'INBOUND',
         providerEmailId: 'provider-msg',
       });
+      await insert('email_message_crm_reads', {
+        projectId: 'p1',
+        messageId: 'msg1',
+        readByUserId: 'crm-seller',
+      });
+      await expect(
+        insert('email_message_crm_reads', {
+          projectId: 'p2',
+          messageId: 'msg1',
+          readByUserId: 'crm-seller',
+        }),
+      ).rejects.toThrow();
+      await db.query(
+        'INSERT INTO email_message_crm_reads ("projectId", "messageId", "readByUserId") VALUES ($1,$2,$3) ON CONFLICT DO NOTHING',
+        ['p1', 'msg1', 'another-seller'],
+      );
+      expect((await db.query('SELECT * FROM email_message_crm_reads')).rows).toHaveLength(1);
+      // Backdated messages, even in the same thread, do not inherit an earlier read receipt.
+      await insert('email_messages', {
+        id: 'late',
+        projectId: 'p1',
+        mailboxId: 'm1',
+        threadId: 't1',
+        direction: 'INBOUND',
+        occurredAt: '2020-01-01T00:00:00Z',
+      });
+      expect(
+        (
+          await db.query<{ id: string }>(
+            'SELECT m.id FROM email_messages m WHERE m.direction=\'INBOUND\' AND NOT EXISTS (SELECT 1 FROM email_message_crm_reads r WHERE r."projectId"=m."projectId" AND r."messageId"=m.id)',
+          )
+        ).rows,
+      ).toEqual([{ id: 'late' }]);
       await expect(
         insert('email_messages', {
           projectId: 'p1',
