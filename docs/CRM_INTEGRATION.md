@@ -1,10 +1,13 @@
 # Cyber Pulse CRM integration
 
-Status reviewed: 2026-09-17. Telegram Chat v3.3 is implemented and its core
+Meta extension and menu reviewed: 2026-10-01. Telegram Chat v3.3 is implemented and its core
 live acceptance is complete. Channel-aware contract 4.0.0 adds WhatsApp Cloud
 API in both directions. The connected WhatsApp test route has passed
 open-window automation, interactive reply and CRM-history checks; approved
 outside-window templates and production volume remain external gates.
+
+Current UI entry: `Projects -> project -> Connections -> CRM integration`.
+Meta lead setup is a card inside that tab, not a separate channel or sidebar entry.
 
 ## Verified contract
 
@@ -16,7 +19,8 @@ The checked-in OpenAPI files are the authoritative integration boundary:
 - both directions use contract 4.0.0 for WhatsApp while preserving Telegram
   v3 compatibility where the channel field was historically omitted.
 
-Omnicus calls only these CRM endpoints:
+The existing messaging/contact outbox uses these CRM endpoints. The separate
+`meta-leads/v1` extension is described below and in [META_LEADS.md](META_LEADS.md):
 
 ```text
 POST /integrations/v1/omnicus/leads/upsert
@@ -44,8 +48,42 @@ connection and conversation rather than a Telegram provider ID.
 CRM implementation and deployment requirements for outbound history are in
 `docs/CRM_OUTBOUND_HISTORY_HANDOFF.md`.
 
-Every request uses service Bearer authentication and a correlation ID. Mutating
-requests also include the durable Omnicus outbox ID as `Idempotency-Key`.
+Those outbox requests use service Bearer authentication and a correlation ID.
+Mutating outbox requests also include the durable Omnicus outbox ID as
+`Idempotency-Key`. Do not assume this outbox-ID contract describes Meta receipts.
+
+## Meta lead forms extension (ADR-066)
+
+Open `Connections -> CRM integration -> Meta lead forms`; an active project-scoped
+CRM pairing is required. User-facing setup and daily operation are documented in
+[META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md).
+
+The additive, separately versioned CRM endpoints are:
+
+```text
+POST /integrations/v1/omnicus/meta-leads/v1/preview
+POST /integrations/v1/omnicus/meta-leads/v1/apply
+POST /integrations/v1/omnicus/meta-leads/v1/reconcile
+```
+
+They use the existing encrypted paired-project credential and the new durable
+Meta submission journal, not a legacy global CRM token or a marketing automation
+node. Source identity is permanent `(omnicusProjectId, pageId, leadgenId)`;
+email/phone matching includes archived cards and sends ambiguous cases to review.
+Existing fields/assignments/stages are preserved. A form submission does not
+grant consent or automatically start website-registration scenarios.
+
+`META_LEADS_ENABLED=true` is a one-time prerequisite on the intended CRM backend.
+For the current customer, Git `staging` is live Golden Visa, while car-import
+production must remain unaffected. New Meta credentials are stored in the
+project's Omnicus settings, not substituted for Railway WhatsApp/pairing variables.
+The Page callback is project-specific: another project must not overwrite it.
+
+Preview performs comparison only unless an operator separately approves Import
+or Link. Historical/manual approvals are silent; only eligible newly created
+live leads may notify Telegram. UNKNOWN first reconciles the permanent source
+key; explicit retries require investigation. The exact request/outcome, safe
+rollout and lock-recovery rules remain authoritative in [META_LEADS.md](META_LEADS.md).
 
 ## Direction: CRM lead profile to Omnicus contact
 

@@ -1,21 +1,84 @@
 # Omnicus operator guide
 
-Status reviewed: 2026-09-17. Communications and CRM-contact synchronization
-are implemented; deployment and live-provider acceptance remain separate gates.
+Navigation and Meta integration reviewed: 2026-10-01. Communications, CRM-contact
+synchronization and Meta lead intake are implemented. Provider acceptance and
+completion of each new deployment remain separate gates.
 
 This guide describes the current deployed workflows. Provider restrictions are
 part of the product contract; a queued operation is not delivery evidence.
 
-## Email Inbox — local addition, rollout pending
+## Current project menu
 
-For the locally implemented Email Inbox, use [EMAIL_INBOX.md](EMAIL_INBOX.md)
+Start from `Projects` and select a project. The sidebar lists groups; the top
+tabs select tools within the active group. Permissions may hide a group or a
+tab. On small screens, open the navigation drawer with the top-left button.
+
+| Sidebar group | Top tabs |
+| --- | --- |
+| Conversations | By contact; Email inbox |
+| Contacts | All contacts; Contact groups; Tags; Custom fields |
+| Broadcasts | Messengers; Email |
+| Automation | Scenarios; Activity |
+| Content | Message templates; Files |
+| Connections | Messaging channels; CRM integration; Email setup |
+| Settings | General; Members; Roles; Diagnostics & audit |
+
+`Connections` and `Settings` are under `Administration`; the first five groups
+are under `Workspace`. System-wide Users, System roles and System health are
+under `System administration` while inside a project. Profile opens from the
+header and is not the same as project Settings.
+
+Source of truth: `apps/web/src/project-sections.ts` and `app-shell.tsx`.
+Old deep-link routes are retained, but old standalone sidebar labels such as
+Communications or Email & SMS Broadcast must not be used as current menu paths.
+
+## Meta lead forms: setup and daily operation
+
+Open `Projects -> project -> Connections -> CRM integration -> Meta lead forms`.
+There is no standalone Meta sidebar tool. The card requires an active project CRM
+pairing; the page requires `integrations:manage`.
+
+Use the [Russian step-by-step user guide](META_LEADS_USER_GUIDE_RU.md) for Page/Form
+IDs, token creation/renewal, callback setup, testing and handing over a new project.
+The [technical contract](META_LEADS.md) contains deployment gates and incident rules.
+
+- First setup: save the disabled configuration, Test access, then Start preview.
+  Configure the Page `leadgen` webhook and the Page-to-app subscription; test one
+  controlled submission. Do not change the WhatsApp callback or credentials.
+- The Webhook path Copy path button copies a relative path, not a complete URL.
+  Prefix the actual API origin; the website origin or the configuration API URL
+  is not a substitute. A callback already serving another project must not be replaced.
+- Historical comparison: choose browser-local date/time boundaries, up to 90 days,
+  with an exclusive end. The compact calendar shows hours/minutes. Run comparison
+  does not write to CRM; individual Import/Link actions do, after confirmation.
+- Review existing cards, missing contacts and ambiguous matches, including archives.
+  Manually approved Import/Link operations are silent; they do not emit NEW LEAD.
+- Enable live delivery explicitly. Already previewed rows are not bulk-released.
+  Verify a newly submitted, unique contact reaches the intended CRM and, if configured,
+  its Telegram group. An existing-card match does not send a new-lead notification.
+- Daily: check LIVE DELIVERY, scan errors and Needs review/Failed/Checking delivery.
+  Resolve the cause before Recheck; UNKNOWN is not permission for blind re-import.
+- Token renewal: Stop, replace only Page access token, leave unchanged secrets blank,
+  Save disabled configuration, Test access, then explicitly restore the intended mode.
+  Page ID cannot be edited after setup. New forms of the same Page must be added to
+  the allowlist and tested; a new Page requires a separately planned connection.
+
+Meta instant forms do not automatically start WEBSITE_REGISTRATION scenarios,
+grant marketing consent, connect a messenger or open a WhatsApp service window.
+Instagram instant forms are in this feature; Instagram messaging is not.
+
+## Email Inbox
+
+Open `Conversations -> Email inbox`; use `Connections -> Email setup` for mail settings.
+Use [EMAIL_INBOX.md](EMAIL_INBOX.md)
 for rollout, domain/MX setup, sender assignments, Compose/Drafts and
-Send email → Wait for reply examples. This addition is not yet deployed.
+Send email → Wait for reply examples. DNS/receiving and end-to-end delivery must
+be verified for each newly connected domain/project, not inferred from menu visibility.
 The customer pays Resend directly; Omnicus does not collect cards or maintain a balance.
 
 ## Manual contacts and CRM state
 
-Open `Contacts` and use the create-contact action to add a person manually. A
+Open `Contacts -> All contacts` and use the create-contact action to add a person manually. A
 successful create persists the project contact first and queues the same
 durable Cyber Pulse lead synchronization used by captured or edited contacts.
 CRM availability is not allowed to roll back the local contact.
@@ -33,7 +96,7 @@ does not guess by email or phone.
 
 ## Communications
 
-Open `Project -> Communications`. Select a contact in the narrow left column,
+Open `Projects -> project -> Conversations -> By contact`. Select a contact in the narrow left column,
 then choose Email, WhatsApp or Telegram in the conversation pane. Search is
 contact-oriented; the page uses the same identities, conversations, messages,
 provider queues and Email Inbox as the existing channel screens. The Cyber
@@ -59,7 +122,7 @@ channel permission. See [COMMUNICATIONS.md](COMMUNICATIONS.md).
 
 ## Website registration and automatic follow-up
 
-1. Open a project and create an Automation Studio scenario.
+1. Open `Projects -> project -> Automation -> Scenarios` and create an Automation Studio scenario.
 2. Configure the trigger node as `Website registration` and choose a stable
    `sourceKey` for the website/form integration.
 3. Copy the generated endpoint and `X-Omnicus-Ingest-Key` header from Node
@@ -117,7 +180,8 @@ not change the intended meaning of the key. Use a short stable value such as
 
 ## WhatsApp templates
 
-Open `Project -> Templates -> WhatsApp`, choose an active business channel and
+Open `Projects -> project -> Content -> Message templates`, choose the WhatsApp
+template area and an active business channel, then
 select **New template**. Template management requires channel-management
 permission; read-only members can inspect synced templates.
 
@@ -141,7 +205,7 @@ affect other numbers in the same WABA. It does not delete message history.
 
 ## WhatsApp channel center and payments
 
-Open `Channels -> WhatsApp channel`. The page shows **Connection overview**,
+Open `Connections -> Messaging channels -> WhatsApp channel`. The page shows **Connection overview**,
 **How WhatsApp works here**, then **WhatsApp channel center**.
 
 - **Status & quality** shows sending availability, number quality, messaging
@@ -187,8 +251,8 @@ Meta account's messaging tier, quality rating and template policy.
 
 ## Email campaigns
 
-The working email product is in the Omnicus project tool `Email & SMS
-Broadcast`, not in Cyber Pulse CRM.
+Open `Broadcasts -> Email` in the Omnicus project. The destination page is the
+email campaign tool (`Email & SMS Broadcast`), not the CRM lead-card composer.
 
 1. Create a campaign or reusable template.
 2. Build the message from heading, text, button, image, attachment, divider,
@@ -217,7 +281,7 @@ inline validation issue and must not crash the page.
 
 ## Broadcasts versus automated sequences
 
-Use `Email & SMS Broadcast` for a one-off or scheduled campaign to an audience.
+Use `Broadcasts -> Email` for a one-off or scheduled email campaign to an audience.
 Use `Automation -> Scenarios` when a user event must start a sequence containing
 delays, messages, waits, conditions or channel changes.
 
@@ -230,13 +294,16 @@ schedule and reporting.
 
 ## Where to inspect results
 
-- `Contacts -> Contact details`: registration metadata, WhatsApp mailing state,
+- `Contacts -> All contacts -> contact`: registration metadata, WhatsApp mailing state,
   automation activity and tracked link clicks.
-- `Email & SMS Broadcast -> Analytics`: email lifecycle events and target URLs.
-- `Automation Activity`: execution journeys, current steps and drop-off reasons.
-- `Operations & audit`: durable inbox/outbox, automation, broadcast and retry
+- `Broadcasts -> Email -> Analytics`: email lifecycle events and target URLs.
+- `Automation -> Activity`: execution journeys, current steps and drop-off reasons.
+- `Settings -> Diagnostics & audit`: durable inbox/outbox, automation, broadcast and retry
   diagnostics.
-- `System health`: live dependencies, queues and bounded operational alerts.
+- `System administration -> System health`: live dependencies, queues and bounded operational alerts.
+- `Connections -> CRM integration -> Meta lead forms`: Meta submissions, comparison,
+  per-row CRM IDs and review/error reasons. This is the Meta-specific journal;
+  generic Diagnostics & audit is not a replacement for it.
 - Cyber Pulse lead history: linked message, tracked-link and email events.
 
 ## Deliberate limits
@@ -247,4 +314,5 @@ schedule and reporting.
 - The approved-template WhatsApp send outside the customer-service window and
   production-scale mailing must be accepted with the customer's real Meta
   business assets.
-- Instagram remains outside the approved scope.
+- Instagram messaging remains outside the approved scope. Instagram instant
+  lead forms through a linked Facebook Page are supported by the Meta lead integration.

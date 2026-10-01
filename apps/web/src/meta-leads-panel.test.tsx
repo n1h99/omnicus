@@ -109,6 +109,83 @@ function expandSection(text: string) {
 }
 
 describe('Meta lead admin panel', () => {
+  it.each([
+    {
+      mode: 'live',
+      enabled: true,
+      deliveryEnabled: true,
+      label: 'LIVE DELIVERY',
+      description: 'Automatic delivery is enabled for new leads.',
+    },
+    {
+      mode: 'preview',
+      enabled: true,
+      deliveryEnabled: false,
+      label: 'PREVIEW ONLY',
+      description: 'Compare incoming leads without automatic CRM creation.',
+    },
+    {
+      mode: 'disabled',
+      enabled: false,
+      deliveryEnabled: false,
+      label: 'DISABLED',
+      description: 'Automatic intake is off. Saved submissions are kept.',
+    },
+  ])('shows the $mode summary and preserves action availability', (state) => {
+    const currentConfig = {
+      ...config,
+      enabled: state.enabled,
+      deliveryEnabled: state.deliveryEnabled,
+    };
+    cache.setQueryData(['meta-leads', 'project', 'config'], currentConfig);
+    request.mockImplementation((path: string) =>
+      Promise.resolve(
+        path.endsWith('/submissions')
+          ? { items: [], nextCursor: null }
+          : path.endsWith('/polls')
+            ? []
+            : currentConfig,
+      ),
+    );
+    mount();
+    const controls = container.querySelector('section[aria-label="Meta lead delivery controls"]');
+    expect(controls).not.toBeNull();
+    expect(controls!.querySelector('[role="status"]')?.textContent).toBe(state.label);
+    expect(controls!.querySelector(`.meta-leads-mode-badge--${state.mode}`)).not.toBeNull();
+    expect(controls!.textContent).toContain(state.description);
+    expect(controls!.querySelector('time')?.dateTime).toBe(config.liveFrom);
+    expect(controls!.querySelector('time')?.textContent).toBe(
+      new Date(config.liveFrom).toLocaleString(),
+    );
+    expect(controls!.textContent).toContain('Browser local time');
+    expect(button('Test access').disabled).toBe(state.enabled);
+    expect(button('Start preview').disabled).toBe(false);
+    expect(button('Enable live delivery').disabled).toBe(state.deliveryEnabled);
+    expect(button('Stop').disabled).toBe(!state.enabled);
+    expect(request.mock.calls.every((call) => !call[1]?.method)).toBe(true);
+  });
+  it('does not show a cutover or enable start actions before configuration', () => {
+    cache.setQueryData(['meta-leads', 'project', 'config'], null);
+    request.mockResolvedValue(null);
+    mount();
+    expect(container.querySelector('.meta-leads-cutover')).toBeNull();
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('DISABLED');
+    for (const label of ['Test access', 'Start preview', 'Enable live delivery', 'Stop']) {
+      expect(button(label).disabled).toBe(true);
+    }
+  });
+  it('keeps Stop behind explicit confirmation in the restyled controls', async () => {
+    mount();
+    act(() => button('Stop').click());
+    expect(document.body.textContent).toContain('Stop Meta intake?');
+    expect(request.mock.calls.some((call) => String(call[0]).endsWith('/stop'))).toBe(false);
+    await act(async () => button('OK').click());
+    expect(request).toHaveBeenCalledWith(
+      '/api/v1/projects/project/meta-leads/stop',
+      expect.objectContaining({ method: 'POST', body: '{}' }),
+      'unit-test',
+    );
+  });
   it('copies only the webhook path without changing the saved connection', async () => {
     const success = vi.spyOn(message, 'success').mockImplementation(() => undefined as never);
     mount();

@@ -1762,6 +1762,14 @@ without blocking unrelated people: stale gates require verification before remov
 automatic lease stealing cannot safely fence writers on standalone MongoDB.
 Unknown CRM writes reconcile by source ID; no blind retries.
 
+**Assignment follow-up (2026-10-02):** New Meta cards use the CRM's existing
+Manager (`SELLER`) selection policy: the only manager receives every card, or
+one manager is chosen at random when several exist. CRM persists both
+`responsibleManager` and `assignedTo` in the initial write before reverse sync.
+If no manager exists, intake retains its unassigned fallback. Existing cards
+keep their assignments during linking, replay and reconciliation. This adds no
+schema or HTTP contract change and performs no historical assignment backfill.
+
 No live activation, migration, historical import or Git push is implied.
 Provider checked 2026-10-01: user-verified Graph v26.0 queries and Meta's official
 [LeadgenForm SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/leadgenform.py)

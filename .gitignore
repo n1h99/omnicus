@@ -13,6 +13,9 @@
 .env
 .env.*
 !.env.example
+!/apps/api/.env.production.example
+!/apps/web/.env.production.example
+!/apps/worker/.env.production.example
 
 npm-debug.log*
 pnpm-debug.log*

@@ -1,4 +1,12 @@
-import { CopyOutlined, LinkOutlined } from '@ant-design/icons';
+import {
+  ClockCircleOutlined,
+  CopyOutlined,
+  EyeOutlined,
+  LinkOutlined,
+  PauseOutlined,
+  PlayCircleOutlined,
+  SafetyCertificateOutlined,
+} from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
@@ -11,7 +19,6 @@ import {
   Modal,
   Space,
   Table,
-  Tag,
   Typography,
   message,
 } from 'antd';
@@ -143,10 +150,29 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
       path: '/start',
       body: { liveFrom: config.data?.liveFrom ?? new Date().toISOString(), deliveryEnabled },
     });
+  const deliveryMode = config.data?.enabled
+    ? config.data.deliveryEnabled
+      ? 'live'
+      : 'preview'
+    : 'disabled';
+  const modeCopy = {
+    live: {
+      label: 'LIVE DELIVERY',
+      description: 'Automatic delivery is enabled for new leads.',
+    },
+    preview: {
+      label: 'PREVIEW ONLY',
+      description: 'Compare incoming leads without automatic CRM creation.',
+    },
+    disabled: {
+      label: 'DISABLED',
+      description: 'Automatic intake is off. Saved submissions are kept.',
+    },
+  }[deliveryMode];
 
   return (
     <Card title="Meta lead forms" style={{ marginTop: 20 }}>
-      <Typography.Paragraph type="secondary">
+      <Typography.Paragraph className="meta-leads-intro" type="secondary">
         Facebook / Instagram instant forms → this project’s CRM. Preview first; existing cards are
         matched by email and phone, including archived cards. Conflicts require review.
       </Typography.Paragraph>
@@ -156,54 +182,76 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
           are complete.
         </Typography.Paragraph>
       ) : null}
-      <Space wrap style={{ marginBottom: 16 }}>
-        <Tag>
-          {config.data?.enabled
-            ? config.data.deliveryEnabled
-              ? 'LIVE DELIVERY'
-              : 'PREVIEW ONLY'
-            : 'DISABLED'}
-        </Tag>
-        <Button
-          loading={action.isPending}
-          disabled={!config.data || config.data.enabled}
-          onClick={() => void perform({ path: '/test' })}
-        >
-          Test access
-        </Button>
-        <Button
-          disabled={!config.data?.verifiedAt || action.isPending}
-          onClick={() => start(false)}
-        >
-          Start preview
-        </Button>
-        <Button
-          disabled={!config.data?.verifiedAt || action.isPending || config.data.deliveryEnabled}
-          onClick={() => start(true)}
-        >
-          Enable live delivery
-        </Button>
-        <Button
-          disabled={!config.data?.enabled || action.isPending}
-          onClick={() =>
-            setConfirm({
-              title: 'Stop Meta intake?',
-              explanation:
-                'Background intake and delivery will stop. Already in-flight requests may complete. Stored records remain available.',
-              path: '/stop',
-              body: {},
-            })
-          }
-        >
-          Stop
-        </Button>
-      </Space>
-      {config.data?.liveFrom ? (
-        <Typography.Paragraph type="secondary">
-          Live cutover: {new Date(config.data.liveFrom).toLocaleString()}. Only this CRM project is
-          targeted.
-        </Typography.Paragraph>
-      ) : null}
+      <section className="meta-leads-controls" aria-label="Meta lead delivery controls">
+        <div className="meta-leads-controls-main">
+          <div className="meta-leads-mode">
+            <div className="meta-leads-mode-heading">
+              <span className="meta-leads-mode-title">Delivery mode</span>
+              <span
+                className={`meta-leads-mode-badge meta-leads-mode-badge--${deliveryMode}`}
+                role="status"
+              >
+                <span className="meta-leads-mode-dot" aria-hidden="true" />
+                {modeCopy.label}
+              </span>
+            </div>
+            <p className="meta-leads-mode-description">{modeCopy.description}</p>
+          </div>
+          <div className="meta-leads-actions" role="group" aria-label="Delivery actions">
+            <Button
+              icon={<SafetyCertificateOutlined />}
+              loading={action.isPending}
+              disabled={!config.data || config.data.enabled}
+              onClick={() => void perform({ path: '/test' })}
+            >
+              Test access
+            </Button>
+            <Button
+              icon={<EyeOutlined />}
+              disabled={!config.data?.verifiedAt || action.isPending}
+              onClick={() => start(false)}
+            >
+              Start preview
+            </Button>
+            <Button
+              icon={<PlayCircleOutlined />}
+              type={deliveryMode === 'live' ? 'default' : 'primary'}
+              disabled={!config.data?.verifiedAt || action.isPending || config.data.deliveryEnabled}
+              onClick={() => start(true)}
+            >
+              Enable live delivery
+            </Button>
+            <Button
+              icon={<PauseOutlined />}
+              disabled={!config.data?.enabled || action.isPending}
+              onClick={() =>
+                setConfirm({
+                  title: 'Stop Meta intake?',
+                  explanation:
+                    'Background intake and delivery will stop. Already in-flight requests may complete. Stored records remain available.',
+                  path: '/stop',
+                  body: {},
+                })
+              }
+            >
+              Stop
+            </Button>
+          </div>
+        </div>
+        <div className="meta-leads-controls-footer">
+          {config.data?.liveFrom ? (
+            <div className="meta-leads-cutover">
+              <ClockCircleOutlined aria-hidden="true" />
+              <span>Live cutover</span>
+              <time dateTime={config.data.liveFrom}>
+                {new Date(config.data.liveFrom).toLocaleString()}
+              </time>
+              <span className="meta-leads-cutover-zone">Browser local time</span>
+            </div>
+          ) : null}
+          <span className="meta-leads-target">Only this project’s CRM is targeted.</span>
+        </div>
+      </section>
       <Collapse
         items={[
           {

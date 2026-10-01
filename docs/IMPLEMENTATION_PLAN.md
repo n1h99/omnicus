@@ -1,6 +1,29 @@
 # OMNICUS — implementation plan
 
-Current status (reviewed 2026-08-14): the pilot and approved post-pilot Telegram,
+## Current addition — Meta lead intake and grouped navigation (2026-10-01)
+
+Meta lead intake is published as Omnicus `7e08450` and CRM `staging` `3a24ffb`
+(ADR-066). The user confirmed deployment, preview, historical import and live
+activation. A first new live CRM card plus its Telegram notification remains a
+separate acceptance check. CRM `staging` is the live Golden Visa business;
+car-import production is outside this rollout.
+
+UI/documentation polish is published in `39689bd`; its Railway completion and
+visual acceptance have not been independently confirmed. Current navigation is
+`Projects -> project -> Connections -> CRM integration -> Meta lead forms`.
+The project sidebar has seven groups with permission-filtered child tabs:
+Conversations, Contacts, Broadcasts, Automation, Content, Connections and Settings.
+
+Use [META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md) for user setup and
+daily operation, [META_LEADS.md](META_LEADS.md) for the implementation contract,
+and [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md) for the current menu map. Meta instant
+forms are supported; references below to deferred Instagram concern messaging,
+not this approved lead-form scope. The later documentation pass changes no code,
+schema, credentials or ADR and requires Markdown integrity checks only.
+
+## Historical baseline
+
+Status as reviewed 2026-08-14: the pilot and approved post-pilot Telegram,
 CRM, broadcasts, media/templates, Automation Studio 2.1 and Automation Studio
 2.2 slices are implemented and deployed from `main`. Telegram Chat v3.2 live
 acceptance is complete and `userReactionEvents.supported=true`. The approved

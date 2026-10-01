@@ -1,16 +1,28 @@
 # Omnicus documentation index
 
-Status reviewed: 2026-09-17. `main` includes Automation Studio 2.2, Telegram
+Navigation and Meta lead status reviewed: 2026-10-01. `main` includes Automation Studio 2.2, Telegram
 Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
 Resend email campaigns, cross-system contact merge, platform operations and
-Automation Activity.
+Automation Activity, grouped project navigation and Meta lead-form intake.
+Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
-- Local 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
-  adds disabled-by-default configuration, historical preview and conservative
-  email/phone matching. Deployment, migration, credentials and live acceptance
-  remain pending. CRM `staging` is the live Golden Visa business, not a sandbox.
+- Published 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
+  is in Omnicus `7e08450` and CRM `staging` `3a24ffb`. The user confirmed deployment,
+  preview, a historical import and live activation. First-new-lead CRM/Telegram
+  acceptance remains a separate check. CRM `staging` is the live Golden Visa
+  business, not a sandbox; car-import production is not a rollout target.
+- UI/documentation polish was pushed in `39689bd`; that push does not independently
+  confirm the latest Railway deployment or visual acceptance. The
+  [Russian Meta integration guide](META_LEADS_USER_GUIDE_RU.md) covers initial setup,
+  daily operation, historical deduplication, token renewal and new-project limits.
+  Current entry: `Projects -> project -> Connections -> CRM integration -> Meta lead forms`.
+- The project sidebar now groups tools into `Conversations`, `Contacts`,
+  `Broadcasts`, `Automation`, `Content`, `Connections` and `Settings`.
+  Child tools are top-level tabs inside the selected group, filtered by permissions.
+  See the [operator menu map](OPERATOR_GUIDE.md) for exact labels; old route URLs
+  still work and do not mean the old standalone sidebar items are present.
 
 - `origin/main` commit `83f75cb` adds the project-scoped
   [Communications workspace](COMMUNICATIONS.md): searchable contacts on the
@@ -62,7 +74,7 @@ Automation Activity.
   group/separate delivery. Its customer-facing notes are in
   [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md).
 - Automated follow-up remains in the single authoritative `Automation ->
-  Scenarios` graph. `Email & SMS Broadcast` remains the one-off/scheduled
+  Scenarios` graph. `Broadcasts -> Email` (the `Email & SMS Broadcast` page) remains the one-off/scheduled
   campaign surface and does not duplicate the graph editor, draft/version
   state, validation or runtime controls.
 - Automation continuation recovery now isolates failed executions and resolves
@@ -106,8 +118,8 @@ Automation Activity.
   journals. It never selects contact variables, event payloads or raw provider
   errors.
 - Project overview shows project identity, status, locale, timezone and lifecycle
-  information only. Tool navigation stays in the dedicated Project sections grid
-  and is not duplicated in the overview.
+  information. Grouped tool navigation is available through the project sidebar
+  and overview section cards, with child tabs inside each selected group.
 - Project lifecycle controls are kept in Project Settings: editing stays in the
   General settings form, while pause/activate and protected deletion retain their
   explicit status and confirmation flows. The project landing page stays focused
@@ -194,8 +206,9 @@ Automation Activity.
   contacts with a valid non-suppressed address are eligible; consent metadata
   remains auditable but is not an additional campaign filter. Email lifecycle
   events and clicked target URLs are forwarded idempotently to CRM.
-- Instagram remains deliberately deferred until its test account and separate
-  provider scope exist.
+- Instagram messaging remains deliberately deferred until its test account and
+  separate provider scope exist. Facebook/Instagram instant lead forms are the
+  separate implemented Meta lead-intake feature, not an Instagram chat channel.
 
 The Telegram channel-detail cache refresh issue found during the current
 verification cycle is resolved: disable/connect mutations update the active
@@ -217,6 +230,8 @@ into the final verification stage.
 | Railway topology                       | [RAILWAY.md](RAILWAY.md)                                               |
 | Test gates                             | [TESTING.md](TESTING.md)                                               |
 | Operator workflows                     | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                 |
+| Meta lead-form user setup and operation | [META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md) |
+| Meta intake contract and rollout limits | [META_LEADS.md](META_LEADS.md) |
 | Email campaigns and Resend             | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
 | Cyber Pulse integration                | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
 | Direct contact communications          | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                 |

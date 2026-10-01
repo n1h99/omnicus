@@ -20,9 +20,10 @@ User setup and ongoing operation: [Russian step-by-step guide](META_LEADS_USER_G
    creates for the same email/phone. A matching contact returns HTTP 409 instead of a
    duplicate. Leave it absent/false on car-import CRM. No new Omnicus Railway
    credential variable is needed; do not replace WhatsApp or CRM pairing tokens.
-3. In Omnicus, open the target project's **CRM integration → Meta lead forms →
-   Connection settings**. A working project-specific CRM pairing is required.
-   Enter Page ID `717670618093733`, form ID `1580656199599705`, Graph `v26.0`, a
+3. In Omnicus, open **Projects → target project → Connections → CRM integration →
+   Meta lead forms → Connection settings**. Connections is in the sidebar's
+   Administration group; CRM integration is a tab. A working project-specific
+   CRM pairing is required. Enter the target Page ID, its form IDs, Graph `v26.0`, a
    **fresh** server-appropriate Page access token, the existing Meta application's
    App Secret, and a new random webhook verify token (32+ characters). Save.
    Secrets are encrypted with the existing CHANNEL_SECRETS_KEY, never returned
@@ -54,7 +55,7 @@ User setup and ongoing operation: [Russian step-by-step guide](META_LEADS_USER_G
    previewed remain pending individual approval; enabling does not bulk-release
    them. Newly received live submissions can create a card and its notification.
 
-The exposed Explorer token from the conversation must not be reused. Token
+Exposed, expired or revoked Explorer credentials must not be reused. Token
 expiry/access revocation surfaces as a scan error or processing failure. Renew
 the credential in this panel after stopping intake, test again, then resume.
 The cutover does not move on resume, so polling can recover the paused interval.
@@ -78,6 +79,12 @@ consents. Missing fields are not silently filled. Names remain `full_name` rathe
 than a guessed first/last split. Country maps from the actual form question
 `country_of_residence:` (including its trailing colon). A new card uses META
 attribution, original submission time and the existing NEW pipeline default.
+New cards also select a CRM Manager (`SELLER`) and persist that user in both
+`responsibleManager` and `assignedTo` before reverse sync. With one manager, all
+new Meta cards go to that user; with several, selection is random as for manual
+CRM creation. With no managers, intake continues with an unassigned card.
+This applies to newly created live and approved historical cards. Linking,
+replaying or reconciling an existing card preserves its current assignment.
 Submitting a lead form never grants WhatsApp/email marketing consent.
 
 Exact matching cannot identify a manually entered card when both contacts were
@@ -207,4 +214,38 @@ web-server integration checks, web typecheck/build/runtime packaging, focused
 lint/format, Prisma validation, workspace boundaries and Markdown integrity passed.
 No connected browser was available through the Browser skill, so visual acceptance
 of the compact picker remains pending. ADR-066 and backend/schema behavior are
-unchanged; the follow-up UI/documentation changes have not been committed or pushed.
+unchanged. The follow-up UI/documentation changes were pushed in `39689bd`;
+Railway completion and visual acceptance of that commit have not been confirmed.
+
+The subsequent documentation-only pass aligns the user guide, operator menu map,
+README, CRM integration reference and implementation status with the current
+grouped navigation. It does not change ADR-066, runtime behavior, configuration,
+credentials or deployment state. Markdown checks are sufficient for this pass.
+
+The following local UI-only pass groups the mode badge, actions and live cutover
+in a responsive Delivery mode panel. Green indicates the configured LIVE mode,
+not proof of provider health or completed delivery. Existing action names,
+disabled conditions, confirmations and the original browser-local cutover value
+are preserved. No ADR-066, backend or schema change is involved.
+Checks passed: 108 web tests (11 Meta panel tests), ten production server checks,
+web typecheck/build/runtime packaging, focused lint/format, Prisma validation and
+workspace boundaries. Browser discovery still returned no connected browser;
+visual acceptance remains pending. This header polish is included in the
+2026-10-02 publication; Railway completion remains a separate check.
+
+## Manager-assignment fix (2026-10-02)
+
+CRM `staging` now assigns newly created Meta cards using the existing Manager
+role and persists both assignment fields before reverse sync (ADR-066 follow-up).
+Existing cards are not reassigned or backfilled. No environment, schema or HTTP
+contract change is required; the CRM backend must be deployed for this to take
+effect. The fix is published to CRM `staging` in `cfc913e`; Railway completion and
+live assignment verification have not been confirmed. CRM frontend `staging`
+commit `7742c35` only adds deployment-variable inventories.
+
+Verification: the new assignment regressions first reproduced the missing
+manager, then all 75 targeted CRM tests passed, including 21 Meta normalization
+and isolated MongoDB import checks. Focused format/lint and the production Nest
+build passed. Full test-inclusive TypeScript checking still reports the existing
+conversation/reaction test typing errors noted above, with no errors in the
+changed Meta files.
