@@ -18,6 +18,7 @@ import { useParams } from 'react-router';
 
 import { getUserErrorMessage } from '../api';
 import { StatusText } from '../status-text';
+import { MetaLeadsPanel } from '../meta-leads-panel';
 import {
   type CrmOperation,
   type CrmPairing,
@@ -317,6 +318,7 @@ export function CrmConfigPage() {
         })}
         rowClassName="clickable-table-row"
       />
+      {projectId && isConnected ? <MetaLeadsPanel projectId={projectId} /> : null}
       <TechnicalRecordDrawer
         onClose={() => setSelectedOperation(undefined)}
         open={Boolean(selectedOperation)}

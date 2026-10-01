@@ -26,6 +26,7 @@ import { SystemHealthModule } from './system-health/system-health.module';
 import { WhatsAppWebhookModule } from './whatsapp-webhook/whatsapp-webhook.module';
 import { EmailModule } from './email/email.module';
 import { CommunicationsModule } from './communications/communications.module';
+import { MetaLeadsModule } from './meta-leads/meta-leads.module';
 
 const rootEnvFile =
   process.env.APP_ENV === 'production' || process.env.APP_ENV === 'staging'
@@ -63,6 +64,7 @@ const rootEnvFile =
     WhatsAppWebhookModule,
     EmailModule,
     CommunicationsModule,
+    MetaLeadsModule,
   ],
 })
 export class AppModule implements NestModule {

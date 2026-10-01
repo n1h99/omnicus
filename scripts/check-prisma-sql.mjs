@@ -119,6 +119,9 @@ const expectedTables = new Set([
   'email_thread_user_states',
   'email_drafts',
   'email_attachments',
+  'meta_lead_configs',
+  'meta_lead_submissions',
+  'meta_lead_polls',
 ]);
 const generatedTables = new Set(
   [...sql.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => match[1]),
@@ -132,6 +135,8 @@ if (
 }
 
 const requiredSql = [
+  'CREATE UNIQUE INDEX "meta_lead_submissions_projectId_pageId_leadId_key"',
+  'FOREIGN KEY ("projectId", "configId") REFERENCES "meta_lead_configs"("projectId", "id") ON DELETE RESTRICT',
   'CREATE TABLE "email_message_crm_reads"',
   'FOREIGN KEY ("projectId", "messageId") REFERENCES "email_messages"("projectId", "id") ON DELETE CASCADE',
   'CREATE TABLE "global_active_invite_reservations"',

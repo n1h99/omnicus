@@ -445,7 +445,7 @@ enum DelayedActionStatus {
 }
 
 model User {
-  communicationEntries CommunicationEntry[]
+  communicationEntries    CommunicationEntry[]
   id                      String                   @id @default(uuid())
   email                   String
   normalizedEmail         String                   @unique
@@ -601,18 +601,18 @@ model GlobalUserRole {
 }
 
 model ProjectMembership {
-  id            String           @id @default(uuid())
-  projectId     String
-  userId        String
-  projectRoleId String
-  createdById   String?
-  status        MembershipStatus @default(ACTIVE)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(3)
-  updatedAt     DateTime         @updatedAt @db.Timestamptz(3)
-  project       Project          @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  user          User             @relation("ProjectMembershipUser", fields: [userId], references: [id], onDelete: Cascade)
-  projectRole   ProjectRole      @relation(fields: [projectId, projectRoleId], references: [projectId, id], onDelete: Restrict)
-  createdBy     User?            @relation("ProjectMembershipCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  id             String               @id @default(uuid())
+  projectId      String
+  userId         String
+  projectRoleId  String
+  createdById    String?
+  status         MembershipStatus     @default(ACTIVE)
+  createdAt      DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime             @updatedAt @db.Timestamptz(3)
+  project        Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  user           User                 @relation("ProjectMembershipUser", fields: [userId], references: [id], onDelete: Cascade)
+  projectRole    ProjectRole          @relation(fields: [projectId, projectRoleId], references: [projectId, id], onDelete: Restrict)
+  createdBy      User?                @relation("ProjectMembershipCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
   emailMailboxes EmailMailboxMember[]
 
   @@unique([projectId, id])
@@ -698,7 +698,82 @@ model ProjectActiveInviteReservation {
   @@map("project_active_invite_reservations")
 }
 
+model MetaLeadConfig {
+  id                   String               @id @default(uuid())
+  projectId            String               @unique
+  pageId               String               @unique
+  formIds              String[]
+  graphVersion         String               @default("v26.0")
+  credentialsEncrypted Json
+  enabled              Boolean              @default(false)
+  deliveryEnabled      Boolean              @default(false)
+  liveFrom             DateTime?            @db.Timestamptz(3)
+  verifiedAt           DateTime?            @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @db.Timestamptz(3)
+  project              Project              @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  submissions          MetaLeadSubmission[]
+  polls                MetaLeadPoll[]
+
+  @@unique([projectId, id])
+  @@map("meta_lead_configs")
+}
+
+model MetaLeadSubmission {
+  id            String         @id @default(uuid())
+  projectId     String
+  configId      String
+  pageId        String
+  formId        String
+  leadId        String
+  payload       Json?
+  state         String         @default("FETCH")
+  historical    Boolean        @default(false)
+  approved      Boolean        @default(false)
+  notify        Boolean        @default(false)
+  result        Json?
+  attempts      Int            @default(0)
+  lastError     String?
+  lockedBy      String?
+  lockedUntil   DateTime?      @db.Timestamptz(3)
+  nextAttemptAt DateTime       @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime       @updatedAt @db.Timestamptz(3)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  config        MetaLeadConfig @relation(fields: [projectId, configId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, pageId, leadId])
+  @@index([state, nextAttemptAt, lockedUntil])
+  @@index([projectId, createdAt])
+  @@map("meta_lead_submissions")
+}
+
+model MetaLeadPoll {
+  id            String         @id @default(uuid())
+  projectId     String
+  configId      String
+  formId        String
+  historical    Boolean        @default(false)
+  from          DateTime       @db.Timestamptz(3)
+  until         DateTime?      @db.Timestamptz(3)
+  cursor        String?
+  completed     Boolean        @default(false)
+  lastError     String?
+  lockedBy      String?
+  lockedUntil   DateTime?      @db.Timestamptz(3)
+  nextAttemptAt DateTime       @default(now()) @db.Timestamptz(3)
+  createdAt     DateTime       @default(now()) @db.Timestamptz(3)
+  project       Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  config        MetaLeadConfig @relation(fields: [projectId, configId], references: [projectId, id], onDelete: Restrict)
+
+  @@index([completed, nextAttemptAt, lockedUntil])
+  @@map("meta_lead_polls")
+}
+
 model Project {
+  metaLeadConfig           MetaLeadConfig?
+  metaLeadSubmissions      MetaLeadSubmission[]
+  metaLeadPolls            MetaLeadPoll[]
   communicationEntries     CommunicationEntry[]
   id                       String                           @id @default(uuid())
   name                     String
@@ -753,53 +828,53 @@ model Project {
 }
 
 model Contact {
-  communicationEntries CommunicationEntry[]
-  id                  String                    @id @default(uuid())
-  projectId           String
-  displayName         String
-  firstName           String?
-  lastName            String?
-  username            String?
-  phone               String?
-  email               String?
-  normalizedPhone     String?
-  normalizedEmail     String?
-  whatsAppConsentStatus MarketingConsentStatus @default(GRANTED)
+  communicationEntries  CommunicationEntry[]
+  id                    String                    @id @default(uuid())
+  projectId             String
+  displayName           String
+  firstName             String?
+  lastName              String?
+  username              String?
+  phone                 String?
+  email                 String?
+  normalizedPhone       String?
+  normalizedEmail       String?
+  whatsAppConsentStatus MarketingConsentStatus    @default(GRANTED)
   whatsAppConsentSource String?
-  whatsAppConsentAt     DateTime?               @db.Timestamptz(3)
-  whatsAppOptOutAt      DateTime?               @db.Timestamptz(3)
-  emailConsentStatus    MarketingConsentStatus  @default(UNKNOWN)
+  whatsAppConsentAt     DateTime?                 @db.Timestamptz(3)
+  whatsAppOptOutAt      DateTime?                 @db.Timestamptz(3)
+  emailConsentStatus    MarketingConsentStatus    @default(UNKNOWN)
   emailConsentSource    String?
-  emailConsentAt        DateTime?                @db.Timestamptz(3)
-  emailOptOutAt         DateTime?                @db.Timestamptz(3)
-  status              ContactStatus             @default(ACTIVE)
-  automationMode      AutomationMode            @default(ENABLED)
-  crmLeadId           String?
-  crmSourceUpdatedAt  DateTime?                 @db.Timestamptz(3)
-  crmContactId        String?
-  crmManagerId        String?
-  customFields        Json                      @default("{}")
-  firstInteractionAt  DateTime?                 @db.Timestamptz(3)
-  lastInteractionAt   DateTime?                 @db.Timestamptz(3)
-  archivedAt          DateTime?                 @db.Timestamptz(3)
-  mergedIntoContactId String?
-  createdAt           DateTime                  @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime                  @updatedAt @db.Timestamptz(3)
-  project             Project                   @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  channelIdentities   ChannelIdentity[]
-  tags                ContactTag[]
-  conversations       Conversation[]
-  messages            Message[]
-  scenarioExecutions  ScenarioExecution[]
-  crmOperations       CrmOperation[]
-  customFieldValues   ContactCustomFieldValue[]
-  broadcastRecipients BroadcastRecipient[]
-  scheduledMessages   ScheduledMessage[]
-  telegramMediaGroups TelegramMediaGroup[]
-  emailDeliveries      EmailDelivery[]
-  emailThreads         EmailThread[]
-  mergedInto          Contact?                  @relation("ContactMerge", fields: [projectId, mergedIntoContactId], references: [projectId, id], onDelete: Restrict)
-  mergedContacts      Contact[]                 @relation("ContactMerge")
+  emailConsentAt        DateTime?                 @db.Timestamptz(3)
+  emailOptOutAt         DateTime?                 @db.Timestamptz(3)
+  status                ContactStatus             @default(ACTIVE)
+  automationMode        AutomationMode            @default(ENABLED)
+  crmLeadId             String?
+  crmSourceUpdatedAt    DateTime?                 @db.Timestamptz(3)
+  crmContactId          String?
+  crmManagerId          String?
+  customFields          Json                      @default("{}")
+  firstInteractionAt    DateTime?                 @db.Timestamptz(3)
+  lastInteractionAt     DateTime?                 @db.Timestamptz(3)
+  archivedAt            DateTime?                 @db.Timestamptz(3)
+  mergedIntoContactId   String?
+  createdAt             DateTime                  @default(now()) @db.Timestamptz(3)
+  updatedAt             DateTime                  @updatedAt @db.Timestamptz(3)
+  project               Project                   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  channelIdentities     ChannelIdentity[]
+  tags                  ContactTag[]
+  conversations         Conversation[]
+  messages              Message[]
+  scenarioExecutions    ScenarioExecution[]
+  crmOperations         CrmOperation[]
+  customFieldValues     ContactCustomFieldValue[]
+  broadcastRecipients   BroadcastRecipient[]
+  scheduledMessages     ScheduledMessage[]
+  telegramMediaGroups   TelegramMediaGroup[]
+  emailDeliveries       EmailDelivery[]
+  emailThreads          EmailThread[]
+  mergedInto            Contact?                  @relation("ContactMerge", fields: [projectId, mergedIntoContactId], references: [projectId, id], onDelete: Restrict)
+  mergedContacts        Contact[]                 @relation("ContactMerge")
 
   @@unique([projectId, id])
   @@index([projectId, status, createdAt])
@@ -815,27 +890,27 @@ model Contact {
 }
 
 model ChannelIdentity {
-  id                  String                @id @default(uuid())
-  projectId           String
-  contactId           String
-  connectionId        String
-  channel             ChannelType
-  externalUserId      String
-  username            String?
-  displayName         String?
-  languageCode        String?
-  status              ChannelIdentityStatus @default(ACTIVE)
-  whatsAppReachability WhatsAppReachabilityStatus?
-  whatsAppReachabilityCheckedAt DateTime?    @db.Timestamptz(3)
-  whatsAppLastErrorCode String?
-  metadata            Json?
-  createdAt           DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime              @updatedAt @db.Timestamptz(3)
-  contact             Contact               @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Cascade)
-  connection          ChannelConnection     @relation(fields: [projectId, connectionId], references: [projectId, id], onDelete: Restrict)
-  broadcastRecipients BroadcastRecipient[]
-  scheduledMessages   ScheduledMessage[]
-  telegramMediaGroups TelegramMediaGroup[]
+  id                            String                      @id @default(uuid())
+  projectId                     String
+  contactId                     String
+  connectionId                  String
+  channel                       ChannelType
+  externalUserId                String
+  username                      String?
+  displayName                   String?
+  languageCode                  String?
+  status                        ChannelIdentityStatus       @default(ACTIVE)
+  whatsAppReachability          WhatsAppReachabilityStatus?
+  whatsAppReachabilityCheckedAt DateTime?                   @db.Timestamptz(3)
+  whatsAppLastErrorCode         String?
+  metadata                      Json?
+  createdAt                     DateTime                    @default(now()) @db.Timestamptz(3)
+  updatedAt                     DateTime                    @updatedAt @db.Timestamptz(3)
+  contact                       Contact                     @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Cascade)
+  connection                    ChannelConnection           @relation(fields: [projectId, connectionId], references: [projectId, id], onDelete: Restrict)
+  broadcastRecipients           BroadcastRecipient[]
+  scheduledMessages             ScheduledMessage[]
+  telegramMediaGroups           TelegramMediaGroup[]
 
   @@unique([projectId, id])
   @@unique([projectId, connectionId, externalUserId])
@@ -1047,7 +1122,7 @@ model ScenarioExecution {
   parentExecution         ScenarioExecution?      @relation("ScenarioExecutionSubflow", fields: [projectId, parentExecutionId], references: [projectId, id], onDelete: Restrict)
   childExecutions         ScenarioExecution[]     @relation("ScenarioExecutionSubflow")
   externalHttpOperations  ExternalHttpOperation[]
-  emailThread             EmailThread? @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
+  emailThread             EmailThread?            @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, scenarioId, triggerKey])
@@ -1059,23 +1134,23 @@ model ScenarioExecution {
 }
 
 model LeadCaptureEvent {
-  id             String   @id @default(uuid())
+  id             String    @id @default(uuid())
   projectId      String
   contactId      String
   sourceKey      String
   idempotencyKey String
   requestHash    String
   payload        Json
-  status         String   @default("PENDING")
-  attempts       Int      @default(0)
-  maxAttempts    Int      @default(12)
-  nextAttemptAt  DateTime @default(now()) @db.Timestamptz(3)
+  status         String    @default("PENDING")
+  attempts       Int       @default(0)
+  maxAttempts    Int       @default(12)
+  nextAttemptAt  DateTime  @default(now()) @db.Timestamptz(3)
   lockedAt       DateTime? @db.Timestamptz(3)
   lockedBy       String?
   lastError      String?
   processedAt    DateTime? @db.Timestamptz(3)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
+  createdAt      DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([projectId, sourceKey, idempotencyKey], map: "lead_capture_events_project_source_idempotency_key")
   @@index([status, nextAttemptAt], map: "lead_capture_events_status_next_idx")
@@ -1084,18 +1159,18 @@ model LeadCaptureEvent {
 }
 
 model TrackedLink {
-  id                  String   @id @default(uuid())
-  token               String   @unique(map: "tracked_links_token_key")
+  id                  String    @id @default(uuid())
+  token               String    @unique(map: "tracked_links_token_key")
   projectId           String
   contactId           String
   scenarioExecutionId String
   nodeId              String
   targetUrl           String
-  clickCount          Int      @default(0)
+  clickCount          Int       @default(0)
   firstClickedAt      DateTime? @db.Timestamptz(3)
   lastClickedAt       DateTime? @db.Timestamptz(3)
-  createdAt           DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime @updatedAt @db.Timestamptz(3)
+  createdAt           DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime  @updatedAt @db.Timestamptz(3)
 
   @@unique([projectId, scenarioExecutionId, nodeId, targetUrl], map: "tracked_links_execution_node_target_key")
   @@index([scenarioExecutionId, createdAt], map: "tracked_links_execution_created_idx")
@@ -1144,31 +1219,31 @@ model NodeExecution {
 }
 
 model WaitState {
-  id                  String            @id @default(uuid())
-  projectId           String
-  scenarioExecutionId String
-  scenarioId          String
-  scenarioVersionId   String
-  conversationId      String?
-  emailThreadId       String?
+  id                       String            @id @default(uuid())
+  projectId                String
+  scenarioExecutionId      String
+  scenarioId               String
+  scenarioVersionId        String
+  conversationId           String?
+  emailThreadId            String?
   resolvedByEmailMessageId String?
-  nodeId              String
-  status              WaitStateStatus   @default(ACTIVE)
-  criteria            Json              @default("{}")
-  successNodeId       String?
-  timeoutNodeId       String?
-  resolvedByEventId   String?
-  expiresAt           DateTime          @db.Timestamptz(3)
-  resolvedAt          DateTime?         @db.Timestamptz(3)
-  createdAt           DateTime          @default(now()) @db.Timestamptz(3)
-  updatedAt           DateTime          @updatedAt @db.Timestamptz(3)
-  project             Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  execution           ScenarioExecution @relation(fields: [projectId, scenarioExecutionId], references: [projectId, id], onDelete: Cascade)
-  scenario            Scenario          @relation(fields: [projectId, scenarioId], references: [projectId, id], onDelete: Restrict)
-  scenarioVersion     ScenarioVersion   @relation(fields: [projectId, scenarioId, scenarioVersionId], references: [projectId, scenarioId, id], onDelete: Restrict)
-  conversation        Conversation?     @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
-  emailThread         EmailThread?      @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
-  resolvedByEmailMessage EmailMessage? @relation(fields: [projectId, resolvedByEmailMessageId], references: [projectId, id], onDelete: Restrict)
+  nodeId                   String
+  status                   WaitStateStatus   @default(ACTIVE)
+  criteria                 Json              @default("{}")
+  successNodeId            String?
+  timeoutNodeId            String?
+  resolvedByEventId        String?
+  expiresAt                DateTime          @db.Timestamptz(3)
+  resolvedAt               DateTime?         @db.Timestamptz(3)
+  createdAt                DateTime          @default(now()) @db.Timestamptz(3)
+  updatedAt                DateTime          @updatedAt @db.Timestamptz(3)
+  project                  Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  execution                ScenarioExecution @relation(fields: [projectId, scenarioExecutionId], references: [projectId, id], onDelete: Cascade)
+  scenario                 Scenario          @relation(fields: [projectId, scenarioId], references: [projectId, id], onDelete: Restrict)
+  scenarioVersion          ScenarioVersion   @relation(fields: [projectId, scenarioId, scenarioVersionId], references: [projectId, scenarioId, id], onDelete: Restrict)
+  conversation             Conversation?     @relation(fields: [projectId, conversationId], references: [projectId, id], onDelete: Restrict)
+  emailThread              EmailThread?      @relation(fields: [projectId, emailThreadId], references: [projectId, id], onDelete: Restrict)
+  resolvedByEmailMessage   EmailMessage?     @relation(fields: [projectId, resolvedByEmailMessageId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, scenarioExecutionId, nodeId])
@@ -1492,20 +1567,20 @@ model MediaAsset {
 }
 
 model EmailDomain {
-  id               String @id @default(uuid())
+  id               String         @id @default(uuid())
   projectId        String
-  providerDomainId String @unique
-  name             String @unique
-  status           String @default("not_started")
-  sendingEnabled   Boolean @default(false)
-  receivingEnabled Boolean @default(false)
-  receivingReady   Boolean @default(false)
+  providerDomainId String         @unique
+  name             String         @unique
+  status           String         @default("not_started")
+  sendingEnabled   Boolean        @default(false)
+  receivingEnabled Boolean        @default(false)
+  receivingReady   Boolean        @default(false)
   region           String?
-  dnsRecords       Json @default("[]")
-  lastCheckedAt    DateTime? @db.Timestamptz(3)
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
-  project          Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  dnsRecords       Json           @default("[]")
+  lastCheckedAt    DateTime?      @db.Timestamptz(3)
+  createdAt        DateTime       @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime       @updatedAt @db.Timestamptz(3)
+  project          Project        @relation(fields: [projectId], references: [id], onDelete: Restrict)
   mailboxes        EmailMailbox[]
 
   @@unique([projectId, id])
@@ -1513,26 +1588,26 @@ model EmailDomain {
 }
 
 model EmailMailbox {
-  id               String @id @default(uuid())
-  projectId        String
-  domainId         String
-  address          String @unique
-  displayName      String
-  signature        String @default("")
-  mode             String @default("TWO_WAY")
-  status           String @default("ACTIVE")
-  shared           Boolean @default(true)
-  isDefault        Boolean @default(false)
-  createdAt        DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime @updatedAt @db.Timestamptz(3)
-  project          Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  domain           EmailDomain @relation(fields: [projectId, domainId], references: [projectId, id], onDelete: Restrict)
-  members          EmailMailboxMember[]
-  threads          EmailThread[]
-  inboundReceipts  EmailInboundReceipt[]
-  drafts           EmailDraft[]
-  campaigns        EmailCampaign[]
-  deliveries       EmailDelivery[]
+  id              String                @id @default(uuid())
+  projectId       String
+  domainId        String
+  address         String                @unique
+  displayName     String
+  signature       String                @default("")
+  mode            String                @default("TWO_WAY")
+  status          String                @default("ACTIVE")
+  shared          Boolean               @default(true)
+  isDefault       Boolean               @default(false)
+  createdAt       DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime              @updatedAt @db.Timestamptz(3)
+  project         Project               @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  domain          EmailDomain           @relation(fields: [projectId, domainId], references: [projectId, id], onDelete: Restrict)
+  members         EmailMailboxMember[]
+  threads         EmailThread[]
+  inboundReceipts EmailInboundReceipt[]
+  drafts          EmailDraft[]
+  campaigns       EmailCampaign[]
+  deliveries      EmailDelivery[]
 
   @@unique([projectId, id])
   @@index([projectId, status])
@@ -1540,10 +1615,10 @@ model EmailMailbox {
 }
 
 model EmailMailboxMember {
-  projectId String
-  mailboxId String
-  userId    String
-  mailbox   EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Cascade)
+  projectId  String
+  mailboxId  String
+  userId     String
+  mailbox    EmailMailbox      @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Cascade)
   membership ProjectMembership @relation(fields: [projectId, userId], references: [projectId, userId], onDelete: Cascade)
 
   @@id([projectId, mailboxId, userId])
@@ -1551,23 +1626,23 @@ model EmailMailboxMember {
 }
 
 model EmailThread {
-  id             String @id @default(uuid())
+  id             String                 @id @default(uuid())
   projectId      String
   mailboxId      String
   contactId      String?
   peerEmail      String
   subject        String
-  replyToken     String @unique
-  preview        String @default("")
-  messageCount   Int @default(0)
-  lastMessageAt  DateTime @default(now()) @db.Timestamptz(3)
-  lastInboundAt  DateTime? @db.Timestamptz(3)
-  lastOutboundAt DateTime? @db.Timestamptz(3)
-  createdAt      DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt      DateTime @updatedAt @db.Timestamptz(3)
-  project        Project @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  mailbox        EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
-  contact        Contact? @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  replyToken     String                 @unique
+  preview        String                 @default("")
+  messageCount   Int                    @default(0)
+  lastMessageAt  DateTime               @default(now()) @db.Timestamptz(3)
+  lastInboundAt  DateTime?              @db.Timestamptz(3)
+  lastOutboundAt DateTime?              @db.Timestamptz(3)
+  createdAt      DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt      DateTime               @updatedAt @db.Timestamptz(3)
+  project        Project                @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  mailbox        EmailMailbox           @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  contact        Contact?               @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
   messages       EmailMessage[]
   userStates     EmailThreadUserState[]
   drafts         EmailDraft[]
@@ -1582,35 +1657,35 @@ model EmailThread {
 }
 
 model EmailMessage {
-  id                 String @id @default(uuid())
-  projectId          String
-  mailboxId          String
-  threadId           String
-  deliveryId         String? @unique
-  providerEmailId    String?
-  rfcMessageId       String?
-  inReplyTo          String?
-  referencesHeader   String?
-  direction          String
-  fromAddress        String
-  toAddress          String
-  replyToAddress     String?
-  subject            String
-  textBody           String @default("")
-  htmlBody           String @default("")
-  source             String
-  requestKey         String?
-  requestHash        String?
-  isAutomatic        Boolean @default(false)
-  automationStatus   String @default("NONE")
-  automationError    String?
-  occurredAt         DateTime @default(now()) @db.Timestamptz(3)
-  createdAt          DateTime @default(now()) @db.Timestamptz(3)
-  thread             EmailThread @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
-  delivery           EmailDelivery? @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Restrict)
-  attachments        EmailAttachment[]
-  resolvedWaits      WaitState[]
-  crmRead            EmailMessageCrmRead?
+  id               String               @id @default(uuid())
+  projectId        String
+  mailboxId        String
+  threadId         String
+  deliveryId       String?              @unique
+  providerEmailId  String?
+  rfcMessageId     String?
+  inReplyTo        String?
+  referencesHeader String?
+  direction        String
+  fromAddress      String
+  toAddress        String
+  replyToAddress   String?
+  subject          String
+  textBody         String               @default("")
+  htmlBody         String               @default("")
+  source           String
+  requestKey       String?
+  requestHash      String?
+  isAutomatic      Boolean              @default(false)
+  automationStatus String               @default("NONE")
+  automationError  String?
+  occurredAt       DateTime             @default(now()) @db.Timestamptz(3)
+  createdAt        DateTime             @default(now()) @db.Timestamptz(3)
+  thread           EmailThread          @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
+  delivery         EmailDelivery?       @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Restrict)
+  attachments      EmailAttachment[]
+  resolvedWaits    WaitState[]
+  crmRead          EmailMessageCrmRead?
 
   @@unique([projectId, id])
   @@unique([projectId, deliveryId])
@@ -1627,7 +1702,7 @@ model EmailMessageCrmRead {
   projectId    String
   messageId    String
   readByUserId String
-  readAt       DateTime @default(now()) @db.Timestamptz(3)
+  readAt       DateTime     @default(now()) @db.Timestamptz(3)
   message      EmailMessage @relation(fields: [projectId, messageId], references: [projectId, id], onDelete: Cascade)
 
   @@id([projectId, messageId])
@@ -1635,22 +1710,22 @@ model EmailMessageCrmRead {
 }
 
 model EmailInboundReceipt {
-  id              String @id @default(uuid())
+  id              String       @id @default(uuid())
   projectId       String
   mailboxId       String
   providerEmailId String
   providerEventId String
   recipient       String
-  occurredAt      DateTime @db.Timestamptz(3)
-  status          String @default("PENDING")
-  attempts        Int @default(0)
-  nextAttemptAt   DateTime @default(now()) @db.Timestamptz(3)
-  lockedAt        DateTime? @db.Timestamptz(3)
+  occurredAt      DateTime     @db.Timestamptz(3)
+  status          String       @default("PENDING")
+  attempts        Int          @default(0)
+  nextAttemptAt   DateTime     @default(now()) @db.Timestamptz(3)
+  lockedAt        DateTime?    @db.Timestamptz(3)
   lockedBy        String?
   lastError       String?
-  processedAt     DateTime? @db.Timestamptz(3)
-  createdAt       DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime @updatedAt @db.Timestamptz(3)
+  processedAt     DateTime?    @db.Timestamptz(3)
+  createdAt       DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime     @updatedAt @db.Timestamptz(3)
   mailbox         EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
@@ -1663,32 +1738,32 @@ model EmailThreadUserState {
   projectId  String
   threadId   String
   userId     String
-  readAt     DateTime? @db.Timestamptz(3)
-  archivedAt DateTime? @db.Timestamptz(3)
-  starred    Boolean @default(false)
+  readAt     DateTime?   @db.Timestamptz(3)
+  archivedAt DateTime?   @db.Timestamptz(3)
+  starred    Boolean     @default(false)
   thread     EmailThread @relation(fields: [projectId, threadId], references: [projectId, id], onDelete: Cascade)
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([projectId, threadId, userId])
   @@map("email_thread_user_states")
 }
 
 model EmailDraft {
-  id           String @id @default(uuid())
-  projectId    String
-  mailboxId    String
-  userId       String
-  threadId     String?
-  toEmail      String @default("")
-  subject      String @default("")
-  textBody     String @default("")
-  assetIds     Json @default("[]")
-  revision     Int @default(1)
-  createdAt    DateTime @default(now()) @db.Timestamptz(3)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(3)
-  mailbox      EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
-  thread       EmailThread? @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
-  user         User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String       @id @default(uuid())
+  projectId String
+  mailboxId String
+  userId    String
+  threadId  String?
+  toEmail   String       @default("")
+  subject   String       @default("")
+  textBody  String       @default("")
+  assetIds  Json         @default("[]")
+  revision  Int          @default(1)
+  createdAt DateTime     @default(now()) @db.Timestamptz(3)
+  updatedAt DateTime     @updatedAt @db.Timestamptz(3)
+  mailbox   EmailMailbox @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  thread    EmailThread? @relation(fields: [projectId, mailboxId, threadId], references: [projectId, mailboxId, id], onDelete: Restrict)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, id])
   @@index([projectId, userId, updatedAt])
@@ -1696,7 +1771,7 @@ model EmailDraft {
 }
 
 model EmailAttachment {
-  id                   String @id @default(uuid())
+  id                   String       @id @default(uuid())
   projectId            String
   messageId            String
   providerAttachmentId String
@@ -1705,9 +1780,9 @@ model EmailAttachment {
   contentId            String?
   sizeBytes            Int
   bucketKey            String?
-  status               String @default("PENDING")
+  status               String       @default("PENDING")
   errorCode            String?
-  createdAt            DateTime @default(now()) @db.Timestamptz(3)
+  createdAt            DateTime     @default(now()) @db.Timestamptz(3)
   message              EmailMessage @relation(fields: [projectId, messageId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
@@ -1717,17 +1792,17 @@ model EmailAttachment {
 }
 
 model EmailTemplate {
-  id              String              @id @default(uuid())
+  id              String                 @id @default(uuid())
   projectId       String
   name            String
   description     String?
-  status          EmailTemplateStatus @default(DRAFT)
+  status          EmailTemplateStatus    @default(DRAFT)
   activeVersionId String?
   draftVersionId  String?
   createdById     String?
-  createdAt       DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt       DateTime            @updatedAt @db.Timestamptz(3)
-  project         Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  createdAt       DateTime               @default(now()) @db.Timestamptz(3)
+  updatedAt       DateTime               @updatedAt @db.Timestamptz(3)
+  project         Project                @relation(fields: [projectId], references: [id], onDelete: Restrict)
   versions        EmailTemplateVersion[]
 
   @@unique([projectId, id])
@@ -1781,7 +1856,7 @@ model EmailCampaign {
   updatedAt               DateTime            @updatedAt @db.Timestamptz(3)
   project                 Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
   deliveries              EmailDelivery[]
-  mailbox                 EmailMailbox? @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  mailbox                 EmailMailbox?       @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
 
   @@unique([projectId, id])
   @@unique([projectId, name])
@@ -1790,55 +1865,55 @@ model EmailCampaign {
 }
 
 model EmailDelivery {
-  id                    String              @id @default(uuid())
-  projectId             String
-  campaignId            String?
-  contactId             String?
-  templateVersionId     String?
-  scenarioExecutionId   String?
-  nodeId                String?
-  mailboxId             String?
-  senderSnapshot        String?
-  replyToSnapshot       String?
-  headersSnapshot       Json?
-  renderedHtml          String?
-  renderedText          String?
-  rfcMessageId          String?
-  firstAttemptAt        DateTime? @db.Timestamptz(3)
-  source                EmailDeliverySource
-  toEmail               String
-  normalizedEmail       String
-  subject               String
-  preheader             String?
-  designSnapshot        Json
-  attachmentAssetIds    Json                @default("[]")
-  unsubscribeToken      String              @default(uuid()) @unique
-  status                EmailDeliveryStatus @default(PENDING)
-  providerEmailId       String?             @unique
-  providerLastEventAt   DateTime?           @db.Timestamptz(3)
-  attempts              Int                 @default(0)
-  maxAttempts           Int                 @default(8)
-  nextAttemptAt         DateTime?           @default(now()) @db.Timestamptz(3)
-  lockedAt              DateTime?           @db.Timestamptz(3)
-  lockedBy              String?
-  lastError             String?
-  queuedAt              DateTime?           @default(now()) @db.Timestamptz(3)
-  sentAt                DateTime?           @db.Timestamptz(3)
-  deliveredAt           DateTime?           @db.Timestamptz(3)
-  openedAt              DateTime?           @db.Timestamptz(3)
-  clickedAt             DateTime?           @db.Timestamptz(3)
-  bouncedAt             DateTime?           @db.Timestamptz(3)
-  complainedAt          DateTime?           @db.Timestamptz(3)
-  failedAt              DateTime?           @db.Timestamptz(3)
-  completedAt           DateTime?           @db.Timestamptz(3)
-  createdAt             DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt             DateTime            @updatedAt @db.Timestamptz(3)
-  project               Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
-  campaign              EmailCampaign?      @relation(fields: [projectId, campaignId], references: [projectId, id], onDelete: Restrict)
-  contact               Contact?            @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
-  events                EmailEvent[]
-  mailbox               EmailMailbox? @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
-  message               EmailMessage?
+  id                  String              @id @default(uuid())
+  projectId           String
+  campaignId          String?
+  contactId           String?
+  templateVersionId   String?
+  scenarioExecutionId String?
+  nodeId              String?
+  mailboxId           String?
+  senderSnapshot      String?
+  replyToSnapshot     String?
+  headersSnapshot     Json?
+  renderedHtml        String?
+  renderedText        String?
+  rfcMessageId        String?
+  firstAttemptAt      DateTime?           @db.Timestamptz(3)
+  source              EmailDeliverySource
+  toEmail             String
+  normalizedEmail     String
+  subject             String
+  preheader           String?
+  designSnapshot      Json
+  attachmentAssetIds  Json                @default("[]")
+  unsubscribeToken    String              @unique @default(uuid())
+  status              EmailDeliveryStatus @default(PENDING)
+  providerEmailId     String?             @unique
+  providerLastEventAt DateTime?           @db.Timestamptz(3)
+  attempts            Int                 @default(0)
+  maxAttempts         Int                 @default(8)
+  nextAttemptAt       DateTime?           @default(now()) @db.Timestamptz(3)
+  lockedAt            DateTime?           @db.Timestamptz(3)
+  lockedBy            String?
+  lastError           String?
+  queuedAt            DateTime?           @default(now()) @db.Timestamptz(3)
+  sentAt              DateTime?           @db.Timestamptz(3)
+  deliveredAt         DateTime?           @db.Timestamptz(3)
+  openedAt            DateTime?           @db.Timestamptz(3)
+  clickedAt           DateTime?           @db.Timestamptz(3)
+  bouncedAt           DateTime?           @db.Timestamptz(3)
+  complainedAt        DateTime?           @db.Timestamptz(3)
+  failedAt            DateTime?           @db.Timestamptz(3)
+  completedAt         DateTime?           @db.Timestamptz(3)
+  createdAt           DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt           DateTime            @updatedAt @db.Timestamptz(3)
+  project             Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  campaign            EmailCampaign?      @relation(fields: [projectId, campaignId], references: [projectId, id], onDelete: Restrict)
+  contact             Contact?            @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  events              EmailEvent[]
+  mailbox             EmailMailbox?       @relation(fields: [projectId, mailboxId], references: [projectId, id], onDelete: Restrict)
+  message             EmailMessage?
 
   @@unique([projectId, id])
   @@unique([projectId, campaignId, contactId])
@@ -1850,16 +1925,16 @@ model EmailDelivery {
 }
 
 model EmailEvent {
-  id                String         @id @default(uuid())
-  projectId         String
-  deliveryId        String
-  providerEventId   String         @unique
-  type              EmailEventType
-  occurredAt        DateTime       @db.Timestamptz(3)
-  targetUrl         String?
-  providerPayload   Json
-  createdAt         DateTime       @default(now()) @db.Timestamptz(3)
-  delivery          EmailDelivery  @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Cascade)
+  id              String         @id @default(uuid())
+  projectId       String
+  deliveryId      String
+  providerEventId String         @unique
+  type            EmailEventType
+  occurredAt      DateTime       @db.Timestamptz(3)
+  targetUrl       String?
+  providerPayload Json
+  createdAt       DateTime       @default(now()) @db.Timestamptz(3)
+  delivery        EmailDelivery  @relation(fields: [projectId, deliveryId], references: [projectId, id], onDelete: Cascade)
 
   @@unique([projectId, id])
   @@index([projectId, deliveryId, occurredAt])

@@ -7,6 +7,11 @@ Automation Activity.
 
 ## Current product status
 
+- Local 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
+  adds disabled-by-default configuration, historical preview and conservative
+  email/phone matching. Deployment, migration, credentials and live acceptance
+  remain pending. CRM `staging` is the live Golden Visa business, not a sandbox.
+
 - `origin/main` commit `83f75cb` adds the project-scoped
   [Communications workspace](COMMUNICATIONS.md): searchable contacts on the
   left and Email/WhatsApp/Telegram conversations on the right. It reuses the

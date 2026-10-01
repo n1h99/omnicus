@@ -1734,3 +1734,36 @@ on 2026-09-23.
 Email-only validation additionally recognizes M4A's shared MP4 container signature
 as audio when the filename is M4A, and normalizes the Windows ZIP MIME alias before
 the existing content/structure checks. Messenger validation rules are unchanged.
+
+## ADR-066 — Meta Lead Ads intake and conservative CRM reconciliation
+
+**Status:** Accepted scope, 2026-10-01; local implementation, no live activation.
+
+Native Meta lead-form intake, periodic recovery and protection for manually
+entered Golden Visa leads are authorized. Omnicus has one production deployment;
+CRM `staging` is LIVE Golden Visa, not a sandbox. Car-import CRM is excluded.
+Instagram messaging remains outside this scope.
+
+Project-scoped encrypted Page credentials and a PostgreSQL submission journal
+separate Page leadgen from WhatsApp. Webhook acknowledgement follows persistence,
+never Graph/CRM calls. A bounded API background pump drains this journal. Polling
+stores cursors, never provider URLs with tokens. Configuration starts disabled;
+historical scans are preview-only until individual approval. Live delivery
+requires an explicit cutover time. CRM owns matching and supplies Omnicus contacts
+through the existing durable reverse sync, not a second person-creation path.
+
+Contract `meta-leads/v1` matches permanent source IDs, then exact normalized
+email/phone including archives. Multiple/conflicting matches require review.
+No fuzzy name matching, merging, consent inference or profile/stage overwrites.
+Only genuinely new live cards receive NEW LEAD alerts. When explicitly enabled,
+a shared MongoDB gate on hashed email/phone/source identities serializes competing
+manual/Omnicus/Meta writes. It fails closed for the affected contact after a crash,
+without blocking unrelated people: stale gates require verification before removal;
+automatic lease stealing cannot safely fence writers on standalone MongoDB.
+Unknown CRM writes reconcile by source ID; no blind retries.
+
+No live activation, migration, historical import or Git push is implied.
+Provider checked 2026-10-01: user-verified Graph v26.0 queries and Meta's official
+[LeadgenForm SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/leadgenform.py)
+and [Lead SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py).
+Meta documentation returned HTTP 429; live permissions/delivery remain external gates.

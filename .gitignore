@@ -33,3 +33,4 @@ packages/database/src/generated/
 # Documentation (local only)
 docs/*
 !docs/EMAIL_INBOX.md
+!docs/META_LEADS.md

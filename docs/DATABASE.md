@@ -1,5 +1,16 @@
 # OMNICUS — Prisma schema and migration design
 
+## Meta Lead Ads journal — ADR-066 (2026-10-01)
+
+Add `MetaLeadConfig` (one per project, encrypted credentials, Page/form allowlist,
+disabled-by-default intake/delivery, explicit live cutover) and `MetaLeadSubmission`
+(unique project/Page/lead identity, normalized payload, preview outcome, durable
+delivery state and retry schedule). `MetaLeadPoll` persists per-form pagination,
+scan interval and preview/live mode; it never stores `paging.next` token URLs.
+Composite project foreign keys prevent cross-project routes. Source identifiers
+have no TTL. CRM stores permanent source references on the lead and uses its
+existing reverse-sync queue. Migration is additive and must not run implicitly.
+
 ## Communications and inbound CRM contact sync — ADR-062/063 (2026-09-17)
 
 Migration `20260917090000_communications_permissions` registers
