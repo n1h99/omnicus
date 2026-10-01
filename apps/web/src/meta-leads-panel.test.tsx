@@ -2,10 +2,13 @@
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { message } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MetaLeadsPanel } from './meta-leads-panel';
 
 const request = vi.hoisted(() => vi.fn());
+const writeClipboard = vi.fn();
+const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 vi.mock('./auth', () => ({ useAuth: () => ({ accessToken: 'unit-test' }) }));
 vi.mock('./api', () => ({ apiRequest: request, getUserErrorMessage: () => 'Request failed' }));
 let root: Root;
@@ -23,6 +26,11 @@ const config = {
 };
 
 beforeEach(() => {
+  writeClipboard.mockReset().mockResolvedValue(undefined);
+  Object.defineProperty(navigator, 'clipboard', {
+    configurable: true,
+    value: { writeText: writeClipboard },
+  });
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   vi.stubGlobal(
     'ResizeObserver',
@@ -75,6 +83,8 @@ afterEach(() => {
   cache.clear();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+  else Reflect.deleteProperty(navigator, 'clipboard');
 });
 function mount() {
   act(() =>
@@ -90,8 +100,53 @@ function button(text: string) {
     (item) => item.textContent?.trim() === text,
   )!;
 }
+function expandSection(text: string) {
+  const header = Array.from(container.querySelectorAll<HTMLElement>('.ant-collapse-header')).find(
+    (item) => item.textContent?.includes(text),
+  );
+  expect(header).toBeDefined();
+  act(() => (header!.querySelector<HTMLElement>('[role="button"], button') ?? header!).click());
+}
 
 describe('Meta lead admin panel', () => {
+  it('copies only the webhook path without changing the saved connection', async () => {
+    const success = vi.spyOn(message, 'success').mockImplementation(() => undefined as never);
+    mount();
+    expandSection('Connection settings');
+    const webhook = container.querySelector('section[aria-label="Webhook path"]');
+    expect(webhook?.querySelector('code')?.textContent).toBe(config.webhookPath);
+    expect(webhook?.textContent).toContain('Omnicus API domain, not the website address');
+    await act(async () => button('Copy path').click());
+    expect(writeClipboard).toHaveBeenCalledWith(config.webhookPath);
+    expect(success).toHaveBeenCalledWith('Webhook path copied.');
+    expect(request.mock.calls.every((call) => !call[1]?.method)).toBe(true);
+  });
+  it('keeps the path readable and reports a clipboard failure', async () => {
+    writeClipboard.mockRejectedValue(new Error('Clipboard unavailable'));
+    const error = vi.spyOn(message, 'error').mockImplementation(() => undefined as never);
+    mount();
+    expandSection('Connection settings');
+    await act(async () => button('Copy path').click());
+    expect(error).toHaveBeenCalledWith('Could not copy. Select and copy the path manually.');
+    expect(container.querySelector('.meta-leads-webhook-endpoint code')?.textContent).toBe(
+      config.webhookPath,
+    );
+  });
+  it('uses a scoped compact calendar with hours and minutes, without seconds', async () => {
+    mount();
+    expandSection('Compare historical leads');
+    const input = container.querySelector<HTMLInputElement>('.meta-leads-history-range input');
+    expect(input).not.toBeNull();
+    await act(async () => {
+      input!.focus();
+      input!.click();
+    });
+    const popup = document.querySelector('.meta-leads-history-picker');
+    expect(popup).not.toBeNull();
+    expect(popup!.querySelectorAll('.ant-picker-time-panel-column')).toHaveLength(2);
+    expect(button('Run comparison').disabled).toBe(true);
+    expect(request.mock.calls.every((call) => !call[1]?.method)).toBe(true);
+  });
   it('shows preview results and never activates live delivery during rendering', () => {
     mount();
     expect(container.textContent).toContain('PREVIEW ONLY');

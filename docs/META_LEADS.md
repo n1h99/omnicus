@@ -1,8 +1,12 @@
 # Meta lead forms → Golden Visa CRM (contract meta-leads/v1)
 
-Local implementation, 2026-10-01. **Not deployed or activated by this change.**
+Implemented and published on 2026-10-01. The user subsequently confirmed deployment,
+successful preview/historical import and activation of live delivery. This is not
+independent verification of a first new live CRM card plus Telegram notification.
 Omnicus uses its production deployment. CRM Git branch `staging` is the LIVE
 Golden Visa business; car-import CRM production is not a target.
+
+User setup and ongoing operation: [Russian step-by-step guide](META_LEADS_USER_GUIDE_RU.md).
 
 ## Safe rollout
 
@@ -34,7 +38,7 @@ Golden Visa business; car-import CRM production is not a target.
    Do not edit the existing WhatsApp callback/credential. This first version
    must not overwrite a Page callback already serving another integration;
    inspect it first and extend routing separately if it is in use.
-   uses a callback per project and one Page per configuration; connecting more
+   This version uses a callback per project and one Page per configuration; connecting more
    Pages to one app needs a separately designed app-level router, not replacing
    another project's callback. Confirm both Meta subscription levels externally.
 7. Choose the historical interval under **Compare historical leads**. Scans read
@@ -150,8 +154,10 @@ sync but never creates a card or emits a new-lead notification.
 Provider contract: Graph v26.0, verified 2026-10-01 against user-run calls and
 [Meta's official LeadgenForm SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/leadgenform.py)
 and [Lead SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py).
-The Meta developer site returned 429 during implementation. Live account review,
-Page subscription, token lifetime and actual webhook delivery remain to be tested.
+The Meta developer site returned 429 during implementation. The user subsequently
+confirmed Page subscription and token checks. A received submission alone does not
+distinguish webhook delivery from polling, and the successful account setup does
+not establish App Review readiness for unrelated customer Pages.
 
 ## Local verification and handoff (2026-10-01)
 
@@ -185,8 +191,20 @@ conversation/reaction test typing errors; focused lint of the pre-existing
 Omnicus upsert reports two existing unsafe JSON assignments. New files and the
 production CRM build pass. These unrelated issues were not refactored here.
 
-The Browser skill found no connected browser. UI component tests passed, but
-visual browser acceptance is still pending. No Git commit/push, Railway deploy,
-live migration, Meta subscription change, real lead import or Telegram delivery
-was performed. Next gate: approve publishing, configure the fresh credential,
-run preview against the real Golden Visa database and verify one controlled lead.
+At the original implementation handoff, the Browser skill found no connected
+browser and publication/live setup were still pending. The implementation was
+subsequently published as Omnicus `7e08450` and CRM staging `3a24ffb`. The user
+completed the live setup and confirmed a historical import and live activation.
+First-new-lead CRM/Telegram acceptance remains a distinct check.
+
+The follow-up UI-only polish scopes webhook copy/layout and date/time-picker
+styling to this panel. It does not change receipt processing, matching, cutover,
+approval or notification semantics. The picker displays dates to minute precision
+in browser-local time and still submits the selected boundaries as UTC ISO strings.
+
+Follow-up checks: 103 web tests (including six Meta panel tests), ten production
+web-server integration checks, web typecheck/build/runtime packaging, focused
+lint/format, Prisma validation, workspace boundaries and Markdown integrity passed.
+No connected browser was available through the Browser skill, so visual acceptance
+of the compact picker remains pending. ADR-066 and backend/schema behavior are
+unchanged; the follow-up UI/documentation changes have not been committed or pushed.

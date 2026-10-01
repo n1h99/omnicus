@@ -1,8 +1,10 @@
+import { CopyOutlined, LinkOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Button,
   Card,
   Collapse,
+  ConfigProvider,
   DatePicker,
   Form,
   Input,
@@ -17,6 +19,7 @@ import { useState } from 'react';
 import type { Dayjs } from 'dayjs';
 import { apiRequest, getUserErrorMessage } from './api';
 import { useAuth } from './auth';
+import './meta-leads.css';
 
 type MetaConfig = {
   pageId: string;
@@ -284,14 +287,42 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
                   </Button>
                 </Form>
                 {config.data ? (
-                  <Typography.Paragraph style={{ marginTop: 12 }}>
-                    Webhook path on the Omnicus API domain:{' '}
-                    <Typography.Text copyable code>
-                      {config.data.webhookPath}
-                    </Typography.Text>
-                    . Subscribe the Page webhook to <Typography.Text code>leadgen</Typography.Text>{' '}
-                    and connect this app to the Page.
-                  </Typography.Paragraph>
+                  <section className="meta-leads-webhook" aria-label="Webhook path">
+                    <div className="meta-leads-webhook-heading">
+                      <span className="meta-leads-webhook-icon" aria-hidden="true">
+                        <LinkOutlined />
+                      </span>
+                      <div>
+                        <div className="meta-leads-webhook-title">Webhook path</div>
+                        <div className="meta-leads-webhook-description">
+                          Add this path to your Omnicus API domain, not the website address.
+                        </div>
+                      </div>
+                    </div>
+                    <div className="meta-leads-webhook-endpoint">
+                      <code>{config.data.webhookPath}</code>
+                      <Button
+                        aria-label="Copy webhook path"
+                        icon={<CopyOutlined />}
+                        onClick={async () => {
+                          try {
+                            await navigator.clipboard.writeText(config.data!.webhookPath);
+                            void message.success('Webhook path copied.');
+                          } catch {
+                            void message.error(
+                              'Could not copy. Select and copy the path manually.',
+                            );
+                          }
+                        }}
+                      >
+                        Copy path
+                      </Button>
+                    </div>
+                    <div className="meta-leads-webhook-description">
+                      Subscribe the Page webhook to <code>leadgen</code>, then connect this app to
+                      the Page.
+                    </div>
+                  </section>
                 ) : null}
               </>
             ),
@@ -306,12 +337,37 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
                   import or notify; approve individual unambiguous records after checking the
                   results. Intake must be running in preview or live mode.
                 </Typography.Paragraph>
-                <Space wrap>
-                  <DatePicker.RangePicker
-                    showTime
-                    value={range}
-                    onChange={(value) => setRange(value)}
-                  />
+                <div className="meta-leads-history-controls">
+                  <ConfigProvider
+                    theme={{
+                      token: { controlItemBgActive: '#e7f2f0', borderRadiusSM: 6 },
+                      components: {
+                        DatePicker: {
+                          cellActiveWithRangeBg: '#e7f2f0',
+                          cellHoverWithRangeBg: '#d4e9e5',
+                          cellHoverBg: '#f1f5f9',
+                          cellRangeBorderColor: '#76b1a9',
+                          cellWidth: 36,
+                          cellHeight: 24,
+                          textHeight: 40,
+                          timeColumnWidth: 48,
+                          timeColumnHeight: 224,
+                          timeCellHeight: 28,
+                          borderRadiusLG: 16,
+                        },
+                      },
+                    }}
+                  >
+                    <DatePicker.RangePicker
+                      className="meta-leads-history-range"
+                      classNames={{ popup: { root: 'meta-leads-history-picker' } }}
+                      format="MMM D, YYYY HH:mm"
+                      placeholder={['Start date & time', 'End date & time']}
+                      showTime={{ format: 'HH:mm', showSecond: false }}
+                      value={range}
+                      onChange={(value) => setRange(value)}
+                    />
+                  </ConfigProvider>
                   <Button
                     disabled={
                       !config.data?.enabled || !range?.[0] || !range?.[1] || action.isPending
@@ -325,7 +381,7 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
                   >
                     Run comparison
                   </Button>
-                </Space>
+                </div>
                 <Typography.Paragraph style={{ marginTop: 12 }}>
                   {polls.data?.filter((poll) => poll.historical && !poll.completed).length ?? 0}{' '}
                   history scans pending. Polling checks every 5 minutes; large forms are read in

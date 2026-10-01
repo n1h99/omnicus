@@ -34,3 +34,4 @@ packages/database/src/generated/
 docs/*
 !docs/EMAIL_INBOX.md
 !docs/META_LEADS.md
+!docs/META_LEADS_USER_GUIDE_RU.md
