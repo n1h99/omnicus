@@ -11,6 +11,13 @@ Composite project foreign keys prevent cross-project routes. Source identifiers
 have no TTL. CRM stores permanent source references on the lead and uses its
 existing reverse-sync queue. Migration is additive and must not run implicitly.
 
+The 2026-10-14 budget/ad extension uses the existing submission `payload` JSON:
+optional `budgetUsdRange`, `adId`, `adName`. No Prisma column or migration is
+added. New Golden Visa CRM cards add an optional MongoDB
+`qualificationData.metaBudgetUsdRange` and reuse existing
+`attributionData.metaAdId`/`metaAdName`; old records remain unchanged. The USD
+range is separate from the EUR approximate-capital classification.
+
 ## Communications and inbound CRM contact sync — ADR-062/063 (2026-09-17)
 
 Migration `20260917090000_communications_permissions` registers

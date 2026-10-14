@@ -45,7 +45,13 @@ type Submission = {
   state: string;
   historical: boolean;
   lastError: string | null;
-  payload: { name?: string; email?: string; phone?: string } | null;
+  payload: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    budgetUsdRange?: string;
+    adName?: string;
+  } | null;
   result: { reason?: string; crmLeadId?: string } | null;
 };
 type ConfigValues = {
@@ -471,6 +477,10 @@ export function MetaLeadsPanel({ projectId }: { projectId: string }) {
                 <Typography.Text type="secondary">
                   {row.payload?.email || row.payload?.phone || row.leadId}
                 </Typography.Text>
+                {row.payload?.budgetUsdRange ? (
+                  <div>Budget: {row.payload.budgetUsdRange} USD</div>
+                ) : null}
+                {row.payload?.adName ? <div>Ad: {row.payload.adName}</div> : null}
               </>
             ),
           },

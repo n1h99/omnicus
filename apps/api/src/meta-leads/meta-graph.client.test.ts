@@ -31,6 +31,92 @@ describe('Meta Graph v26 adapter', () => {
     expect(() => normalizeMetaLead({ ...lead, created_time: 'broken' }, '333', '222')).toThrow();
     expect(() => normalizeMetaLead({ ...lead, field_data: null }, '333', '222')).toThrow();
   });
+  it.each([
+    ['150_000_-_300_000', '150 000–300 000'],
+    ['300_000_-_500_000', '300 000–500 000'],
+    ['500_000_-_700_000', '500 000–700 000'],
+    ['700_000+', '700 000+'],
+    ['150 000 - 300 000', '150 000–300 000'],
+    ['700 000+', '700 000+'],
+  ])('maps verified USD budget answer %s with actual ad metadata', (answer, range) => {
+    const formId = '2301723413920519';
+    expect(
+      normalizeMetaLead(
+        {
+          ...lead,
+          form_id: formId,
+          ad_id: '120254153730390154',
+          ad_name: '2 - lead-form',
+          field_data: [...lead.field_data, { name: 'Budget', values: [answer] }],
+        },
+        '333',
+        formId,
+      ),
+    ).toMatchObject({ budgetUsdRange: range, adId: '120254153730390154', adName: '2 - lead-form' });
+  });
+  it('does not infer USD for other forms or an unknown budget answer', () => {
+    const withBudget = {
+      ...lead,
+      field_data: [...lead.field_data, { name: 'Budget', values: ['150_000_-_300_000'] }],
+    };
+    expect(normalizeMetaLead(withBudget, '333', '222')).not.toHaveProperty('budgetUsdRange');
+    expect(
+      normalizeMetaLead(
+        {
+          ...withBudget,
+          form_id: '2301723413920519',
+          field_data: [{ name: 'Budget', values: ['future option'] }],
+        },
+        '333',
+        '2301723413920519',
+      ),
+    ).not.toHaveProperty('budgetUsdRange');
+  });
+  it('bounds ad names, strips control characters, and ignores malformed optional ad IDs', () => {
+    const result = normalizeMetaLead(
+      { ...lead, ad_id: '../bad', ad_name: `2 - lead-form\n${'x'.repeat(500)}` },
+      '333',
+      '222',
+    );
+    expect(result.adName).toHaveLength(300);
+    expect(result.adName).not.toContain('\n');
+    expect(result).not.toHaveProperty('adId');
+    expect(result.email).toBe(lead.field_data[2]?.values[0]);
+  });
+  it.each(['lead', 'page'] as const)(
+    'falls back to core fields for %s if optional ad fields lack access',
+    async (mode) => {
+      const core = mode === 'lead' ? lead : { data: [lead] };
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(new Response('private provider error', { status: 403 }))
+        .mockResolvedValueOnce(new Response(JSON.stringify(core)));
+      vi.stubGlobal('fetch', fetchMock);
+      const client = new MetaGraphClient('test', 'v26.0');
+      if (mode === 'lead')
+        expect((await client.lead('111', '333', '222')).name).toBe('Test Person');
+      else expect((await client.page('222', 'safe-cursor')).items).toHaveLength(1);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(new URL(String(fetchMock.mock.calls[0]?.[0])).searchParams.get('fields')).toContain(
+        'ad_name',
+      );
+      expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get('fields')).toBe(
+        'id,created_time,form_id,field_data',
+      );
+      if (mode === 'page')
+        expect(new URL(String(fetchMock.mock.calls[1]?.[0])).searchParams.get('after')).toBe(
+          'safe-cursor',
+        );
+    },
+  );
+  it('does not issue a fallback request on provider rate limiting', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response('', { status: 429 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(new MetaGraphClient('test', 'v26.0').lead('111', '333', '222')).rejects.toThrow(
+      'META_GRAPH_RATE_LIMITED',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it('follows only cursor data, never a token-bearing next URL', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(

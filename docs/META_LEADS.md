@@ -8,6 +8,50 @@ Golden Visa business; car-import CRM production is not a target.
 
 User setup and ongoing operation: [Russian step-by-step guide](META_LEADS_USER_GUIDE_RU.md).
 
+## Budget/ad extension (2026-10-14)
+
+The user verified active form `2301723413920519` (`Lead-form - with budget`) on
+the existing Golden Visa Page `717670618093733`. Its case-sensitive `Budget`
+question explicitly asks for USD and has four known ranges. Only that verified
+form maps this answer to `budgetUsdRange`; unknown ranges and other forms do not
+infer a currency. Both `2 - lead-form` and `5 - lead-form` are `ad_name` values
+using this same form, with their own `ad_id`.
+
+Optional additive payload fields `budgetUsdRange`, `adId`, `adName` are accepted
+by `meta-leads/v1`. The journal and incoming-lead UI retain these values. New CRM
+cards store the USD range separately at `qualificationData.metaBudgetUsdRange`
+and reuse `attributionData.metaAdId`/`metaAdName`; no EUR approximate-capital
+category or numeric budget is inferred. Matching/replay preserves existing card
+data. Live NEW LEAD snapshots append `Budget: <range> USD` and `Ad: <name>` when
+present. Historical imports retain their no-notification policy.
+
+Graph fetches request the optional ad fields; if access to those fields is
+rejected, they retry the original core fields so lead intake still works. Rate
+limiting does not trigger an extra fallback request. Deploy the accepting CRM
+staging backend before Omnicus. No credential or database migration is added.
+Adding the Form ID, historical preview and first-new-lead verification remain
+operator steps after deployment.
+
+### Extension verification, 2026-10-14
+
+- Omnicus: 33 focused Meta unit tests, 6 isolated HTTP integration tests,
+  108 web tests, 10 production web-server tests and API production-runtime smoke
+  passed. Full workspace typecheck, production build, Prisma validation and
+  focused lint/format checks passed.
+- CRM staging: 64 Meta/Telegram tests, backend build and focused lint passed;
+  frontend build and focused lint passed. The regression test saves normal
+  qualification edits without losing the read-only imported USD range.
+- Wider baseline checks are not fully green: Omnicus API has one existing error
+  dictionary assertion failure; root lint reports five errors in unchanged
+  communication/CRM files and a temporary preview script; root formatting
+  reports four unchanged files. CRM frontend has two existing source-text
+  assertions in attachment/chat tests (85 other tests passed). These files are
+  outside the budget/ad change and are not repaired in this release.
+- External gates: verified Railway rollout, adding the Form ID in settings,
+  previewing the new form's existing submissions, and a new controlled LIVE
+  submission reaching CRM plus GV Leads with Budget/Ad. Local tests alone do
+  not demonstrate that the form is enabled or that Telegram received a lead.
+
 ## Safe rollout
 
 1. Deploy the CRM backend from `staging` and Omnicus API/web after the user approves
@@ -151,7 +195,10 @@ Omnicus authenticated project prefix: `/api/v1/projects/:projectId/meta-leads`.
 CRM authenticated prefix: `/integrations/v1/omnicus/meta-leads/v1`.
 POST `/preview`, `/apply`, `/reconcile` accept required strings `crmProjectId`,
 `omnicusProjectId`, `pageId`, `formId`, `leadId`, `createdAt`; optional `name`,
-`email`, `phone`, `countryOfResidence`, `notify` (boolean, defaults to no alert).
+`email`, `phone`, `countryOfResidence`, `budgetUsdRange`, `adId`, `adName`,
+`notify` (boolean, defaults to no alert). USD ranges are exactly `150 000–300 000`,
+`300 000–500 000`, `500 000–700 000`, `700 000+`; ad IDs are 1–30 digits and ad
+names are at most 300 characters.
 Existing service bearer authentication and active paired-project validation apply.
 Outcomes: NEW/MATCH/REVIEW for preview; CREATED/LINKED/REVIEW for apply;
 LINKED/NOT_FOUND for reconciliation. Matched responses carry `crmLeadId`;

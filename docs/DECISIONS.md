@@ -1775,3 +1775,20 @@ Provider checked 2026-10-01: user-verified Graph v26.0 queries and Meta's offici
 [LeadgenForm SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/leadgenform.py)
 and [Lead SDK](https://github.com/facebook/facebook-python-business-sdk/blob/main/facebook_business/adobjects/lead.py).
 Meta documentation returned HTTP 429; live permissions/delivery remain external gates.
+
+**Budget/ad follow-up (2026-10-14):** The user verified Page
+`717670618093733`, form `2301723413920519` (`Lead-form - with budget`), the
+case-sensitive question `Budget` labelled `Approximate investment amount (USD)`,
+and the four answer options. Graph v26.0 returned `ad_id` and `ad_name` for the
+same form; `2 - lead-form` and `5 - lead-form` are different ads, not forms.
+The additive `meta-leads/v1` fields are `budgetUsdRange`, `adId`, `adName`.
+USD budget mapping applies only to this verified form; no currency or capital
+category is inferred for other forms. The submission journal retains these
+fields, and new CRM cards store the USD range separately from EUR capital
+qualification and existing numeric budgets. Matched cards are not overwritten.
+NEW LEAD snapshots append optional Budget/Ad lines; historical imports, matching
+and replay keep their existing notification suppression. Fetches retry the core
+lead fields if optional ad fields are rejected, preserving the original intake.
+Deploy the accepting CRM staging backend before the Omnicus producer. Form
+allowlist activation, historical review and new live delivery verification are
+separate operator steps; no schema migration or automatic historical backfill.

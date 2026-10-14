@@ -8,6 +8,12 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
+- Budget/ad extension implemented 2026-10-14 under ADR-066: the verified
+  `Lead-form - with budget` preserves a separate USD answer and actual ad name/ID
+  in the submission journal, new Golden Visa CRM cards and optional NEW LEAD
+  lines. See [contract and verification](META_LEADS.md). Deploy accepting CRM
+  `staging` first; adding the new form and checking live delivery remain operator
+  steps. No migration or automatic historical backfill is part of this extension.
 - Published 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
   is in Omnicus `7e08450` and CRM `staging` `3a24ffb`. The user confirmed deployment,
   preview, a historical import and live activation. First-new-lead CRM/Telegram

@@ -8,7 +8,29 @@ export type MetaLeadPayload = {
   email?: string;
   phone?: string;
   countryOfResidence?: string;
+  budgetUsdRange?: string;
+  adId?: string;
+  adName?: string;
 };
+
+// This form's question label and all options were verified by the operator.
+// A question merely called "Budget" on another form does not establish USD.
+const usdBudgetFormId = '2301723413920519';
+const usdBudgetLabels: Record<string, string> = {
+  '150_000_-_300_000': '150 000–300 000',
+  '300_000_-_500_000': '300 000–500 000',
+  '500_000_-_700_000': '500 000–700 000',
+  '700_000+': '700 000+',
+};
+
+function cleanMetadata(value: unknown, limit: number): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const text = value
+    .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text ? Array.from(text).slice(0, limit).join('') : undefined;
+}
 
 export class MetaGraphError extends Error {
   constructor(readonly code: string) {
@@ -61,6 +83,19 @@ export function normalizeMetaLead(value: unknown, pageId: string, formId: string
     const text = fields.get(field);
     if (text) result[key as keyof typeof mapping] = text.slice(0, limit);
   }
+  if (formId === usdBudgetFormId) {
+    const answer = fields.get('Budget');
+    const range =
+      answer &&
+      Object.entries(usdBudgetLabels).find(
+        ([key, label]) =>
+          answer === key || answer === label || answer.replace(/\s*-\s*/g, '–') === label,
+      )?.[1];
+    if (range) result.budgetUsdRange = range;
+  }
+  if (typeof item.ad_id === 'string' && /^\d{1,30}$/.test(item.ad_id)) result.adId = item.ad_id;
+  const adName = cleanMetadata(item.ad_name, 300);
+  if (adName) result.adName = adName;
   return result;
 }
 
@@ -104,16 +139,11 @@ export class MetaGraphClient {
   }
 
   async lead(id: string, pageId: string, formId: string) {
-    return normalizeMetaLead(
-      await this.get(id, { fields: 'id,created_time,form_id,field_data' }),
-      pageId,
-      formId,
-    );
+    return normalizeMetaLead(await this.leadData(id), pageId, formId);
   }
 
   async page(formId: string, after?: string | null) {
-    const result = await this.get(`${formId}/leads`, {
-      fields: 'id,created_time,form_id,field_data',
+    const result = await this.leadData(`${formId}/leads`, {
       limit: '100',
       ...(after ? { after } : {}),
     });
@@ -123,5 +153,17 @@ export class MetaGraphClient {
     if (paging.next && (typeof cursor !== 'string' || cursor.length > 4096 || cursor === after))
       throw new MetaGraphError('META_GRAPH_CURSOR_INVALID');
     return { items: result.data as unknown[], after: paging.next ? (cursor as string) : null };
+  }
+
+  private async leadData(path: string, params: Record<string, string> = {}) {
+    const fields = 'id,created_time,form_id,field_data';
+    try {
+      return await this.get(path, { ...params, fields: `${fields},ad_id,ad_name` });
+    } catch (error) {
+      if (!(error instanceof MetaGraphError) || error.code !== 'META_GRAPH_ACCESS_FAILED')
+        throw error;
+      // Ad metadata can have separate permissions. Core lead retrieval must still work.
+      return this.get(path, { ...params, fields });
+    }
   }
 }
