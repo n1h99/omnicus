@@ -22,6 +22,18 @@
 
 ## Текущий статус
 
+Дополнение 2026-10-14: автомобильная Cyber Pulse CRM `main` получила отдельный
+ApiX/Facebook-приёмник `apix-leads/v1` (backend `d6ba77e`, frontend `9d4ef49`).
+ApiX-связь `12096`, Page `118824947895247`, preview в CRM подтверждены скринами;
+оператор подтвердил смену ключа/ретест и работу с лидом, затем запросил live.
+Не считать одно Auto-update включением CRM live: нужны Enable live intake,
+destination URL без `/preview` и Auto-update, затем fresh-source acceptance.
+Маршрут не меняет runtime Omnicus, Golden Visa `staging` или исходную
+CAR Import → Telegram `12037`/Invest. Контракт и разделение областей:
+`docs/META_LEADS.md` и `docs/OPERATOR_GUIDE.md`; authoritative автомобильный
+runbook находится в CRM backend `docs/APIX_AUTO_LEADS.md`. Реальные ключи,
+скриншоты с ними и персональные данные тестовой заявки не коммитить.
+
 Дополнение 2026-09-17: в `origin/main` реализован contact-first раздел
 Communications, который использует существующие Telegram/WhatsApp conversation
 и Email Inbox, а не создаёт второй runtime или store. Контракты и осознанные

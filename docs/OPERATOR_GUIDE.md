@@ -4,6 +4,9 @@ Navigation and Meta integration reviewed: 2026-10-01. Communications, CRM-contac
 synchronization and Meta lead intake are implemented. Provider acceptance and
 completion of each new deployment remain separate gates.
 
+Cross-project automotive handoff updated 2026-10-14: use the separate ApiX route
+below for car-import CRM `main`, not Omnicus's Golden Visa Meta lead panel.
+
 This guide describes the current deployed workflows. Provider restrictions are
 part of the product contract; a queued operation is not delivery evidence.
 
@@ -13,15 +16,15 @@ Start from `Projects` and select a project. The sidebar lists groups; the top
 tabs select tools within the active group. Permissions may hide a group or a
 tab. On small screens, open the navigation drawer with the top-left button.
 
-| Sidebar group | Top tabs |
-| --- | --- |
-| Conversations | By contact; Email inbox |
-| Contacts | All contacts; Contact groups; Tags; Custom fields |
-| Broadcasts | Messengers; Email |
-| Automation | Scenarios; Activity |
-| Content | Message templates; Files |
-| Connections | Messaging channels; CRM integration; Email setup |
-| Settings | General; Members; Roles; Diagnostics & audit |
+| Sidebar group | Top tabs                                          |
+| ------------- | ------------------------------------------------- |
+| Conversations | By contact; Email inbox                           |
+| Contacts      | All contacts; Contact groups; Tags; Custom fields |
+| Broadcasts    | Messengers; Email                                 |
+| Automation    | Scenarios; Activity                               |
+| Content       | Message templates; Files                          |
+| Connections   | Messaging channels; CRM integration; Email setup  |
+| Settings      | General; Members; Roles; Diagnostics & audit      |
 
 `Connections` and `Settings` are under `Administration`; the first five groups
 are under `Workspace`. System-wide Users, System roles and System health are
@@ -66,6 +69,38 @@ The [technical contract](META_LEADS.md) contains deployment gates and incident r
 Meta instant forms do not automatically start WEBSITE_REGISTRATION scenarios,
 grant marketing consent, connect a messenger or open a WhatsApp service window.
 Instagram instant forms are in this feature; Instagram messaging is not.
+
+## Automotive ApiX → CRM: separate operator route
+
+This is configured in automotive CRM `/integrations` by ADMIN and in ApiX
+connection `12096`, not under an Omnicus project. Facebook Page
+`118824947895247`, all current/new forms, no source filter; destination Webhooks
+→ Send DATA (Custom), POST JSON with a privately generated `x-apix-secret` header.
+Original CAR Import → Telegram `12037` and Invest remain unchanged.
+
+Guided `/preview` delivery was confirmed by a CRM PREVIEW row containing source
+metadata. The operator confirmed key rotation/retest and reported the lead
+workflow working. A visible ApiX setup-success message without CRM evidence is
+not delivery acceptance. Final live activation was requested separately.
+
+Live requires three settings: Enable live intake in CRM; destination URL
+`https://api.cp-import-crm.com/integrations/apix/leads/v1` without `/preview`;
+Auto-update enabled on the new ApiX connection. If Auto-update already runs on
+preview, stop that connection while editing its destination. Verify a fresh
+source ID becomes CREATED/LINKED and replay does not create a second card.
+Saved PREVIEW/REVIEW rows still need individual Import / link confirmation.
+
+Phone/email/form preferences do not create usable messenger identities. This
+automotive route keeps ManyChat Telegram/WhatsApp linking; it does not migrate
+the chats into Omnicus, import contacts into ManyChat, grant consent or send
+customer messages. General source details remain read-only; ApiX management and
+the full journal are ADMIN-only. Existing Contacts/Analytics role restrictions,
+assigned Documents access and ANALYST's narrow rating/UTM editor are unchanged.
+
+For field mapping, renewal and incidents use the
+[authoritative automotive CRM runbook](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
+Never copy these URLs/credentials into the Golden Visa route or replace its
+Meta/WhatsApp/CRM pairing credentials.
 
 ## Email Inbox
 
@@ -147,11 +182,11 @@ the selected connected bot.
 
 ## Message content in automations
 
-| Channel mode | Current content |
-| --- | --- |
-| Automatic | Universal text. Omnicus chooses an available conversation route. |
+| Channel mode  | Current content                                                                                                         |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Automatic     | Universal text. Omnicus chooses an available conversation route.                                                        |
 | Telegram only | Text, multiple validated assets with group/separate delivery, URL buttons and action/reply buttons with graph branches. |
-| WhatsApp only | Text with either one validated attachment or up to three quick-reply buttons. |
+| WhatsApp only | Text with either one validated attachment or up to three quick-reply buttons.                                           |
 
 WhatsApp free-form content and quick-reply buttons require an open customer
 service window. Outside the window, use a synced `APPROVED` Meta template.

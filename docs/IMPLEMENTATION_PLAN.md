@@ -1,5 +1,24 @@
 # OMNICUS — implementation plan
 
+## Cross-project handoff — automotive ApiX (2026-10-14)
+
+Automotive CRM backend `main` `d6ba77e` and frontend `main` `9d4ef49` are deployed.
+The separate ApiX connection `12096` sends automotive Page `118824947895247`
+data directly to CRM; the original Telegram/Invest connections are preserved.
+Guided preview was verified in the CRM journal; the operator confirmed key
+rotation/retest and the lead workflow and requested live activation. Automatic
+creation requires all three live settings and a fresh-source acceptance check;
+ApiX Auto-update on `/preview` is not live CRM creation.
+
+This is a completed automotive implementation/provider-preview handoff, not an
+extension of Omnicus runtime, its schemas or Golden Visa `staging`. Source mapping,
+deduplication, role boundaries, messenger prerequisites and remaining cutover
+confirmation are in the
+[automotive route note](META_LEADS.md#automotive-apix-route)
+and [authoritative CRM checklist](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
+ADR-066 remains the Golden Visa Meta contract; this docs-only pass adds no ADR,
+migration or product code and requires Markdown integrity checks only.
+
 ## Current addition — Meta lead intake and grouped navigation (2026-10-01)
 
 Meta lead intake is published as Omnicus `7e08450` and CRM `staging` `3a24ffb`

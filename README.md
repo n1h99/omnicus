@@ -1,5 +1,15 @@
 # Omnicus
 
+Cross-project handoff, 2026-10-14: automotive Cyber Pulse CRM `main` now has a
+separate, production-deployed ApiX/Facebook receiver with screenshot-verified
+preview and operator-reported credential retest/lead workflow. This is not the
+Golden Visa Meta route into CRM `staging`, nor a new Omnicus messaging transport.
+Live cutover requires the CRM receiver switch, the destination URL without
+`/preview` and ApiX Auto-update; final settings/first fresh live submission remain
+operator confirmations. See the [automotive route boundary](docs/META_LEADS.md#automotive-apix-route)
+and [authoritative CRM checklist](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
+This documentation update changes no Omnicus application code or CRM `staging`.
+
 Feature update, 2026-09-15: [Email Inbox](docs/EMAIL_INBOX.md) adds a
 Resend-backed conversation workspace, multiple sender addresses, private drafts,
 attachments and email reply waits in Automation. Deployment and live acceptance

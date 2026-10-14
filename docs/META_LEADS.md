@@ -8,6 +8,35 @@ Golden Visa business; car-import CRM production is not a target.
 
 User setup and ongoing operation: [Russian step-by-step guide](META_LEADS_USER_GUIDE_RU.md).
 
+## Automotive ApiX route
+
+Separate automotive handoff reviewed 2026-10-14.
+
+Do not confuse these two deployed routes:
+
+| Route                     | CRM target                            | Ownership and contract                                                     |
+| ------------------------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| Golden Visa Meta forms    | CRM `staging`, Page `717670618093733` | Omnicus project pairing, ADR-066, `meta-leads/v1` described here           |
+| Automotive Facebook forms | CRM `main`, Page `118824947895247`    | ApiX connection `12096`, independent CRM `apix-leads/v1` header credential |
+
+Automotive backend `d6ba77e` and frontend `9d4ef49` were deployed successfully to
+production. A real ApiX preview reached its ADMIN journal with the expected
+source fields; the operator confirmed credential rotation/retest and reported
+the lead workflow working, then requested live activation. The final receiver
+switch/live URL/Auto-update settings and first fresh live submission remain
+operator confirmations. This is not a new Omnicus runtime or chat integration.
+
+Authoritative automotive contract:
+[CRM APIX_AUTO_LEADS.md](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
+Live needs the CRM receiver enabled, the URL
+`https://api.cp-import-crm.com/integrations/apix/leads/v1` without `/preview`, and
+ApiX Auto-update. A preview URL never creates live cards; saved previews are not
+bulk-released. Original ApiX CAR Import → Telegram `12037` and Invest are kept.
+ManyChat chats still require real provider identities and channel eligibility.
+Do not reuse Meta Lead IDs as subscriber IDs, import contacts/message customers
+implicitly or copy these settings to CRM `staging`. No tokens or customer
+records are included in this handoff. The remaining sections describe Golden Visa.
+
 ## Budget/ad extension (2026-10-14)
 
 The user verified active form `2301723413920519` (`Lead-form - with budget`) on
@@ -29,8 +58,8 @@ Graph fetches request the optional ad fields; if access to those fields is
 rejected, they retry the original core fields so lead intake still works. Rate
 limiting does not trigger an extra fallback request. Deploy the accepting CRM
 staging backend before Omnicus. No credential or database migration is added.
-Adding the Form ID, historical preview and first-new-lead verification remain
-operator steps after deployment.
+New-form activation and preview were completed in the guided setup described
+below; historical imports remain explicit operator decisions.
 
 ### Extension verification, 2026-10-14
 
@@ -47,10 +76,13 @@ operator steps after deployment.
   reports four unchanged files. CRM frontend has two existing source-text
   assertions in attachment/chat tests (85 other tests passed). These files are
   outside the budget/ad change and are not repaired in this release.
-- External gates: verified Railway rollout, adding the Form ID in settings,
-  previewing the new form's existing submissions, and a new controlled LIVE
-  submission reaching CRM plus GV Leads with Budget/Ad. Local tests alone do
-  not demonstrate that the form is enabled or that Telegram received a lead.
+- Railway rollout was subsequently verified successful: Omnicus `d255893`,
+  CRM backend `staging` `73dd7ba`, frontend `staging` `2818c3b`.
+- Guided external setup completed: the new form was added, existing submissions
+  were shown for explicit import, live delivery enabled and a Meta test reached
+  GV Leads. Dummy test answers do not prove a genuine USD range or ad metadata;
+  those optional fields still need a controlled real-ad acceptance check.
+  No extra production-volume acceptance is claimed from local tests.
 
 ## Safe rollout
 

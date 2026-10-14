@@ -1,6 +1,6 @@
 # Omnicus documentation index
 
-Navigation and Meta lead status reviewed: 2026-10-01. `main` includes Automation Studio 2.2, Telegram
+Integration handoff reviewed: 2026-10-14; navigation review: 2026-10-01. `main` includes Automation Studio 2.2, Telegram
 Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
 Resend email campaigns, cross-system contact merge, platform operations and
 Automation Activity, grouped project navigation and Meta lead-form intake.
@@ -8,12 +8,24 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
+- Automotive CRM `main` release 2026-10-14 is a separate ApiX → CRM route, not
+  the Golden Visa Omnicus Meta route below. Backend `d6ba77e` / frontend
+  `9d4ef49` deployed successfully; the guided preview reached the admin journal
+  with original source metadata. The user confirmed credential rotation/retest
+  and the lead workflow, then requested live activation. Final live settings and
+  first-fresh-lead acceptance remain operator confirmations. See the
+  [route boundary](META_LEADS.md#automotive-apix-route)
+  and [CRM contract/checklist](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
+  No Omnicus runtime, schemas, pairing credentials or CRM `staging` are changed.
 - Budget/ad extension implemented 2026-10-14 under ADR-066: the verified
   `Lead-form - with budget` preserves a separate USD answer and actual ad name/ID
   in the submission journal, new Golden Visa CRM cards and optional NEW LEAD
-  lines. See [contract and verification](META_LEADS.md). Deploy accepting CRM
-  `staging` first; adding the new form and checking live delivery remain operator
-  steps. No migration or automatic historical backfill is part of this extension.
+  lines. Omnicus `d255893`, CRM backend `staging` `73dd7ba` and frontend `staging`
+  `2818c3b` were deployed successfully. The user completed new-form setup, enabled
+  delivery and showed its test notification in GV Leads. Real-ad/USD-value
+  acceptance is not inferred from dummy Meta test answers. See
+  [contract and verification](META_LEADS.md). No migration or automatic historical
+  backfill is part of this extension.
 - Published 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
   is in Omnicus `7e08450` and CRM `staging` `3a24ffb`. The user confirmed deployment,
   preview, a historical import and live activation. First-new-lead CRM/Telegram
@@ -80,7 +92,7 @@ Older dated entries below retain their original acceptance scope.
   group/separate delivery. Its customer-facing notes are in
   [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md).
 - Automated follow-up remains in the single authoritative `Automation ->
-  Scenarios` graph. `Broadcasts -> Email` (the `Email & SMS Broadcast` page) remains the one-off/scheduled
+Scenarios` graph. `Broadcasts -> Email` (the `Email & SMS Broadcast` page) remains the one-off/scheduled
   campaign surface and does not duplicate the graph editor, draft/version
   state, validation or runtime controls.
 - Automation continuation recovery now isolates failed executions and resolves
@@ -206,7 +218,7 @@ Older dated entries below retain their original acceptance scope.
   audience estimates and filters, scheduling, a block editor, test sends,
   reusable versioned templates, suppressions, recipient reports and a project
   analytics table. Automation Studio can pin a published template in `Send
-  email`. SMS remains explicitly under construction.
+email`. SMS remains explicitly under construction.
 - Email delivery uses the verified `mail.omnicus.app` sending domain,
   `links.mail.omnicus.app` tracking domain and signed Resend webhook. Active
   contacts with a valid non-suppressed address are eligible; consent metadata
@@ -223,31 +235,31 @@ into the final verification stage.
 
 ## Active references
 
-| Area                                   | Authoritative document                                                 |
-| -------------------------------------- | ---------------------------------------------------------------------- |
-| Customer patch notes                   | [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md) |
-| Architecture and trust boundaries      | [ARCHITECTURE.md](ARCHITECTURE.md)                                     |
-| Product stages and follow-ups          | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)                       |
-| Accepted decisions                     | [DECISIONS.md](DECISIONS.md)                                           |
-| Prisma schema and migration invariants | [DATABASE.md](DATABASE.md)                                             |
-| Automation semantics                   | [AUTOMATION_ENGINE.md](AUTOMATION_ENGINE.md)                           |
-| Durable lifecycle rules                | [STATE_MACHINES.md](STATE_MACHINES.md)                                 |
-| Operations and incident recovery       | [RUNBOOK.md](RUNBOOK.md)                                               |
-| Railway topology                       | [RAILWAY.md](RAILWAY.md)                                               |
-| Test gates                             | [TESTING.md](TESTING.md)                                               |
-| Operator workflows                     | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                 |
-| Meta lead-form user setup and operation | [META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md) |
-| Meta intake contract and rollout limits | [META_LEADS.md](META_LEADS.md) |
-| Email campaigns and Resend             | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
-| Cyber Pulse integration                | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
-| Direct contact communications          | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                 |
-| CRM lead profile synchronization       | [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md)                             |
-| WhatsApp Business Cloud API            | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                         |
-| WhatsApp templates, health and billing | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                       |
-| CRM-to-Omnicus OpenAPI                 | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml) |
-| Omnicus-to-CRM OpenAPI                 | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)             |
-| Pairing OpenAPI                        | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                   |
-| Customer patch notes (2026-09-17)      | [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md) |
+| Area                                    | Authoritative document                                                   |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| Customer patch notes                    | [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md) |
+| Architecture and trust boundaries       | [ARCHITECTURE.md](ARCHITECTURE.md)                                       |
+| Product stages and follow-ups           | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)                         |
+| Accepted decisions                      | [DECISIONS.md](DECISIONS.md)                                             |
+| Prisma schema and migration invariants  | [DATABASE.md](DATABASE.md)                                               |
+| Automation semantics                    | [AUTOMATION_ENGINE.md](AUTOMATION_ENGINE.md)                             |
+| Durable lifecycle rules                 | [STATE_MACHINES.md](STATE_MACHINES.md)                                   |
+| Operations and incident recovery        | [RUNBOOK.md](RUNBOOK.md)                                                 |
+| Railway topology                        | [RAILWAY.md](RAILWAY.md)                                                 |
+| Test gates                              | [TESTING.md](TESTING.md)                                                 |
+| Operator workflows                      | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                   |
+| Meta lead-form user setup and operation | [META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md)               |
+| Meta intake contract and rollout limits | [META_LEADS.md](META_LEADS.md)                                           |
+| Email campaigns and Resend              | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                               |
+| Cyber Pulse integration                 | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                                 |
+| Direct contact communications           | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                   |
+| CRM lead profile synchronization        | [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md)                               |
+| WhatsApp Business Cloud API             | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                           |
+| WhatsApp templates, health and billing  | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                         |
+| CRM-to-Omnicus OpenAPI                  | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml)   |
+| Omnicus-to-CRM OpenAPI                  | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)               |
+| Pairing OpenAPI                         | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                     |
+| Customer patch notes (2026-09-17)       | [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md) |
 
 ## Historical and handoff references
 
