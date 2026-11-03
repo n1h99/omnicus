@@ -345,3 +345,30 @@ This fixes receiver compatibility and the test coverage gap; it does not establi
 the provider's actual Content-Type or explain the absence of a network request.
 A short controlled provider session is still needed to verify real delivery and
 inspect the report/webinar IDs in the bounded authenticated receipt. CRM remains deferred.
+
+## Verified JSON webhook and recording binding - 2026-11-03
+
+A real provider completion request using the saved POST format returned HTTP 400
+at 16:11:47 UTC. Its body was not retained, so its precise encoding/failure remains
+unverified. After selecting JSON in the provider's data-format dropdown and saving,
+the next real completion reached the API at 16:19:11 UTC, returned HTTP 200 and
+created an authenticated bounded receipt.
+
+That receipt identifies the original live webinar, while get_report identifies its
+new recording copy. Both identify the same report and exact local start/end window.
+Automatic binding now accepts that evidence within the project/connection, still
+requires one matching scheduled session, and retains the bounded proof on the import.
+Conflicting receipts block binding; no reusable ID alias or guessed provider field
+is introduced. A valid completed interval is required before Live delivery effects.
+
+The completed report also contains earlier room visitors and comments. Visits with
+valid dates entirely outside this interval are excluded; prior UNMATCHED raw rows
+become IGNORED with OUTSIDE_REPORT_WINDOW. Dated comments outside the interval are
+excluded, while unknown timestamps retain their unknown semantics.
+
+A rollback-only check using the real report, receipt and actual import service
+automatically binds a temporary session, measures 79 seconds for the current host,
+excludes one earlier visit and all old comments, and preserves the binding after
+receipt reads are hidden. Reprocessing creates no additional delivery intents.
+The transaction was rolled back. A fresh invited viewer and report-driven Telegram
+delivery still require live acceptance; CRM acceptance remains deferred.

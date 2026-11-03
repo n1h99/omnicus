@@ -15,6 +15,8 @@ import {
   localToUtc,
   emailIdentity,
   phoneIdentity,
+  reportBindingFromWebhooks,
+  visitOverlapsReport,
   WebinarStarsError,
 } from '@omnicus/webinar-core';
 import type { Prisma } from '@omnicus/database';
@@ -195,12 +197,28 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
       )
         throw new WebinarStarsError('WEBINAR_REPORT_NOT_READY');
       let event = job.event;
+      const receipts = await this.db.webinarWebhookReceipt.findMany({
+        where: {
+          projectId: job.projectId,
+          connectionId: job.connectionId,
+          metadata: { path: ['id'], equals: job.externalReportId },
+        },
+        select: { id: true, metadata: true },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
+      });
+      const { binding, conflict } = reportBindingFromWebhooks(
+        report,
+        receipts,
+        object(job.summary).bindingProof,
+      );
+      const sourceWebinarId = binding?.sourceWebinarId ?? report.webinarId;
       if (!event && job.origin !== 'MANUAL') {
         const candidates = await this.db.webinarEvent.findMany({
           where: {
             projectId: job.projectId,
             connectionId: job.connectionId,
-            providerWebinarId: report.webinarId,
+            providerWebinarId: sourceWebinarId,
             cancelledAt: null,
           },
           take: 100,
@@ -219,8 +237,10 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
       // whose provider ID changed when a recording was created. This grants no live effects.
       const historicalBinding = job.origin === 'MANUAL' && job.historical;
       if (
-        event &&
-        (event.cancelledAt || (event.providerWebinarId !== report.webinarId && !historicalBinding))
+        (!historicalBinding && conflict) ||
+        (event &&
+          (event.cancelledAt ||
+            (event.providerWebinarId !== sourceWebinarId && !historicalBinding)))
       )
         throw new WebinarStarsError('WEBINAR_REPORT_EVENT_MISMATCH');
       const historical =
@@ -238,6 +258,22 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
         throw new WebinarStarsError('WEBINAR_REPORT_NOT_READY');
       const config = settings(event?.settings),
         groups = groupVisits(report, config);
+      const reportFrom = event ? localToUtc(report.startedAtLocal, event.timezone) : null;
+      const reportTo = event ? localToUtc(report.endedAtLocal, event.timezone) : null;
+      const interval =
+        event &&
+        reportFrom !== null &&
+        reportTo !== null &&
+        reportTo > reportFrom &&
+        reportTo - reportFrom <= 7 * 86400000
+          ? {
+              timezone: event.timezone,
+              scheduledAt: new Date(reportFrom),
+              endsAt: new Date(reportTo),
+            }
+          : undefined;
+      if (!historical && (!interval || interval.endsAt.getTime() > Date.now()))
+        throw new WebinarStarsError('WEBINAR_REPORT_NOT_READY');
       const summary = {
         id: report.id,
         webinarId: report.webinarId,
@@ -248,24 +284,29 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
         visitorsPeak: report.visitorsPeak,
       };
       const touched = new Set<string>();
-      for (const [identityKey, visits] of groups) {
+      for (const [identityKey, allVisits] of groups) {
         await this.db.$transaction(
           async (tx) => {
             await this.fence(tx, id, owner, job.connectionId, job.connection.revision);
-            const reportFrom = event ? localToUtc(report.startedAtLocal, event.timezone) : null;
-            const reportTo = event ? localToUtc(report.endedAtLocal, event.timezone) : null;
-            const interval =
-              event &&
-              reportFrom !== null &&
-              reportTo !== null &&
-              reportTo > reportFrom &&
-              reportTo - reportFrom <= 7 * 86400000
-                ? {
-                    timezone: event.timezone,
-                    scheduledAt: new Date(reportFrom),
-                    endsAt: new Date(reportTo),
-                  }
-                : undefined;
+            const visits = interval
+              ? allVisits.filter((visit) => visitOverlapsReport(visit, interval))
+              : allVisits;
+            if (!visits.length) {
+              await tx.webinarAttendance.updateMany({
+                where: {
+                  projectId: job.projectId,
+                  importId: id,
+                  identityKey,
+                  matchState: 'UNMATCHED',
+                },
+                data: {
+                  matchState: 'IGNORED',
+                  matchReason: 'OUTSIDE_REPORT_WINDOW',
+                  version: { increment: 1 },
+                },
+              });
+              return;
+            }
             const normalized = normalizeAttendance(visits, config, interval);
             let old = await tx.webinarAttendance.findUnique({
               where: {
@@ -556,7 +597,7 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
           data: {
             eventId: event?.id ?? null,
             historical,
-            summary: json(summary),
+            summary: json({ ...summary, ...(binding ? { bindingProof: binding } : {}) }),
             fingerprint: fingerprint(report),
             state:
               current.requestedVersion !== job.requestedVersion

@@ -150,6 +150,75 @@ export function watchedSeconds(
   }
   return Math.floor(total / 1000);
 }
+
+export interface WebinarReportBinding {
+  receiptId: string;
+  reportId: string;
+  reportWebinarId: string;
+  sourceWebinarId: string;
+  startedAtLocal: string;
+  endedAtLocal: string;
+}
+
+export function reportBindingFromWebhooks(
+  report: ProviderReport,
+  receipts: Array<{ id: string; metadata: unknown }>,
+  persisted: unknown,
+): { binding: WebinarReportBinding | null; conflict: boolean } {
+  const bindings: WebinarReportBinding[] = [];
+  const saved = object(persisted);
+  if (
+    typeof saved.receiptId === 'string' &&
+    saved.reportId === report.id &&
+    saved.reportWebinarId === report.webinarId &&
+    typeof saved.sourceWebinarId === 'string' &&
+    /^\d{1,30}$/.test(saved.sourceWebinarId) &&
+    report.startedAtLocal &&
+    report.endedAtLocal &&
+    saved.startedAtLocal === report.startedAtLocal &&
+    saved.endedAtLocal === report.endedAtLocal
+  )
+    bindings.push({
+      receiptId: saved.receiptId,
+      reportId: report.id,
+      reportWebinarId: report.webinarId,
+      sourceWebinarId: saved.sourceWebinarId,
+      startedAtLocal: report.startedAtLocal,
+      endedAtLocal: report.endedAtLocal,
+    });
+  for (const receipt of receipts) {
+    const metadata = object(receipt.metadata);
+    if (
+      metadata.id === report.id &&
+      typeof metadata.webinar_id === 'string' &&
+      /^\d{1,30}$/.test(metadata.webinar_id) &&
+      report.startedAtLocal &&
+      report.endedAtLocal &&
+      metadata.date_start === report.startedAtLocal &&
+      metadata.date_end === report.endedAtLocal
+    )
+      bindings.push({
+        receiptId: receipt.id,
+        reportId: report.id,
+        reportWebinarId: report.webinarId,
+        sourceWebinarId: metadata.webinar_id,
+        startedAtLocal: report.startedAtLocal,
+        endedAtLocal: report.endedAtLocal,
+      });
+  }
+  const conflict = new Set(bindings.map((binding) => binding.sourceWebinarId)).size > 1;
+  return { binding: conflict ? null : (bindings[0] ?? null), conflict };
+}
+
+export function visitOverlapsReport(
+  visit: ProviderVisit,
+  interval: { timezone: string; scheduledAt: Date; endsAt: Date },
+): boolean {
+  const from = localToUtc(visit.joinedAtLocal, interval.timezone);
+  const to = localToUtc(visit.leftAtLocal, interval.timezone);
+  if (from === null || to === null || to < from) return true;
+  return from < interval.endsAt.getTime() && to > interval.scheduledAt.getTime();
+}
 export function groupVisits(report: ProviderReport, config: WebinarSettings) {
   const parents = report.participants.map((_, i) => i),
     seen = new Map<string, number>();
@@ -221,7 +290,18 @@ export function normalizeAttendance(
       : null;
   const actions = visits.flatMap((x) => x.actions),
     comments = [
-      ...new Map(visits.flatMap((x) => x.comments).map((x) => [fingerprint(x), x])).values(),
+      ...new Map(
+        visits
+          .flatMap((x) => x.comments)
+          .filter((comment) => {
+            if (!event) return true;
+            const at = localToUtc(comment.atLocal, event.timezone);
+            return (
+              at === null || (at >= event.scheduledAt.getTime() && at <= event.endsAt.getTime())
+            );
+          })
+          .map((x) => [fingerprint(x), x]),
+      ).values(),
     ];
   const ctaActions = actions.filter((x) => x.type === 'button_1' || x.type === 'button_2');
   const bannerActions = actions.filter((x) => x.type === 'banner');

@@ -6,6 +6,8 @@ import {
   localToUtc,
   normalizeAttendance,
   participantDestination,
+  reportBindingFromWebhooks,
+  visitOverlapsReport,
   watchedSeconds,
   type ProviderVisit,
   type ProviderReport,
@@ -31,7 +33,97 @@ const interval = {
   scheduledAt: new Date('2026-11-03T06:00:00Z'),
   endsAt: new Date('2026-11-03T06:15:00Z'),
 };
+const bindingReport: ProviderReport = {
+  id: '42',
+  webinarId: '8',
+  name: 'Recording',
+  startedAtLocal: '2026-11-03 10:00:00',
+  endedAtLocal: '2026-11-03 10:15:00',
+  visitorsCount: 0,
+  visitorsPeak: 0,
+  participants: [],
+};
+const bindingReceipt = {
+  id: 'receipt',
+  metadata: {
+    id: '42',
+    webinar_id: '7',
+    date_start: bindingReport.startedAtLocal,
+    date_end: bindingReport.endedAtLocal,
+  },
+};
 describe('webinar normalization and opaque links', () => {
+  it('binds only the same report and window, retaining bounded proof after receipt retention', () => {
+    const first = reportBindingFromWebhooks(bindingReport, [bindingReceipt], null);
+    expect(first).toMatchObject({
+      conflict: false,
+      binding: {
+        receiptId: 'receipt',
+        reportId: '42',
+        reportWebinarId: '8',
+        sourceWebinarId: '7',
+      },
+    });
+    expect(reportBindingFromWebhooks(bindingReport, [], first.binding)).toEqual(first);
+    expect(
+      reportBindingFromWebhooks({ ...bindingReport, id: '43' }, [bindingReceipt], first.binding)
+        .binding,
+    ).toBeNull();
+    expect(
+      reportBindingFromWebhooks(
+        { ...bindingReport, endedAtLocal: '2026-11-03 10:16:00' },
+        [bindingReceipt],
+        first.binding,
+      ).binding,
+    ).toBeNull();
+  });
+  it('rejects conflicting authenticated source references instead of choosing one', () => {
+    expect(
+      reportBindingFromWebhooks(
+        bindingReport,
+        [
+          bindingReceipt,
+          {
+            id: 'other',
+            metadata: { ...bindingReceipt.metadata, webinar_id: '9' },
+          },
+        ],
+        null,
+      ),
+    ).toEqual({ binding: null, conflict: true });
+  });
+  it('excludes proven out-of-window visits while retaining missing time evidence', () => {
+    expect(visitOverlapsReport(visit(), interval)).toBe(true);
+    expect(
+      visitOverlapsReport(
+        visit({ joinedAtLocal: '2026-11-03 09:00:00', leftAtLocal: '2026-11-03 10:00:00' }),
+        interval,
+      ),
+    ).toBe(false);
+    expect(
+      visitOverlapsReport(
+        visit({ joinedAtLocal: '2026-11-03 10:15:00', leftAtLocal: '2026-11-03 10:20:00' }),
+        interval,
+      ),
+    ).toBe(false);
+    expect(visitOverlapsReport(visit({ leftAtLocal: null }), interval)).toBe(true);
+  });
+  it('does not treat old room comments as new session comments', () => {
+    const comments = [
+      { atLocal: '2026-11-03 09:59:59', text: 'Before' },
+      { atLocal: '2026-11-03 10:05:00', text: 'Current' },
+      { atLocal: '2026-11-03 10:15:00', text: 'At end' },
+      { atLocal: '2026-11-03 10:16:00', text: 'After' },
+      { atLocal: null, text: 'Unknown time' },
+    ];
+    const result = normalizeAttendance([visit({ comments })], defaultWebinarSettings, interval);
+    expect(result.commentsCount).toBe(3);
+    expect(result.comments.map((comment) => comment.text).sort()).toEqual([
+      'At end',
+      'Current',
+      'Unknown time',
+    ]);
+  });
   it('interprets an explicit timezone and rejects invalid or ambiguous local dates', () => {
     expect(localToUtc('2026-11-03 10:00:00', 'Asia/Baku')).toBe(Date.parse('2026-11-03T06:00:00Z'));
     expect(localToUtc('2026-02-30 10:00:00', 'Asia/Baku')).toBeNull();

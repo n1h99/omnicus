@@ -1660,6 +1660,9 @@ so disconnect can erase credentials without deleting history. New project-owned 
 - webinar_webhook_receipts: bounded normalized metadata, payload fingerprint deduplication.
 - webinar_report_imports: unique connection/report job, optional explicit event binding,
   lease owner/expiry, retry scheduling, snapshot hash and historical flag.
+  Its summary may retain bindingProof: authenticated receipt ID, report ID, detailed
+  report webinar ID, source webinar ID and exact local start/end window. This proof
+  is scoped to that import and survives receipt retention; it is not an ID alias.
 - webinar_attendances: unique report/participant identity, normalized result and optional
   project-bound contact/invitation mapping; no cross-project relation is permitted.
 - webinar_actions: transactional outbox for automation and CRM; unique semantic key,

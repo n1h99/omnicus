@@ -490,3 +490,18 @@ changed-file lint/format, Prisma validation, production API build/minimal-runtim
 assembly and the actual production-runtime liveness/readiness smoke pass. No schema
 migration or production contact/report mutation is part of this correction. Real
 provider webhook delivery remains a separate controlled acceptance step.
+
+Verified-completion binding correction, 2026-11-03: the full workspace tests pass,
+including 12 webinar-core, 323 API, 166 Worker and 108 Web unit cases and the HTTP
+integration suites (documented opt-in service skips remain). Full typecheck, lint,
+changed-source formatting, Prisma validation, production build/runtime assembly and
+all four Webinar Stars browser cases pass. The import suite has 20 cases covering
+authenticated receipt binding, persisted provenance after receipt retention,
+conflicting/mismatched windows, old-room visits and unfinished/invalid/future reports.
+
+A rollback-only real PostgreSQL check runs the actual import twice on the received
+JSON webhook's completed report. It verifies automatic original-session binding,
+79 seconds of current attendance, one excluded old visit, zero current comments,
+stable provenance without receipt reads, no repeated delivery intents and CRM off.
+Real JSON webhook delivery is independently verified by HTTP 200 and the stored
+authenticated receipt. Fresh viewer matching and a result message remain live gates.

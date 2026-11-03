@@ -397,8 +397,11 @@ historical imports create no automatic messaging/CRM intents.
 
 An explicitly selected MANUAL Historical session can interpret a report with a
 different provider webinar ID (recording-copy behavior observed during acceptance).
-Cancelled sessions, automatic bound imports and MANUAL Live imports retain the
-provider-ID guard. This exception never enables delivery effects or automatic aliases.
+Cancelled sessions remain invalid. Automatic and MANUAL Live imports require the
+same provider ID, or a verified completion receipt for the same project, connection,
+report ID and exact start/end window. A conflicting receipt blocks this binding.
+The bounded proof survives receipt retention in the import summary; it never creates
+a reusable provider-ID alias. Live effects wait for a valid completed report interval.
 
 Attendance matching: UNMATCHED -> MATCHED (unambiguous invitation or identity),
 MANUAL (operator decision) or IGNORED. Conflicting contact identities or tracking
@@ -407,6 +410,10 @@ the same transaction. No-show conclusions wait for a final dated report without
 unresolved participants. Unknown engagement/time never becomes a fabricated click.
 Refreshing a MANUAL match preserves its existing attendance identity, contact and
 manual decision; finding an invitation does not supersede that row with a duplicate.
+Visits with valid dates entirely outside the completed interval do not participate
+in matching or engagement. Previously UNMATCHED rows for those identities become
+IGNORED/OUTSIDE_REPORT_WINDOW; operator decisions are preserved. Dated comments
+outside the interval are excluded. Missing or malformed timestamps remain unknown.
 
 Delivery intent: PENDING/RETRY -> PROCESSING -> SUCCEEDED, RETRY, FAILED, SKIPPED
 or UNKNOWN. CRM timeout or an expired PROCESSING lease reconciles the same

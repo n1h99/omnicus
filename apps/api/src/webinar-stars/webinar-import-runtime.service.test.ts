@@ -30,7 +30,8 @@ function fixture() {
     projectId: 'project',
     connectionId: 'connection',
     externalReportId: '42',
-    eventId: 'event',
+    eventId: 'event' as string | null,
+    summary: null as unknown,
     origin: 'MANUAL',
     historical: false,
     state: 'PENDING',
@@ -71,7 +72,11 @@ function fixture() {
   const contacts = [{ id: 'contact' }];
   const db = {
     webinarReportImport: {
-      findUnique: vi.fn(async () => ({ ...job, connection: { ...connection }, event })),
+      findUnique: vi.fn(async () => ({
+        ...job,
+        connection: { ...connection },
+        event: job.eventId ? event : null,
+      })),
       findUniqueOrThrow: vi.fn(async () => ({ ...job })),
       updateMany: vi.fn(
         async ({
@@ -97,6 +102,14 @@ function fixture() {
           return { count: 1 };
         },
       ),
+    },
+    webinarEvent: {
+      findMany: vi.fn(async ({ where }: { where: { providerWebinarId: string } }) =>
+        where.providerWebinarId === event.providerWebinarId ? [event] : [],
+      ),
+    },
+    webinarWebhookReceipt: {
+      findMany: vi.fn(async (): Promise<Array<{ id: string; metadata: unknown }>> => []),
     },
     webinarAttendance: {
       findUnique: vi.fn(
@@ -134,6 +147,20 @@ function fixture() {
       ),
       findFirst: vi.fn(async () => null),
       update: vi.fn(),
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { identityKey: string; matchState: string };
+          data: Record<string, unknown>;
+        }) => {
+          const row = attendances.get(where.identityKey);
+          if (!row || row.matchState !== where.matchState) return { count: 0 };
+          Object.assign(row, data, { version: Number(row.version) + 1 });
+          return { count: 1 };
+        },
+      ),
     },
     contact: { findMany: vi.fn(async () => contacts) },
     webinarInvitation: {
@@ -194,6 +221,114 @@ beforeEach(() => {
 });
 afterEach(() => vi.useRealTimers());
 describe('durable webinar import', () => {
+  it('automatically binds a recording report using its scoped completion receipt and keeps proof on refresh', async () => {
+    const f = fixture();
+    f.job.origin = 'POLL';
+    f.job.eventId = null;
+    f.report.webinarId = '8';
+    f.db.webinarWebhookReceipt.findMany.mockResolvedValue([
+      {
+        id: 'receipt',
+        metadata: {
+          id: '42',
+          webinar_id: '7',
+          date_start: f.report.startedAtLocal,
+          date_end: f.report.endedAtLocal,
+        },
+      },
+    ]);
+    await f.runtime.process('job');
+    expect(f.job).toMatchObject({
+      state: 'COMPLETED',
+      eventId: 'event',
+      historical: false,
+      summary: {
+        webinarId: '8',
+        bindingProof: { receiptId: 'receipt', sourceWebinarId: '7', reportId: '42' },
+      },
+    });
+    expect(f.db.webinarWebhookReceipt.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          projectId: 'project',
+          connectionId: 'connection',
+          metadata: { path: ['id'], equals: '42' },
+        },
+      }),
+    );
+    const count = f.actions.size;
+    f.db.webinarWebhookReceipt.findMany.mockResolvedValue([]);
+    f.refresh();
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('COMPLETED');
+    expect(f.actions.size).toBe(count);
+  });
+  it('does not use a receipt for a different report window', async () => {
+    const f = fixture();
+    f.report.webinarId = '8';
+    f.db.webinarWebhookReceipt.findMany.mockResolvedValue([
+      {
+        id: 'receipt',
+        metadata: {
+          id: '42',
+          webinar_id: '7',
+          date_start: f.report.startedAtLocal,
+          date_end: '2026-11-03 10:59:59',
+        },
+      },
+    ]);
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('FAILED');
+    expect(f.actions.size).toBe(0);
+  });
+  it('blocks conflicting completion references before creating attendance or effects', async () => {
+    const f = fixture();
+    f.db.webinarWebhookReceipt.findMany.mockResolvedValue(
+      ['7', '9'].map((source) => ({
+        id: 'receipt-' + source,
+        metadata: {
+          id: '42',
+          webinar_id: source,
+          date_start: f.report.startedAtLocal,
+          date_end: f.report.endedAtLocal,
+        },
+      })),
+    );
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('FAILED');
+    expect(f.attendances.size).toBe(0);
+    expect(f.actions.size).toBe(0);
+  });
+  it('ignores previously imported unmatched visits from older sessions in the same room', async () => {
+    const f = fixture();
+    f.job.historical = true;
+    f.job.eventId = null;
+    f.contacts.splice(0);
+    f.report.participants[0]!.joinedAtLocal = '2026-11-03 09:00:00';
+    f.report.participants[0]!.leftAtLocal = '2026-11-03 09:59:00';
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('PARTIAL');
+    f.job.eventId = 'event';
+    f.refresh();
+    await f.runtime.process('job');
+    expect([...f.attendances.values()][0]).toMatchObject({
+      matchState: 'IGNORED',
+      matchReason: 'OUTSIDE_REPORT_WINDOW',
+    });
+    expect(f.job.state).toBe('COMPLETED');
+    expect(f.actions.size).toBe(0);
+  });
+  it.each([null, '-1-11-30 01:00:00', '2026-11-04 11:00:00'])(
+    'waits for a completed valid report window before live effects (end=%s)',
+    async (endedAtLocal) => {
+      const f = fixture();
+      f.report.endedAtLocal = endedAtLocal;
+      await f.runtime.process('job');
+      expect(f.job).toMatchObject({ state: 'RETRY', lastError: 'WEBINAR_REPORT_NOT_READY' });
+      expect(f.attendances.size).toBe(0);
+      expect(f.actions.size).toBe(0);
+    },
+  );
   it('normalizes and matches a live report once, and re-imports do not repeat semantic actions', async () => {
     const f = fixture();
     await f.runtime.process('job');

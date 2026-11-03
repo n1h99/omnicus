@@ -1851,6 +1851,15 @@ Refreshing a manually matched attendance retains its original identity and row I
 manual match state and reason, including when an invitation becomes available.
 Re-keying that row must not create a second participant or lose the operator decision.
 
+Verified JSON delivery, 2026-11-03: the authenticated completion webhook names the
+original live webinar, while get_report names its recording copy for the same report
+ID and exact start/end window. That scoped receipt is authoritative report-specific
+binding evidence. Preserve its bounded provenance in the import summary so receipt
+retention cannot break a later refresh; conflicting evidence blocks live processing.
+Do not infer a reusable webinar alias. Live effects wait for a valid completed report
+window. Reused rooms can include visits/comments from older sessions: exclude
+positively out-of-window visits and dated comments, preserving unknown evidence.
+
 The Golden Visa staging counterpart implements webinars/v1 with durable Mongo receipts, ordered activity revisions and manager tasks. The producer requires the advertised capability before delivery; publish both counterparts and re-test the CRM connection before enabling it.
 No remote database migration, webhook activation, sending to live contacts, Git push
 or deployment is authorized by the local implementation request alone.
