@@ -242,3 +242,12 @@ the actual published invitation graph now completes with one Message and one out
 intent. Recovery reschedules only the original failed registration action, with an
 audit record and unchanged deduplication identity; it does not register the contact
 again or send directly through the Telegram API.
+
+
+Live recovery confirmed, 2026-11-03 04:59 UTC: worker `8b8453f` is SUCCESS in
+Railway. The original registration action was rescheduled once with an audit entry.
+Its scenario completed; all three nodes succeeded. Exactly one message and one
+outbox completed on the first delivery attempt, Telegram returned its message ID,
+and the user confirmed receiving the invitation and personal link. No duplicate
+registration or direct Telegram API send was used. Viewer entry and report/webhook
+acceptance remain the next functional checks.
