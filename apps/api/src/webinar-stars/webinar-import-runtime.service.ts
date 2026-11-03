@@ -215,7 +215,13 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
         });
         if (matched.length === 1) event = matched[0]!;
       }
-      if (event && (event.providerWebinarId !== report.webinarId || event.cancelledAt))
+      // An operator may explicitly select a session to interpret a historical report
+      // whose provider ID changed when a recording was created. This grants no live effects.
+      const historicalBinding = job.origin === 'MANUAL' && job.historical;
+      if (
+        event &&
+        (event.cancelledAt || (event.providerWebinarId !== report.webinarId && !historicalBinding))
+      )
         throw new WebinarStarsError('WEBINAR_REPORT_EVENT_MISMATCH');
       const historical =
         job.origin === 'MANUAL'
@@ -272,7 +278,8 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
             });
             let contactId: string | null = old?.matchState === 'MANUAL' ? old.contactId : null,
               invitationId: string | null = old?.invitationId ?? null,
-              reason = 'NO_CONTACT';
+              reason =
+                old?.matchState === 'MANUAL' ? (old.matchReason ?? 'MANUAL_MATCH') : 'NO_CONTACT';
             const trackingTokens = new Set(
               config.trackingParameter
                 ? visits
@@ -372,11 +379,15 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
               const distributor = object(invitation?.attribution).distributorId;
               result.distributorId = typeof distributor === 'string' ? distributor : null;
             }
-            const stableIdentity = invitationId
-              ? `invitation:${invitationId}`
-              : contactId
-                ? `contact:${contactId}`
-                : identityKey;
+            // Keep the manually resolved row and its operator decision on refresh.
+            const stableIdentity =
+              old?.matchState === 'MANUAL'
+                ? old.identityKey
+                : invitationId
+                  ? `invitation:${invitationId}`
+                  : contactId
+                    ? `contact:${contactId}`
+                    : identityKey;
             const previousIdentity = old;
             if (stableIdentity !== identityKey)
               old =

@@ -2,7 +2,6 @@
 
 Status 2026-11-03: ADR-067 and ADR-068 are implemented locally. Omnicus has durable report import, webhook recovery, matching, invitations, website registration, automation and CRM delivery. The counterpart is implemented in the existing Golden Visa staging worktrees (`cyber-pulse-back-meta-budget`, `cyber-pulse-front-meta-budget`). Rollout was authorized on 2026-11-03. Both migrations have been applied to Omnicus production (40 total, checksums verified, none pending). Runtime rollout targets Omnicus production and Golden Visa staging; actual provider acceptance and workflow activation remain separate checks.
 
-
 ## Verified rollout - 2026-11-03
 
 - Omnicus production API, Web and Worker: code commit `2d74257`, all Railway deployments SUCCESS.
@@ -15,7 +14,6 @@ Status 2026-11-03: ADR-067 and ADR-068 are implemented locally. Omnicus has dura
 - Live webinar processing, invitation/scenario publishing and provider acceptance are
   separate operator steps. Begin by re-testing the existing CRM connection in Omnicus
   to refresh its advertised capabilities, then connect/test Webinar Stars.
-
 
 ## Источники и уровень подтверждения
 
@@ -179,6 +177,12 @@ Webhook сохраняет ограниченную квитанцию и зад
 Historical включён по умолчанию: просмотр/сопоставление разрешены, сообщения
 и изменения CRM подавлены. Live import требует подходящей сессии после включения.
 
+Если Webinar Stars после записи эфира указал в отчёте ID созданного автовебинара,
+оператор может явно выбрать исходную сессию при импорте в Historical. Её часовой
+пояс и подтверждённые статусы применяются к расчётам, исходный ID отчёта сохраняется.
+Это исключение не включает рассылки, CRM или автоматическое сопоставление разных
+вебинаров. Live import по-прежнему требует совпадения ID; отменённая сессия недоступна.
+
 Matching использует tracking invitation, затем нормализованные email/телефон.
 Имена не объединяют контакты. Неоднозначные участники доступны для Match contact,
 Create contact (дополнительно нужны `contacts:create`) или Ignore. После решения
@@ -221,7 +225,6 @@ Disconnect стирает сохранённый ключ и отключает 
 Автоматические проверки дополняют этот список; они не подтверждают реальные
 параметры автологина, webhook Content-Type и доставку в аккаунт провайдера.
 
-
 ## Telegram invitation routing correction - 2026-11-03
 
 The first live registration exposed a missing messenger conversation route: webinar
@@ -243,11 +246,58 @@ intent. Recovery reschedules only the original failed registration action, with 
 audit record and unchanged deduplication identity; it does not register the contact
 again or send directly through the Telegram API.
 
-
 Live recovery confirmed, 2026-11-03 04:59 UTC: worker `8b8453f` is SUCCESS in
 Railway. The original registration action was rescheduled once with an audit entry.
 Its scenario completed; all three nodes succeeded. Exactly one message and one
 outbox completed on the first delivery attempt, Telegram returned its message ID,
 and the user confirmed receiving the invitation and personal link. No duplicate
-registration or direct Telegram API send was used. Viewer entry and report/webhook
-acceptance remain the next functional checks.
+registration or direct Telegram API send was used.
+
+## First completed provider session - 2026-11-03
+
+The reminder was sent at 05:15:01 UTC. Its original action and published scenario
+completed on the first attempt, and Telegram acknowledged one outbound message.
+The user confirmed receiving it with the original personal invitation URL.
+
+The live room requires an active YouTube broadcast: an ordinary recorded video was
+rejected. An active public broadcast was accepted for the test. The user entered as
+a viewer, clicked the CTA, submitted the test comment and ended the session. The
+provider report covers 09:28:01-09:32:28 Asia/Baku (4 minutes 27 seconds).
+
+Bounded production inspection confirmed:
+
+- The recovery poll saved the report at 05:33:04 UTC. Its two participant rows
+  include one viewer with one comment and `button_1` status `clicked`, and the host
+  with status `seen`. These are actual provider values, now available for explicit
+  session status mappings; the mappings have not yet been saved.
+- Both `get_reports` and `get_report` identify the newly created auto webinar as
+  the report's `webinar_id`, whereas the configured session uses the original live
+  webinar ID. The two rooms have different URLs. The responses expose no original
+  webinar reference, and both `external_id` values are empty. Automatic binding by
+  the configured provider ID therefore did not happen. Matching by title or adjacent
+  numeric IDs is not a verified substitute for a provider relationship.
+- The test viewer's phone has no matching active contact. The intended Telegram
+  contact currently has neither a saved phone nor a normalized phone. The host's
+  identifiers match more than one contact and remain unresolved. No name matching
+  or automatic contact merge was performed.
+- The report remains unbound and Historical with PARTIAL matching. Normalized
+  duration and CTA booleans remain unknown until session configuration is applied.
+  No report-driven CRM operation or automation action has been emitted.
+- No webhook receipt exists. Railway API HTTP logs since 05:27 UTC contain no
+  request to the Webinar Stars webhook route. Delivery and the actual request
+  Content-Type are still unverified; absence of a receipt is not proof of a parser
+  failure. Inspect the provider's saved webhook URL configuration next.
+
+Invitation/reminder delivery, viewer entry, provider CTA/comment capture and poll
+recovery are verified. Webhook delivery, correct live-session report binding,
+contact matching and CRM delivery remain open acceptance items. No production
+records were mutated during this inspection.
+
+The user subsequently deferred CRM acceptance and prioritized Omnicus. The local
+correction permits explicit MANUAL Historical binding across the observed provider
+ID change and preserves a manually matched attendance row on refresh. A rollback-only
+production-data check resolves the viewer to the original contact and invitation,
+retains the same row over two import passes, and yields 267 seconds / 100%, a CTA
+click and one comment. No delivery intents/messages are created. Applying the
+correction and saving that local-only result remain release steps; automatic
+cross-ID binding and real webhook delivery are not claimed as verified.

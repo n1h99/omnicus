@@ -22,7 +22,7 @@ function fixture() {
     timezone: 'Asia/Baku',
     scheduledAt: new Date('2026-11-03T06:00:00Z'),
     endsAt: new Date('2026-11-03T07:00:00Z'),
-    cancelledAt: null,
+    cancelledAt: null as Date | null,
     settings: { ...defaultWebinarSettings, clickStatuses: ['clicked'], crmEnabled: true },
   };
   const job = {
@@ -137,7 +137,9 @@ function fixture() {
     },
     contact: { findMany: vi.fn(async () => contacts) },
     webinarInvitation: {
-      findUnique: vi.fn(async () => null),
+      findUnique: vi.fn(
+        async (): Promise<{ id: string; attribution: Record<string, unknown> } | null> => null,
+      ),
       findFirst: vi.fn(async () => null),
       findMany: vi.fn(async () => []),
       count: vi.fn(async () => 0),
@@ -225,6 +227,86 @@ describe('durable webinar import', () => {
     f.job.historical = true;
     await f.runtime.process('job');
     expect(f.attendances.size).toBe(1);
+    expect(f.actions.size).toBe(0);
+  });
+  it('uses an explicitly selected session for a historical report with a different provider ID', async () => {
+    const f = fixture();
+    f.job.historical = true;
+    f.report.webinarId = '8';
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('COMPLETED');
+    expect([...f.attendances.values()][0]).toMatchObject({
+      contactId: 'contact',
+      result: {
+        watchedMinutes: 50,
+        ctaClicked: true,
+        commentsCount: 1,
+        webinar: { webinarId: '8', eventId: 'event' },
+      },
+    });
+    expect(f.actions.size).toBe(0);
+    f.refresh();
+    await f.runtime.process('job');
+    expect(f.job.state).toBe('COMPLETED');
+    expect(f.attendances.size).toBe(1);
+    expect(f.actions.size).toBe(0);
+  });
+  it('preserves a manually matched row and invitation across changed report refreshes', async () => {
+    const f = fixture();
+    f.job.historical = true;
+    f.contacts.splice(0);
+    await f.runtime.process('job');
+    const original = [...f.attendances.values()][0]!;
+    Object.assign(original, {
+      contactId: 'contact',
+      matchState: 'MANUAL',
+      matchReason: 'MANUAL_MATCH',
+    });
+    f.db.webinarInvitation.findUnique.mockResolvedValue({
+      id: 'invitation',
+      attribution: {},
+    });
+    for (const minute of ['45', '40']) {
+      f.report.participants[0]!.leftAtLocal = `2026-11-03 10:${minute}:00`;
+      f.refresh();
+      await f.runtime.process('job');
+      expect(f.job.state).toBe('COMPLETED');
+      expect(f.attendances.size).toBe(1);
+      expect([...f.attendances.values()][0]).toMatchObject({
+        id: original.id,
+        contactId: 'contact',
+        invitationId: 'invitation',
+        matchState: 'MANUAL',
+        matchReason: 'MANUAL_MATCH',
+        result: { watchedMinutes: Number(minute) - 5, ctaClicked: true },
+      });
+      expect(f.actions.size).toBe(0);
+    }
+  });
+  it.each([
+    ['MANUAL', false],
+    ['POLL', true],
+    ['WEBHOOK', true],
+  ])(
+    'rejects a different provider ID for origin %s with historical=%s',
+    async (origin, historical) => {
+      const f = fixture();
+      f.job.origin = origin;
+      f.job.historical = historical;
+      f.report.webinarId = '8';
+      await f.runtime.process('job');
+      expect(f.job).toMatchObject({ state: 'FAILED', lastError: 'WEBINAR_REPORT_EVENT_MISMATCH' });
+      expect(f.attendances.size).toBe(0);
+      expect(f.actions.size).toBe(0);
+    },
+  );
+  it('rejects cancelled sessions even for an explicitly bound historical report', async () => {
+    const f = fixture();
+    f.job.historical = true;
+    f.event.cancelledAt = new Date();
+    await f.runtime.process('job');
+    expect(f.job).toMatchObject({ state: 'FAILED', lastError: 'WEBINAR_REPORT_EVENT_MISMATCH' });
+    expect(f.attendances.size).toBe(0);
     expect(f.actions.size).toBe(0);
   });
   it('keeps conflicting tracking invitations for manual review even when email matches', async () => {

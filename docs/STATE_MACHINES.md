@@ -395,11 +395,18 @@ If this changes during processing, completion requeues PENDING. A stale lease ow
 cannot commit. Re-import uses stable attendance identities and semantic action keys;
 historical imports create no automatic messaging/CRM intents.
 
+An explicitly selected MANUAL Historical session can interpret a report with a
+different provider webinar ID (recording-copy behavior observed during acceptance).
+Cancelled sessions, automatic bound imports and MANUAL Live imports retain the
+provider-ID guard. This exception never enables delivery effects or automatic aliases.
+
 Attendance matching: UNMATCHED -> MATCHED (unambiguous invitation or identity),
 MANUAL (operator decision) or IGNORED. Conflicting contact identities or tracking
 invitations remain UNMATCHED. Resolving or ignoring requeues the parent report in
 the same transaction. No-show conclusions wait for a final dated report without
 unresolved participants. Unknown engagement/time never becomes a fabricated click.
+Refreshing a MANUAL match preserves its existing attendance identity, contact and
+manual decision; finding an invitation does not supersede that row with a duplicate.
 
 Delivery intent: PENDING/RETRY -> PROCESSING -> SUCCEEDED, RETRY, FAILED, SKIPPED
 or UNKNOWN. CRM timeout or an expired PROCESSING lease reconciles the same

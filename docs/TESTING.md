@@ -437,3 +437,22 @@ Redis integration tests retain their documented skips. A rollback-only real-data
 replay verifies the complete published graph with actual foreign keys: COMPLETED,
 one queued Message, one outbox, action SUCCEEDED; the diagnostic transaction is
 rolled back and does not send externally. No schema migration is required.
+
+Omnicus-only report acceptance correction, 2026-11-03: all 316 API unit tests
+and 19 HTTP integration tests pass (one opt-in readiness check skips). The import
+suite now has 13 cases, covering explicit Historical binding across provider IDs,
+unchanged strict Live/automatic guards, cancelled sessions and retained manual
+attendance identity across changed reports. API typecheck, lint and formatting pass.
+The four Webinar Stars browser fixtures pass against the built web application.
+The complete workspace unit/integration and typecheck checks passed before the
+additional manual-identity correction; the affected API suites were rerun afterward.
+Prisma validation and the complete production build/runtime assembly also passed;
+the corrected API runtime is checked separately before release.
+
+A rollback-only real PostgreSQL check uses the provider's completed test report,
+the existing invitation/contact and the actual import service. After explicit
+Historical binding and manual matching, two import passes preserve the same viewer
+row and manual decision: 267 seconds, 100%, CTA clicked, one comment. No message or
+webinar delivery intent is created, and the test session's CRM flag is false inside
+the rolled-back transaction. The host remains unresolved and the import is PARTIAL;
+this does not invalidate the resolved viewer's results. No migration is required.

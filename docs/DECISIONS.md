@@ -1838,6 +1838,19 @@ Missing times and engagement fields remain unknown. Historical import is explici
 marked and suppresses automation/CRM actions by default. New invitations and durable
 reminders trigger the existing scenarios and channel/email eligibility checks.
 
+Acceptance clarification, 2026-11-03: the provider associated a completed live report
+with its newly created recording webinar ID and exposed no original-ID relationship.
+An operator's explicit historical report/session selection may therefore use different
+provider IDs for local normalization. The original provider ID remains in the saved
+report. This exception applies only to MANUAL Historical imports, never automatic
+matching or live delivery, and cancelled sessions remain invalid. It does not infer
+aliases from names or numeric proximity. The user deferred CRM acceptance and
+prioritized the Omnicus report/contact workflow.
+
+Refreshing a manually matched attendance retains its original identity and row ID,
+manual match state and reason, including when an invitation becomes available.
+Re-keying that row must not create a second participant or lose the operator decision.
+
 The Golden Visa staging counterpart implements webinars/v1 with durable Mongo receipts, ordered activity revisions and manager tasks. The producer requires the advertised capability before delivery; publish both counterparts and re-test the CRM connection before enabling it.
 No remote database migration, webhook activation, sending to live contacts, Git push
 or deployment is authorized by the local implementation request alone.

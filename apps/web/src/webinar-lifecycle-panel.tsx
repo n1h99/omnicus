@@ -575,6 +575,11 @@ export function WebinarLifecyclePanel({
                   />
                 </Form.Item>
               </Space>
+              <Typography.Paragraph type="secondary">
+                Select a session to calculate viewing time and apply its click statuses. Historical
+                imports can be explicitly bound when Webinar Stars changed the webinar ID after
+                recording. Live imports require matching webinar IDs.
+              </Typography.Paragraph>
               <Form.Item name="runActions" valuePropName="checked">
                 <Checkbox disabled={!connection.enabled}>
                   Run configured automations and CRM delivery (live session only)
