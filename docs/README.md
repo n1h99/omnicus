@@ -8,11 +8,15 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
-- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `2d74257`,
+- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web `6244444`, Worker `8b8453f`,
   Golden Visa staging backend `4ad95bc` and frontend `fa8f178` are SUCCESS in Railway.
   Both PostgreSQL migrations are applied (40 total); HTTP readiness and authenticated
-  CRM `webinars/v1` capability checks pass. Provider acceptance and scenario activation
-  remain the next guided steps. See [setup and checklist](WEBINAR_STARS.md).
+  CRM `webinars/v1` capability checks pass. Invitation/reminder delivery, real viewer
+  interactions, report polling recovery and explicit Historical report/session/contact
+  binding are verified. The saved viewer result is 267 seconds / 100%, CTA clicked,
+  one comment, with no new delivery intents. CRM acceptance is deferred by the user;
+  the test session's CRM flag is off. Webhook delivery and automatic binding across
+  changed provider IDs remain open. See [setup and checklist](WEBINAR_STARS.md).
 
 - Automotive CRM `main` release 2026-10-14 is a separate ApiX → CRM route, not
   the Golden Visa Omnicus Meta route below. Backend `d6ba77e` / frontend

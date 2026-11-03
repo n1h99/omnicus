@@ -298,6 +298,15 @@ correction permits explicit MANUAL Historical binding across the observed provid
 ID change and preserves a manually matched attendance row on refresh. A rollback-only
 production-data check resolves the viewer to the original contact and invitation,
 retains the same row over two import passes, and yields 267 seconds / 100%, a CTA
-click and one comment. No delivery intents/messages are created. Applying the
-correction and saving that local-only result remain release steps; automatic
-cross-ID binding and real webhook delivery are not claimed as verified.
+click and one comment. No delivery intents/messages are created.
+
+Release and save confirmed at 05:57 UTC: Omnicus API and Web `6244444` are both
+SUCCESS with only the new deployments active. API readiness and the public Web
+return HTTP 200. The corrected import service saved the result in one audited
+transaction, including the confirmed `clicked`/`seen` mappings, CRM disabled for
+this test session, explicit Historical session binding and the viewer's manual
+contact match. Repeating the import retained the original viewer row and invitation.
+A separate read verified the saved values and zero CRM operations/new delivery
+actions. The host remains UNMATCHED because its identifiers resolve to multiple
+contacts, so the overall import is PARTIAL; the viewer row is fully normalized.
+Automatic cross-ID binding and real webhook delivery remain unverified.

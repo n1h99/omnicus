@@ -447,7 +447,7 @@ The four Webinar Stars browser fixtures pass against the built web application.
 The complete workspace unit/integration and typecheck checks passed before the
 additional manual-identity correction; the affected API suites were rerun afterward.
 Prisma validation and the complete production build/runtime assembly also passed;
-the corrected API runtime is checked separately before release.
+the corrected API minimal-runtime assembly subsequently passed before release.
 
 A rollback-only real PostgreSQL check uses the provider's completed test report,
 the existing invitation/contact and the actual import service. After explicit
@@ -456,3 +456,9 @@ row and manual decision: 267 seconds, 100%, CTA clicked, one comment. No message
 webinar delivery intent is created, and the test session's CRM flag is false inside
 the rolled-back transaction. The host remains unresolved and the import is PARTIAL;
 this does not invalidate the resolved viewer's results. No migration is required.
+
+After API/Web `6244444` reached SUCCESS, the same audited service-level operation
+was committed and independently read back. The original viewer row and invitation,
+267-second duration, 100% completion, CTA click and comment are preserved, the
+session's CRM flag is false, and no new delivery actions/messages or CRM operations
+exist. Public API readiness and Web return HTTP 200.
