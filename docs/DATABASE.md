@@ -1657,6 +1657,8 @@ so disconnect can erase credentials without deleting history. New project-owned 
 - webinar_events: provider webinar binding, UTC schedule, IANA timezone, explicit link
   parameter/click mappings and reminder offsets.
 - webinar_invitations: unique event/contact registration, opaque random token, attribution.
+  Attribution retains original marketing UTM and distributor ID independently of a
+  provider URL parameter used to carry the technical tracking token (ADR-069).
 - webinar_webhook_receipts: bounded normalized metadata, payload fingerprint deduplication.
 - webinar_report_imports: unique connection/report job, optional explicit event binding,
   lease owner/expiry, retry scheduling, snapshot hash and historical flag.
@@ -1665,6 +1667,9 @@ so disconnect can erase credentials without deleting history. New project-owned 
   is scoped to that import and survives receipt retention; it is not an ID alias.
 - webinar_attendances: unique report/participant identity, normalized result and optional
   project-bound contact/invitation mapping; no cross-project relation is permitted.
+  Normalized marketing UTM restores the matched invitation's original attribution;
+  the configured carrier token is excluded from that marketing object. Saved reporting
+  aggregates these identities per import and never aggregates raw provider visit counts.
 - webinar_actions: transactional outbox for automation and CRM; unique semantic key,
   dueAt, bounded retry, fenced lease and explicit UNKNOWN reconciliation state.
 

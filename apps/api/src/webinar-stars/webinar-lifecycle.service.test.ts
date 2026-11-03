@@ -79,5 +79,22 @@ describe('Webinar lifecycle boundaries', () => {
     expect(() => service.validateSettings({ registrationSourceKey: 'another/source' })).toThrow();
     expect(() => service.validateSettings({ completedPercentage: 101 })).toThrow();
     expect(() => service.validateSettings({ arbitrary: true })).toThrow();
+    expect(() => service.validateSettings({ parameters: { cv: 'trackingToken' } })).toThrow();
+    expect(() =>
+      service.validateSettings({
+        parameters: { cv: 'trackingToken' },
+        trackingParameter: 'utm_campaign',
+      }),
+    ).toThrow();
+    expect(() =>
+      service.validateSettings({ parameters: { person: 'name' }, constants: { person: '1' } }),
+    ).toThrow();
+    expect(() => service.validateSettings({ parameters: { utm_source: 'email' } })).toThrow();
+    expect(
+      service.validateSettings({
+        parameters: { utm_campaign: 'trackingToken' },
+        trackingParameter: 'utm_campaign',
+      }).trackingParameter,
+    ).toBe('utm_campaign');
   });
 });

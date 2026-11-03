@@ -30,6 +30,8 @@ import { apiRequest, getUserErrorMessage } from './api';
 import { useAuth } from './auth';
 import { AppDateTimePicker } from './app-date-time-picker';
 import type { WebinarConnection } from './webinar-stars-api';
+import { WebinarReportingPanel } from './webinar-reporting-panel';
+import { WebinarScenariosPanel } from './webinar-scenarios-panel';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -55,6 +57,7 @@ interface ImportRow {
   attempts: number;
   processedAt: string | null;
   _count: { attendances: number };
+  event?: { title: string } | null;
 }
 interface ContactOption {
   id: string;
@@ -147,7 +150,7 @@ const settingValues = (config: Record<string, unknown>): SettingsValues => {
 };
 function settingsInput(values: SettingsValues) {
   return {
-    registrationSourceKey: values.registrationSourceKey || null,
+    registrationSourceKey: values.registrationSourceKey?.trim() || null,
     parameters: Object.fromEntries(
       (
         [
@@ -161,10 +164,10 @@ function settingsInput(values: SettingsValues) {
         .filter(([name]) => name?.trim())
         .map(([name, source]) => [name!.trim(), source]),
     ),
-    constants: values.autologinParameter
-      ? { [values.autologinParameter]: values.autologinValue ?? '' }
+    constants: values.autologinParameter?.trim()
+      ? { [values.autologinParameter.trim()]: values.autologinValue ?? '' }
       : {},
-    trackingParameter: values.trackingParameter || null,
+    trackingParameter: values.trackingParameter?.trim() || null,
     clickStatuses: values.clickStatuses ?? [],
     seenStatuses: values.seenStatuses ?? [],
     reminderMinutes: (values.reminderMinutes ?? []).map(Number),
@@ -206,7 +209,8 @@ function SettingsFields() {
       <Typography.Title level={5}>Verified Webinar Stars settings</Typography.Title>
       <Typography.Paragraph type="secondary">
         These optional names and statuses must come from Webinar Stars. Leave them empty until
-        confirmed; the personal Omnicus link works without autologin.
+        confirmed; the personal Omnicus link works without autologin. Original campaign attribution
+        stays on the invitation even when a verified UTM field carries tracking.
       </Typography.Paragraph>
       {(
         [
@@ -219,7 +223,43 @@ function SettingsFields() {
           ['autologinValue', 'Autologin flag value'],
         ] as const
       ).map(([name, label]) => (
-        <Form.Item key={name} name={name} label={label}>
+        <Form.Item
+          key={name}
+          name={name}
+          label={label}
+          rules={
+            name === 'autologinValue'
+              ? []
+              : [
+                  ({ getFieldValue }) => ({
+                    validator: async (_, value: unknown) => {
+                      const parameter = typeof value === 'string' ? value.trim() : '';
+                      if (!parameter) return;
+                      if (!/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(parameter))
+                        throw new Error(
+                          'Use a confirmed parameter name containing letters, digits or underscores.',
+                        );
+                      const fields = [
+                        'nameParameter',
+                        'emailParameter',
+                        'phoneParameter',
+                        'trackingParameter',
+                        'distributorParameter',
+                        'autologinParameter',
+                      ];
+                      if (
+                        fields.some(
+                          (field) =>
+                            field !== name &&
+                            String(getFieldValue(field) ?? '').trim() === parameter,
+                        )
+                      )
+                        throw new Error('Each provider parameter must have a different name.');
+                    },
+                  }),
+                ]
+          }
+        >
           <Input maxLength={name === 'autologinValue' ? 500 : 64} />
         </Form.Item>
       ))}
@@ -242,6 +282,7 @@ export function WebinarLifecyclePanel({
 }) {
   const { message, modal } = App.useApp();
   const [registrationConfig, setRegistrationConfig] = useState<unknown | null>(null);
+  const [reportImportId, setReportImportId] = useState<string>();
   const [createContactRow, setCreateContactRow] = useState<ParticipantRow | null>(null);
   const [contactForm] = Form.useForm<{
     displayName: string;
@@ -265,7 +306,11 @@ export function WebinarLifecyclePanel({
     [settingsForm] = Form.useForm<SettingsValues>(),
     [inviteForm] = Form.useForm<{
       contactIds: string[];
+      utm_source?: string | undefined;
+      utm_medium?: string | undefined;
       utm_campaign?: string | undefined;
+      utm_content?: string | undefined;
+      utm_term?: string | undefined;
       distributorId?: string;
     }>(),
     [importForm] = Form.useForm<{
@@ -283,7 +328,7 @@ export function WebinarLifecyclePanel({
       refetchInterval: connection.enabled ? 5000 : false,
     });
   const events = useLifecycleQuery<EventRow[]>('events'),
-    imports = useLifecycleQuery<ImportRow[]>('imports', tab === 'imports'),
+    imports = useLifecycleQuery<ImportRow[]>('imports', tab === 'imports' || tab === 'reporting'),
     participants = useLifecycleQuery<ParticipantRow[]>('participants', tab === 'participants'),
     actions = useLifecycleQuery<ActionRow[]>('actions', tab === 'actions');
   const contacts = useQuery({
@@ -409,11 +454,27 @@ export function WebinarLifecyclePanel({
           onChange={setTab}
           items={[
             { key: 'events', label: 'Sessions' },
+            { key: 'reporting', label: 'Results' },
+            { key: 'scenarios', label: 'Scenarios' },
             { key: 'imports', label: 'Saved reports' },
             { key: 'participants', label: 'Matching' },
             { key: 'actions', label: 'Delivery log' },
           ]}
         />
+        {tab === 'reporting' && imports.isError ? (
+          failure(imports.error)
+        ) : tab === 'reporting' ? (
+          <WebinarReportingPanel
+            projectId={projectId}
+            revision={connection.revision}
+            reports={imports.data ?? []}
+            importId={reportImportId}
+            onSelect={setReportImportId}
+          />
+        ) : null}
+        {tab === 'scenarios' ? (
+          <WebinarScenariosPanel projectId={projectId} sessions={events.data ?? []} />
+        ) : null}
         {tab === 'events' ? (
           <>
             <Button
@@ -617,15 +678,25 @@ export function WebinarLifecyclePanel({
                   {
                     title: 'Actions',
                     render: (_, row) => (
-                      <Button
-                        disabled={
-                          mutate.isPending ||
-                          !['FAILED', 'COMPLETED', 'PARTIAL'].includes(row.state)
-                        }
-                        onClick={() => void run(`imports/${row.id}/retry`).catch(() => {})}
-                      >
-                        Refresh / retry
-                      </Button>
+                      <Space>
+                        <Button
+                          onClick={() => {
+                            setReportImportId(row.id);
+                            setTab('reporting');
+                          }}
+                        >
+                          Open results
+                        </Button>
+                        <Button
+                          disabled={
+                            mutate.isPending ||
+                            !['FAILED', 'COMPLETED', 'PARTIAL'].includes(row.state)
+                          }
+                          onClick={() => void run(`imports/${row.id}/retry`).catch(() => {})}
+                        >
+                          Refresh / retry
+                        </Button>
+                      </Space>
                     ),
                   },
                 ]}
@@ -867,7 +938,11 @@ export function WebinarLifecyclePanel({
               contactIds: values.contactIds,
               attribution: Object.fromEntries(
                 [
+                  ['utm_source', values.utm_source],
+                  ['utm_medium', values.utm_medium],
                   ['utm_campaign', values.utm_campaign],
+                  ['utm_content', values.utm_content],
+                  ['utm_term', values.utm_term],
                   ['distributorId', values.distributorId],
                 ].filter(([, value]) => value),
               ),
@@ -891,9 +966,15 @@ export function WebinarLifecyclePanel({
               loading={contacts.isFetching}
             />
           </Form.Item>
-          <Form.Item name="utm_campaign" label="UTM campaign">
-            <Input maxLength={500} />
-          </Form.Item>
+          <Typography.Paragraph type="secondary">
+            Marketing attribution is saved with the invitation separately from the technical
+            tracking token.
+          </Typography.Paragraph>
+          {(['source', 'medium', 'campaign', 'content', 'term'] as const).map((key) => (
+            <Form.Item key={key} name={`utm_${key}`} label={`UTM ${key}`}>
+              <Input maxLength={500} />
+            </Form.Item>
+          ))}
           <Form.Item name="distributorId" label="Distributor ID">
             <Input maxLength={500} />
           </Form.Item>

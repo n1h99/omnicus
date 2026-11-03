@@ -1863,3 +1863,35 @@ positively out-of-window visits and dated comments, preserving unknown evidence.
 The Golden Visa staging counterpart implements webinars/v1 with durable Mongo receipts, ordered activity revisions and manager tasks. The producer requires the advertised capability before delivery; publish both counterparts and re-test the CRM connection before enabling it.
 No remote database migration, webhook activation, sending to live contacts, Git push
 or deployment is authorized by the local implementation request alone.
+
+## ADR-069 - Operator webinar results and invitation attribution (2026-11-03)
+
+**Status:** User-authorized follow-up implementation of items 1, 2 and 5. Manual
+provider/channel acceptance remains delegated to the operator's team; CRM stays deferred.
+
+The Results workspace reads persisted normalized attendances. One selected import is
+the reporting boundary: counts must not combine repeated imports/sessions or raw room
+visits. Registered counts come from active invitations for the bound event. Attendance,
+confirmed no-show, completion, partial viewing, CTA, replay, comments, unmatched rows
+and delivery errors are reported separately. Ignored rows do not contribute engagement.
+Unknown provider evidence is not a false value. Unfinished/unresolved reports are
+labelled provisional. Full-report counts and paginated filtered participants use the
+same repeatable-read snapshot, scoped by project/import on every query. The read API
+requires the existing integrations permission and returns Cache-Control: no-store.
+It does not queue work, call a provider or send messages. No schema migration is needed.
+
+Invitation marketing attribution is authoritative for that registration and remains
+separate from technical identity. If an explicitly configured, verified UTM parameter
+is the tracking carrier, the link mapping takes precedence over marketing values on
+the provider URL. Normalization removes the carrier token from marketing UTM and
+restores the original invitation UTM; other reported marketing fields are preserved.
+Distributor ID comes from the scoped invitation. Conflicting parameter roles are
+rejected. No new provider parameter or autologin capability is assumed: unsupported
+names remain empty until the operator's team confirms them in Webinar Stars.
+
+Customer-facing presets create session-scoped drafts in the existing Automation
+Studio, using its existing permissions and publication flow. Presets cover invitations,
+reminders, thanks, absence and CTA follow-up, with optional tagging and an explicit
+Telegram bot. They contain no diagnostic statistics or implicit CRM writes. Existing
+published versions are not edited. The four known acceptance-only scenarios in the
+test project are paused through the audited application service, preserving history.

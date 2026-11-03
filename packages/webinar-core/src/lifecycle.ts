@@ -376,10 +376,32 @@ export function participantDestination(
     url.password
   )
     throw new Error('WEBINAR_ROOM_URL_INVALID');
-  for (const [key, source] of Object.entries(config.parameters))
-    if (values[source]) url.searchParams.set(key, values[source]!);
-  for (const [key, value] of Object.entries(config.constants)) url.searchParams.set(key, value);
+  // Marketing attribution is retained on the invitation. Explicit provider mappings
+  // take precedence when a verified UTM field is used as a tracking carrier.
   for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'])
     if (typeof attribution[key] === 'string') url.searchParams.set(key, attribution[key] as string);
+  for (const [key, value] of Object.entries(config.constants)) url.searchParams.set(key, value);
+  for (const [key, source] of Object.entries(config.parameters))
+    if (values[source]) url.searchParams.set(key, values[source]!);
   return url.toString();
+}
+
+export function attendanceAttribution(
+  providerUtm: Record<string, string>,
+  invitationAttribution: unknown,
+  trackingParameter: string | null,
+  trackingToken: string | null,
+): Record<string, string> {
+  const saved = object(invitationAttribution);
+  const result: Record<string, string> = {};
+  for (const key of ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term']) {
+    const providerValue = providerUtm[key];
+    if (
+      typeof providerValue === 'string' &&
+      !(key === trackingParameter && providerValue === trackingToken)
+    )
+      result[key] = providerValue;
+    if (typeof saved[key] === 'string') result[key] = saved[key];
+  }
+  return result;
 }

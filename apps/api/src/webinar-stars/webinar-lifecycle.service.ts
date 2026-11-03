@@ -184,6 +184,19 @@ export class WebinarLifecycleService {
       (typeof result.trackingParameter !== 'string' || !/^\w{1,64}$/.test(result.trackingParameter))
     )
       failure('WEBINAR_SETTINGS_INVALID');
+    if (
+      Object.keys(result.constants).some((key) => key in result.parameters) ||
+      Object.entries(result.parameters).some(
+        ([key, source]) => key.startsWith('utm_') && source !== 'trackingToken',
+      ) ||
+      Object.keys(result.constants).some((key) => key.startsWith('utm_')) ||
+      (result.trackingParameter !== null &&
+        result.parameters[result.trackingParameter] !== 'trackingToken') ||
+      Object.entries(result.parameters).some(
+        ([key, source]) => source === 'trackingToken' && key !== result.trackingParameter,
+      )
+    )
+      failure('WEBINAR_LINK_MAPPING_CONFLICT');
     for (const values of [result.clickStatuses, result.seenStatuses])
       if (
         !Array.isArray(values) ||
@@ -318,9 +331,9 @@ export class WebinarLifecycleService {
   async imports(projectId: string) {
     return this.database.client.webinarReportImport.findMany({
       where: { projectId },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 100,
-      include: { _count: { select: { attendances: true } } },
+      include: { _count: { select: { attendances: true } }, event: { select: { title: true } } },
     });
   }
   async retry(projectId: string, id: string) {

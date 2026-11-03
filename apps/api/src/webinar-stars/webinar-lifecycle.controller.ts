@@ -23,6 +23,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { firstHeaderValue, type AuthenticatedRequest } from '../auth/auth.types';
 import { AuditService } from '../audit/audit.service';
 import { WebinarLifecycleService } from './webinar-lifecycle.service';
+import { WebinarReportingService } from './webinar-reporting.service';
 import { LeadCaptureService } from '../automation/lead-capture.service';
 import { AccessService } from '../access/access.service';
 import { CreateContactDto } from '../contacts/dto';
@@ -43,6 +44,7 @@ export class WebinarLifecycleController {
     @Inject(AuditService) private readonly audit: AuditService,
     @Inject(LeadCaptureService) private readonly capture: LeadCaptureService,
     @Inject(AccessService) private readonly access: AccessService,
+    @Inject(WebinarReportingService) private readonly reporting: WebinarReportingService,
   ) {}
   @Get('events/:id/registration-config')
   @Header('Cache-Control', 'no-store')
@@ -145,6 +147,12 @@ export class WebinarLifecycleController {
     @Param('projectId') projectId: string,
   ) {
     return { data: await this.lifecycle.imports(projectId), meta: {} };
+  }
+  @Get('reporting') @Header('Cache-Control', 'no-store') async report(
+    @Param('projectId') projectId: string,
+    @Query() query: Record<string, string | undefined>,
+  ) {
+    return { data: await this.reporting.report(projectId, query), meta: {} };
   }
   @Post('imports/:id/retry') async retry(
     @Param('projectId') projectId: string,

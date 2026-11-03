@@ -167,7 +167,13 @@ function fixture() {
       findUnique: vi.fn(
         async (): Promise<{ id: string; attribution: Record<string, unknown> } | null> => null,
       ),
-      findFirst: vi.fn(async () => null),
+      findFirst: vi.fn(
+        async (): Promise<{
+          id: string;
+          contactId?: string;
+          attribution?: Record<string, unknown>;
+        } | null> => null,
+      ),
       findMany: vi.fn(async () => []),
       count: vi.fn(async () => 0),
     },
@@ -461,6 +467,34 @@ describe('durable webinar import', () => {
     });
     expect(f.actions.size).toBe(0);
     expect(f.job.state).toBe('PARTIAL');
+  });
+  it('restores invitation marketing attribution and distributor separately from provider tracking', async () => {
+    const f = fixture();
+    const token = 'a'.repeat(48);
+    f.event.settings.trackingParameter = 'utm_campaign';
+    f.report.participants[0]!.utm = `utm_campaign=${token}&utm_source=provider-source`;
+    f.db.webinarInvitation.findFirst.mockResolvedValue({
+      id: 'invitation',
+      contactId: 'contact',
+      attribution: {
+        utm_campaign: 'real-campaign',
+        utm_medium: 'email',
+        distributorId: 'partner-7',
+      },
+    });
+    await f.runtime.process('job');
+    expect([...f.attendances.values()][0]).toMatchObject({
+      matchReason: 'TRACKING_TOKEN',
+      result: {
+        utm: { utm_campaign: 'real-campaign', utm_source: 'provider-source', utm_medium: 'email' },
+        distributorId: 'partner-7',
+      },
+    });
+    expect(f.db.webinarInvitation.findFirst).toHaveBeenLastCalledWith({
+      where: { id: 'invitation', projectId: 'project', eventId: 'event' },
+    });
+    for (const action of f.actions.values())
+      expect(JSON.stringify((action.payload as Record<string, unknown>).utm)).not.toContain(token);
   });
   it('fences a stale result when credentials change during the provider request', async () => {
     const f = fixture();

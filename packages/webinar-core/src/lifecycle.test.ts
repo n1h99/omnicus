@@ -9,6 +9,7 @@ import {
   reportBindingFromWebhooks,
   visitOverlapsReport,
   watchedSeconds,
+  attendanceAttribution,
   type ProviderVisit,
   type ProviderReport,
 } from './index';
@@ -219,6 +220,45 @@ describe('webinar normalization and opaque links', () => {
     expect(() =>
       participantDestination('https://evil.example/webinar/abc', defaultWebinarSettings, {}, {}),
     ).toThrow();
+  });
+  it('preserves a verified tracking carrier when the invitation also has a marketing campaign', () => {
+    const token = 'a'.repeat(48);
+    const config = {
+      ...defaultWebinarSettings,
+      parameters: { utm_campaign: 'trackingToken' },
+      trackingParameter: 'utm_campaign',
+    };
+    const url = new URL(
+      participantDestination(
+        'https://efir.webinar-stars.com/webinar/abc/',
+        config,
+        { trackingToken: token },
+        { utm_campaign: 'summer-sale', utm_source: 'newsletter' },
+      ),
+    );
+    expect(url.searchParams.get('utm_campaign')).toBe(token);
+    expect(url.searchParams.get('utm_source')).toBe('newsletter');
+    expect(
+      attendanceAttribution(
+        Object.fromEntries(url.searchParams),
+        { utm_campaign: 'summer-sale', distributorId: 'partner-1' },
+        config.trackingParameter,
+        token,
+      ),
+    ).toEqual({ utm_campaign: 'summer-sale', utm_source: 'newsletter' });
+  });
+  it('separates unknown marketing attribution from technical identity and does not invent parameters', () => {
+    expect(
+      attendanceAttribution(
+        { utm_campaign: 'opaque', utm_content: 'creative', cv: 'opaque' },
+        null,
+        'utm_campaign',
+        'opaque',
+      ),
+    ).toEqual({ utm_content: 'creative' });
+    expect(attendanceAttribution({ utm_campaign: 'provider-campaign' }, {}, null, null)).toEqual({
+      utm_campaign: 'provider-campaign',
+    });
   });
   it('keeps unknown button statuses and absent CTA evidence distinct from a confirmed non-click', () => {
     const config = {

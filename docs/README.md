@@ -8,6 +8,14 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
+- Webinar Stars operator workflow (ADR-069): Results provides saved-report summaries,
+  server-side participant filtering/pagination and full comments/attribution. Original
+  marketing UTM is preserved independently of provider tracking; conflicting link
+  mappings are rejected. Customer scenario presets create explicit session/bot drafts
+  in Automation Studio. The four acceptance-only scenarios are paused with published
+  versions retained. Manual provider/channel acceptance is delegated to the operator's
+  team; CRM acceptance remains deferred. See [the operator workflow](WEBINAR_STARS.md#operator-results-and-customer-scenario-setup-adr-069).
+
 - Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `b3e589f`,
   Golden Visa staging backend `4ad95bc` and frontend `fa8f178` are SUCCESS in Railway.
   Both PostgreSQL migrations are applied (40 total); HTTP readiness and authenticated

@@ -8,6 +8,7 @@ import { WebinarStarsController } from './webinar-stars.controller';
 import { WebinarStarsService } from './webinar-stars.service';
 import { WebinarLifecycleService } from './webinar-lifecycle.service';
 import { WebinarImportRuntimeService } from './webinar-import-runtime.service';
+import { WebinarReportingService } from './webinar-reporting.service';
 import {
   WebinarLifecycleController,
   WebinarPublicController,
@@ -16,6 +17,11 @@ import {
 @Module({
   imports: [AccessModule, AuthModule, AuditModule, AutomationModule, JwtModule.register({})],
   controllers: [WebinarStarsController, WebinarLifecycleController, WebinarPublicController],
-  providers: [WebinarStarsService, WebinarLifecycleService, WebinarImportRuntimeService],
+  providers: [
+    WebinarStarsService,
+    WebinarLifecycleService,
+    WebinarImportRuntimeService,
+    WebinarReportingService,
+  ],
 })
 export class WebinarStarsModule {}

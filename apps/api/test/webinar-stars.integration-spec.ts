@@ -14,6 +14,7 @@ import {
   WebinarPublicController,
 } from '../src/webinar-stars/webinar-lifecycle.controller';
 import { WebinarLifecycleService } from '../src/webinar-stars/webinar-lifecycle.service';
+import { WebinarReportingService } from '../src/webinar-stars/webinar-reporting.service';
 import { LeadCaptureService } from '../src/automation/lead-capture.service';
 import { configureApiApplication } from '../src/platform/configure-api-application';
 import { configureRequestBodyParsers } from '../src/platform/request-body-parsers';
@@ -32,6 +33,7 @@ describe('Webinar Stars HTTP boundary', () => {
     report: jest.fn().mockResolvedValue({ participants: [] }),
   };
   const audit = { record: jest.fn().mockResolvedValue(undefined) };
+  const reporting = { report: jest.fn().mockResolvedValue({ report: null, items: [], total: 0 }) };
   const lifecycle = {
     receive: jest.fn().mockResolvedValue({ ok: true }),
     createParticipantContact: jest.fn(),
@@ -63,6 +65,7 @@ describe('Webinar Stars HTTP boundary', () => {
     ['get', '/events/session/invitations'],
     ['post', '/imports'],
     ['get', '/imports'],
+    ['get', '/reporting'],
     ['post', '/imports/report/retry'],
     ['get', '/participants'],
     ['post', '/participants/participant/match'],
@@ -79,6 +82,7 @@ describe('Webinar Stars HTTP boundary', () => {
       providers: [
         { provide: WebinarStarsService, useValue: service },
         { provide: WebinarLifecycleService, useValue: lifecycle },
+        { provide: WebinarReportingService, useValue: reporting },
         { provide: LeadCaptureService, useValue: {} },
         { provide: AuditService, useValue: audit },
         { provide: AccessService, useValue: access },
@@ -169,6 +173,7 @@ describe('Webinar Stars HTTP boundary', () => {
         [method](`/api/v1/projects/a/webinar-stars${suffix}`)
         .expect(401);
     expect(service.config).not.toHaveBeenCalled();
+    expect(reporting.report).not.toHaveBeenCalled();
   });
   it('requires the selected project permission even with a valid session', async () => {
     for (const [method, suffix] of paths)
@@ -178,6 +183,19 @@ describe('Webinar Stars HTTP boundary', () => {
         .expect(403);
     expect(service.save).not.toHaveBeenCalled();
     expect(service.report).not.toHaveBeenCalled();
+    expect(reporting.report).not.toHaveBeenCalled();
+  });
+  it('serves saved reporting only in the authorized project without caching personal data', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/projects/a/webinar-stars/reporting?importId=saved-a&cta=unknown&page=2')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+    expect(response.headers['cache-control']).toBe('no-store');
+    expect(reporting.report).toHaveBeenCalledWith('a', {
+      importId: 'saved-a',
+      cta: 'unknown',
+      page: '2',
+    });
   });
   it('validates pagination and rejects unknown credential properties', async () => {
     await request(app.getHttpServer())

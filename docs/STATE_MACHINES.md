@@ -415,6 +415,15 @@ in matching or engagement. Previously UNMATCHED rows for those identities become
 IGNORED/OUTSIDE_REPORT_WINDOW; operator decisions are preserved. Dated comments
 outside the interval are excluded. Missing or malformed timestamps remain unknown.
 
+Matched attendance restores the invitation's original marketing UTM separately from
+the configured provider tracking carrier (ADR-069). A marketing value cannot replace
+that token on the outgoing provider URL. Conflicting link parameter roles are rejected
+before saving settings. Distributor ID is read from the same project/event invitation.
+Operator Results are read-only snapshots: opening/filtering them never advances an
+import, emits a semantic event or queues delivery. Customer presets save drafts only;
+the existing explicit publish transition activates them. Pausing diagnostic scenarios
+preserves their published versions and history.
+
 Delivery intent: PENDING/RETRY -> PROCESSING -> SUCCEEDED, RETRY, FAILED, SKIPPED
 or UNKNOWN. CRM timeout or an expired PROCESSING lease reconciles the same
 project-scoped idempotency key before another external write. UNKNOWN remains

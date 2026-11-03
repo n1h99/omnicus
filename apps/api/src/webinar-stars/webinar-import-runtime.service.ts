@@ -17,6 +17,7 @@ import {
   phoneIdentity,
   reportBindingFromWebhooks,
   visitOverlapsReport,
+  attendanceAttribution,
   WebinarStarsError,
 } from '@omnicus/webinar-core';
 import type { Prisma } from '@omnicus/database';
@@ -403,6 +404,12 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
             }
             const result = {
               ...normalized,
+              utm: attendanceAttribution(
+                normalized.utm,
+                null,
+                config.trackingParameter,
+                normalized.trackingToken,
+              ),
               webinar: {
                 ...summary,
                 eventId: event?.id ?? null,
@@ -414,9 +421,19 @@ export class WebinarImportRuntimeService implements OnModuleInit, OnModuleDestro
               distributorId: null as string | null,
             };
             if (invitationId) {
-              const invitation = await tx.webinarInvitation.findUnique({
-                where: { id: invitationId },
+              const invitation = await tx.webinarInvitation.findFirst({
+                where: {
+                  id: invitationId,
+                  projectId: job.projectId,
+                  ...(event ? { eventId: event.id } : {}),
+                },
               });
+              result.utm = attendanceAttribution(
+                normalized.utm,
+                invitation?.attribution,
+                config.trackingParameter,
+                normalized.trackingToken,
+              );
               const distributor = object(invitation?.attribution).distributorId;
               result.distributorId = typeof distributor === 'string' ? distributor : null;
             }

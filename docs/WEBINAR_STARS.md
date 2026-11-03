@@ -409,3 +409,48 @@ sync and outbound-message history integration; those pre-existing routes remain
 unchanged. CRM webinar acceptance is still deferred. Missed/replay branches,
 additional delivery channels and independent host/viewer separation are not accepted
 by this successful primary invitation-to-report Telegram test.
+
+## Operator results and customer scenario setup (ADR-069)
+
+Webinar workflow → Results shows one saved report at a time. Choose an import or use
+Saved reports → Open results. The summary shows active registrations, attended,
+confirmed missed, completed, partial viewing, CTA clicks, replay, comments, unmatched
+identities and failed/unknown report delivery actions. These counts cover the whole
+selected import; table filters affect participant rows only. Unknown values remain
+Unknown. Ignored rows are excluded from engagement counts. An unfinished report or
+unresolved matching displays a provisional-results notice, not an inferred no-show.
+
+Search participants by name, contact, email, phone, source/campaign or distributor.
+Filter attendance/matching, CTA and replay evidence; sort by name or watched duration.
+The table is paginated on the server, up to 100 rows per page. View result opens contact
+and CRM references, viewing, matching, all saved UTM and full normalized comments.
+Counts and rows share a repeatable-read PostgreSQL snapshot. No provider read or
+outbound action is caused by opening a saved report.
+
+`GET /api/v1/projects/:projectId/webinar-stars/reporting` requires integrations:manage.
+Query: optional importId (latest import if omitted), search (max 120), status
+(ATTENDED/MISSED/PARTIALLY_WATCHED/COMPLETED/REPLAY_VIEWED/UNKNOWN), match
+(MATCHED/MANUAL/UNMATCHED/IGNORED), cta/replay (yes/no/unknown), sort (name/watched),
+page (1..100000), pageSize (1..100, default 20). The response is report metadata,
+full-import summary, items, filtered total, page and pageSize. No import returns an
+empty workspace; an inaccessible explicit import returns 404. Invalid filters return
+400. All queries are project-scoped and all search/filter values are bound parameters.
+
+Registration now accepts all five standard marketing UTM plus separate distributor ID.
+The original values remain on the invitation. If a confirmed provider UTM field carries
+tracking, its token wins on the outgoing URL so campaign input cannot break identity.
+Saved attendance restores the invitation's original campaign/source/etc independently;
+the technical token is not shown as a marketing campaign. Reported UTM fields absent
+from invitation attribution are retained. Conflicting link parameter roles are rejected.
+This fixes data separation without claiming an unverified custom/autologin parameter.
+
+Webinar workflow → Scenarios creates a customer-facing draft for a selected session,
+explicit active Telegram bot, editable message and optional contact tag. Presets cover
+registration, scheduled reminders, attendee thanks, absence and CTA follow-up. Creation
+requires automation:manage; review and publication use the existing Automation Studio.
+The presets do not send staff statistics to participants or enable CRM. Existing email
+and WhatsApp nodes remain available in Studio. Their live acceptance remains delegated.
+
+The four known acceptance-only scenarios have been paused through the audited service.
+Published versions, invitations and saved reports were retained. No customer follow-up
+was published automatically and no additional live test was requested from the operator.

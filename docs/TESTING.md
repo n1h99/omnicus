@@ -522,3 +522,34 @@ message. There are zero webinar CRM actions and the session's webinar CRM flag i
 false; separate generic contact/message CRM integrations remain unchanged. No source
 or schema change is part of this acceptance entry. Missed/replay branches and CRM
 webinar acceptance retain their separate gates. Markdown integrity checks apply.
+
+Operator reporting, invitation attribution and customer presets (ADR-069), 2026-11-03:
+the complete workspace unit/integration suite passes, including 14 webinar-core,
+337 API, 166 Worker and 114 Web unit cases. All four HTTP suites pass: 23 cases,
+one documented opt-in readiness skip; the four opt-in Redis cases remain skipped.
+Full workspace typecheck, lint, changed-source formatting, Prisma validation and
+production API/Web/Worker build/minimal-runtime assembly pass. The actual API
+production runtime starts, binds its port and returns safe dependency readiness
+without leaking unavailable dependency details. No schema change.
+
+All six Webinar Stars browser cases pass. New cases cover normalized Results,
+server filter parameters, empty filtered results, full comments rendered as plain
+text, and customer scenario drafts scoped to a selected session and Telegram bot,
+including optional tagging and navigation to the valid editor without publication.
+Results and scenario forms fit 390/1440 px; screenshots were inspected. The browser
+checks use synthetic data and do not establish new provider/channel live acceptance.
+
+An actual-service PostgreSQL check reads the completed 145-second real report and
+verifies counts/contact mapping. A separate rollback-only transaction creates five
+synthetic attendance rows and verifies ignored-row exclusion, confirmed missed,
+unknown versus false CTA/replay evidence, literal percent/injection-string search,
+stable pagination/sorting, project isolation and removal of the technical token from
+the reporting response. The synthetic import and rows are rolled back; no messages
+or provider requests are created by reporting.
+
+The four explicitly scoped acceptance-only scenarios were paused through the real
+audited application service. Independent readback confirms PAUSED and unchanged
+active published version IDs. Invitation/attendance history is retained. Marketing
+attribution precedence and distributor restoration have unit/import regression tests;
+real autologin/custom-parameter and other channel tests are delegated to the operator's
+team. CRM webinar acceptance remains deferred.
