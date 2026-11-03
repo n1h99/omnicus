@@ -454,3 +454,10 @@ and WhatsApp nodes remain available in Studio. Their live acceptance remains del
 The four known acceptance-only scenarios have been paused through the audited service.
 Published versions, invitations and saved reports were retained. No customer follow-up
 was published automatically and no additional live test was requested from the operator.
+
+Release 48cc118 is SUCCESS for API, Web and Worker with one active deployment per
+service. Public Web and API readiness return HTTP 200; unauthenticated reporting is
+rejected with HTTP 401. Automatic processing refreshed the saved acceptance result:
+145 seconds remain intact, original source attribution is restored and the technical
+carrier is excluded from marketing UTM. The result-message count remains exactly one.
+No explicit additional retry, message or webinar test was needed after rollout.

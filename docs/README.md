@@ -16,7 +16,7 @@ Older dated entries below retain their original acceptance scope.
   versions retained. Manual provider/channel acceptance is delegated to the operator's
   team; CRM acceptance remains deferred. See [the operator workflow](WEBINAR_STARS.md#operator-results-and-customer-scenario-setup-adr-069).
 
-- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `b3e589f`,
+- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `48cc118`,
   Golden Visa staging backend `4ad95bc` and frontend `fa8f178` are SUCCESS in Railway.
   Both PostgreSQL migrations are applied (40 total); HTTP readiness and authenticated
   CRM `webinars/v1` capability checks pass. Invitation/reminder delivery, real viewer
