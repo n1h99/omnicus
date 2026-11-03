@@ -472,3 +472,11 @@ setup at 390/1440/1920 px. They verify search/refresh alignment, constrained mob
 content and email cards aligned to the full heading width. Screenshots of the
 search, session forms and email setup were inspected. These are UI checks with
 synthetic data; no production contact, webinar or email data was changed.
+
+Webinar calendar/action refinement, 2026-11-03: all 108 Web unit checks, Web
+typecheck, changed-file lint/format, Prisma validation, production Web build/runtime
+assembly and four Webinar Stars browser cases pass. Three temporary visual checks
+at 390/1024/1440 px confirm the compact Add session button, accessible paging
+arrows, two bounded time columns without seconds and popups within the viewport.
+Each check selects both dates and times and verifies the submitted UTC values for
+Asia/Baku. Calendar, button and pagination screenshots were visually inspected.

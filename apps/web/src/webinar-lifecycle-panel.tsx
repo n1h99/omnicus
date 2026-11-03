@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { PlusOutlined } from '@ant-design/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -6,7 +7,6 @@ import {
   Button,
   Card,
   Checkbox,
-  DatePicker,
   Descriptions,
   Drawer,
   Form,
@@ -28,6 +28,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { Link } from 'react-router';
 import { apiRequest, getUserErrorMessage } from './api';
 import { useAuth } from './auth';
+import { AppDateTimePicker } from './app-date-time-picker';
 import type { WebinarConnection } from './webinar-stars-api';
 dayjs.extend(utc);
 dayjs.extend(timezone);
@@ -416,6 +417,10 @@ export function WebinarLifecyclePanel({
         {tab === 'events' ? (
           <>
             <Button
+              className="webinar-add-session"
+              aria-label="Add session"
+              size="small"
+              icon={<PlusOutlined aria-hidden />}
               type="primary"
               onClick={() => {
                 eventForm.setFieldsValue({
@@ -815,10 +820,10 @@ export function WebinarLifecyclePanel({
           </Typography.Paragraph>
           <div className="webinar-form-grid">
             <Form.Item name="scheduledAt" label="Start" rules={[{ required: true }]}>
-              <DatePicker showTime format="YYYY-MM-DD HH:mm" />
+              <AppDateTimePicker />
             </Form.Item>
             <Form.Item name="endsAt" label="Expected end" rules={[{ required: true }]}>
-              <DatePicker showTime format="YYYY-MM-DD HH:mm" />
+              <AppDateTimePicker />
             </Form.Item>
           </div>
           <SettingsFields />

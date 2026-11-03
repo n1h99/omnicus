@@ -319,3 +319,8 @@ dialogs. Search no longer inherits the page-heading column layout. Workspace car
 workflow tabs and form grids constrain their content on mobile; session date/number
 fields use full-width shared controls. Session forms and manual report binding keep
 their existing behavior. Email setup cards now use the full project content width.
+
+Session calendars use the shared compact date/time picker: hours/minutes only,
+bounded time columns and a stacked mobile popup. Add session is a compact button
+with a plus icon aligned above the table. Provider-list pagination uses accessible
+previous/next arrow buttons and the current page number, retaining its paging guards.

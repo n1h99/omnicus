@@ -1,0 +1,42 @@
+.app-date-time-picker-dropdown .ant-picker-time-panel-column {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.app-date-time-picker-dropdown .ant-picker-time-panel-column::-webkit-scrollbar {
+  display: none;
+}
+
+.app-date-time-picker-dropdown .ant-picker-time-panel-column::after {
+  display: none;
+}
+
+.app-date-time-picker-dropdown
+  .ant-picker-time-panel-column
+  > li.ant-picker-time-panel-cell
+  .ant-picker-time-panel-cell-inner {
+  margin-inline: 0;
+  padding-inline: 0;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 480px) {
+  .app-date-time-picker-dropdown .ant-picker-datetime-panel {
+    flex-direction: column;
+  }
+
+  .app-date-time-picker-dropdown .ant-picker-date-panel {
+    width: min(280px, calc(100vw - 32px));
+  }
+
+  .app-date-time-picker-dropdown .ant-picker-datetime-panel .ant-picker-time-panel {
+    border-inline-start: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .app-date-time-picker-dropdown .ant-picker-time-panel .ant-picker-content {
+    flex: none;
+    height: 112px;
+  }
+}

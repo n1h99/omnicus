@@ -1,4 +1,4 @@
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { LeftOutlined, ReloadOutlined, RightOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Alert,
   App,
@@ -331,21 +331,33 @@ function WebinarWorkspace({ projectId }: { projectId: string }) {
                 ]}
               />
             )}
-            <Space style={{ marginTop: 16 }}>
+            <nav className="webinar-pagination" aria-label="Webinar list pagination">
               <Button
+                className="webinar-pagination-arrow"
+                type="text"
+                aria-label="Previous page"
+                title="Previous page"
+                icon={<LeftOutlined aria-hidden />}
                 disabled={offset === 0 || active.isFetching}
                 onClick={() => setOffset((value) => Math.max(0, value - 25))}
+              />
+              <Typography.Text
+                className="webinar-page-number"
+                aria-current="page"
+                aria-label={`Page ${Math.floor(offset / 25) + 1}`}
               >
-                Previous
-              </Button>
-              <Typography.Text>Page {Math.floor(offset / 25) + 1}</Typography.Text>
+                {Math.floor(offset / 25) + 1}
+              </Typography.Text>
               <Button
+                className="webinar-pagination-arrow"
+                type="text"
+                aria-label="Next page"
+                title="Next page"
+                icon={<RightOutlined aria-hidden />}
                 disabled={!active.data?.hasMore || active.isFetching || offset >= 100000}
                 onClick={() => setOffset((value) => value + 25)}
-              >
-                Next
-              </Button>
-            </Space>
+              />
+            </nav>
           </Card>
         ) : (
           <Alert
