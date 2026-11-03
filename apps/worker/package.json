@@ -33,6 +33,7 @@
     "@omnicus/database": "workspace:*",
     "@omnicus/email-core": "workspace:*",
     "@omnicus/media-core": "workspace:*",
+    "@omnicus/webinar-core": "workspace:*",
     "bullmq": "5.81.1",
     "html-to-text": "10.0.1",
     "reflect-metadata": "0.2.2",

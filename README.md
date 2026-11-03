@@ -1,5 +1,7 @@
 # Omnicus
 
+Local feature, 2026-11-03: [Webinar Stars](docs/WEBINAR_STARS.md) includes durable webhook/polling report import, conservative participant matching, invitations and website registration, webinar automation, CRM activities and manager tasks. Both migrations and API/Web/Worker plus Golden Visa CRM staging counterparts must be deployed before joint live acceptance. Rollout authorized 2026-11-03; Omnicus production migrations are applied. Provider acceptance follows deployment verification.
+
 Cross-project handoff, 2026-10-14: automotive Cyber Pulse CRM `main` now has a
 separate, production-deployed ApiX/Facebook receiver with screenshot-verified
 preview and operator-reported credential retest/lead workflow. This is not the

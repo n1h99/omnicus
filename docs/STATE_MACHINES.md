@@ -380,3 +380,39 @@ The worker scans every five seconds and claims at most 20 rows per batch. There
 is no `UNKNOWN` state: Omnicus accepts a stable payload-derived idempotency key,
 so the exact snapshot can be retried safely. Omnicus independently rejects an
 older `crmSourceUpdatedAt` snapshot as a successful no-op.
+
+
+## Webinar lifecycle (ADR-068, 2026-11-03)
+
+Connections retain history on disconnect. Credential replacement clears verification,
+pauses processing and increments revision. Import commits require the same connected,
+enabled connection revision as the provider request. Enabling requires verification.
+
+Report import: PENDING/RETRY -> PROCESSING (owner/expiry lease) -> COMPLETED or
+PARTIAL (unmatched rows remain), RETRY (bounded transient failures), or FAILED.
+A changed receipt, polling snapshot or manual matching increments requestedVersion.
+If this changes during processing, completion requeues PENDING. A stale lease owner
+cannot commit. Re-import uses stable attendance identities and semantic action keys;
+historical imports create no automatic messaging/CRM intents.
+
+Attendance matching: UNMATCHED -> MATCHED (unambiguous invitation or identity),
+MANUAL (operator decision) or IGNORED. Conflicting contact identities or tracking
+invitations remain UNMATCHED. Resolving or ignoring requeues the parent report in
+the same transaction. No-show conclusions wait for a final dated report without
+unresolved participants. Unknown engagement/time never becomes a fabricated click.
+
+Delivery intent: PENDING/RETRY -> PROCESSING -> SUCCEEDED, RETRY, FAILED, SKIPPED
+or UNKNOWN. CRM timeout or an expired PROCESSING lease reconciles the same
+project-scoped idempotency key before another external write. UNKNOWN remains
+UNKNOWN while the remote operation is PROCESSING or reconciliation is unavailable.
+NOT_FOUND permits the original write with the original key/body. Retry of UNKNOWN
+keeps this reconciliation obligation. Scenario execution/outbox creation and intent
+completion share a transaction; semantic events are not replayed for identical reports.
+
+CRM receiver: a durable Mongo receipt precedes processing. PENDING/RETRY or an
+expired PROCESSING receipt is leased, applies an ordered activity revision, writes
+idempotent history/commands, then records SUCCEEDED and repairs the shared operation
+journal. Journal failure after application is recoverable. A lower activity version
+cannot overwrite a newer result; a same-version changed result fails. Keys belonging
+to another operation never change that operation. Task completion requires the
+assigned user/admin plus normal lead/history access.

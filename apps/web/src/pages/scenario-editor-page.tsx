@@ -150,6 +150,7 @@ const paletteGroups = [
     label: 'Data & control',
     nodes: [
       ['CREATE_OR_UPDATE_LEAD', 'Create/update lead'],
+      ['WEBINAR_CRM_ACTION', 'CRM webinar follow-up'],
       ['ADD_TAG', 'Add tag'],
       ['REMOVE_TAG', 'Remove tag'],
       ['SET_CUSTOM_FIELD', 'Set custom field'],

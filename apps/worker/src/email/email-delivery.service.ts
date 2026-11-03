@@ -300,7 +300,10 @@ export class EmailDeliveryService implements OnApplicationBootstrap, OnApplicati
       if (delivery.source !== 'TEST') await this.assertEligible(delivery);
       const design = emailDocumentSchema.parse(delivery.designSnapshot);
       const { attachments, contentIds } = await this.attachments(delivery.projectId, design);
-      const variables = this.variables(delivery.contact, delivery.toEmail);
+      const variables = {
+        ...this.variables(delivery.contact, delivery.toEmail),
+        ...((delivery.variablesSnapshot as Record<string, unknown> | null) ?? {}),
+      };
       const subject =
         delivery.source === 'MANUAL'
           ? delivery.subject

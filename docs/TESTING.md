@@ -369,3 +369,61 @@ No commit/push, deployment, real provider email, DNS/config change or database
 migration was performed. After deploying Omnicus and both CRM staging services,
 perform one approved real send/reply with attachments and verify a second user's
 lead permissions. Mocked browser/API tests do not establish live provider delivery.
+
+## Webinar Stars lifecycle - 2026-11-03 (ADR-067/068)
+
+The locally implemented scope includes provider connection/read UI, persistent
+webhook/polling imports, attendance normalization and matching, invitations,
+website registration, existing scenario dispatch and versioned CRM delivery.
+The Golden Visa staging receiver and lead tab are included in their local worktrees.
+During local implementation no installed database was changed. On 2026-11-03 the
+user authorized rollout: Omnicus production now has all 40 migrations, with matching
+checksums and no pending migration. Git-backed deployment is checked separately
+from real-provider acceptance; new webinar processing defaults to paused.
+
+Recorded checks (all scoped checks below pass):
+
+- 33 Webinar Stars API unit tests, 8 normalization tests, 7 worker delivery/dispatch tests and 7 HTTP boundary tests.
+
+- Provider adapter, encrypted connection, import/version fencing, conservative
+  matching, webhook authentication/deduplication and registration suites pass.
+- Core normalization checks cover timezone/DST ambiguity, interval union,
+  repeat visits, row ordering, explicit link mappings and unknown engagement.
+- All 37 database tests pass, applying the complete real migration history in
+  disposable PGlite and exercising project boundaries, duplicate receipts/actions,
+  rollback and credential erasure with preserved history.
+- API integration tests pass with actual JWT/project guards. Every lifecycle
+  route is checked for missing authentication and cross-project permission denial.
+  Public webhook body parsing supports JSON and nested form-urlencoded.
+- Worker delivery checks cover stable project-scoped keys, UNKNOWN reconciliation,
+  remote PROCESSING, missing capabilities and dispatch into the existing runtime.
+  The full existing worker unit suite passes (158 tests before the extra dispatch tests).
+- All 17 Webinar Stars/project navigation browser checks pass against the
+  production web bundle, including historical-by-default import, new-contact matching,
+  uncertain-operation reconciliation, denied access and mobile layout.
+- One additional CRM browser fixture passes: normalized results, escaped comments, task ownership and completion. Screenshots of both workspaces were visually inspected.
+
+Eight receiver tests pass on a disposable standalone MongoDB: duplicate requests,
+  cross-route key collision, stale versions/conflicts, crash recovery between writes,
+  journal repair, task ownership, priority ordering and missing project contact links.
+- Full workspace typecheck (36 tasks), production build/runtime assembly, Prisma validation,
+  SQL/schema diff and workspace boundaries pass. Both CRM counterparts build locally.
+  Changed Omnicus/backend files and the new CRM UI/fixture pass ESLint/Prettier.
+
+Release preflight update, 2026-11-03: the 16 missing safe-message mappings and
+three DTO/type-import lint findings were repaired before deployment. DTO classes
+remain runtime values through explicit Swagger body/query metadata. Four unrelated
+files received formatting-only changes to restore the repository format check.
+The complete unit/integration command now passes (38 tasks), as does full workspace
+typecheck (36 tasks). ESLint passes with the untracked local tmp directory excluded;
+CI does not contain that directory. The whole repository Prettier check passes.
+
+Worker Redis-dependent integration tests (four) and one API readiness integration
+check skip when their opt-in services are absent. Disposable PostgreSQL/Mongo checks
+above do run; a skip does not establish real service/provider acceptance.
+
+Deployment requires both `20261102100000_webinar_stars_connection` and
+`20261103000000_webinar_lifecycle` before API/Worker startup. Refresh the CRM
+connection capability after deploying the staging counterpart. Execute the complete
+[real-provider checklist](WEBINAR_STARS.md) after deployment; mocked fixtures do not
+establish provider autologin fields, click statuses or actual webhook encoding.

@@ -39,6 +39,18 @@ export function conditionFieldType(
   fieldPath: string | undefined,
   customFields: AutomationCustomField[],
 ): AutomationCustomField['type'] | 'TEXT' {
+  if (
+    ['event.watchedMinutes', 'event.watchedPercentage', 'event.commentsCount'].includes(
+      fieldPath ?? '',
+    )
+  )
+    return 'NUMBER';
+  if (
+    ['event.attended', 'event.completed', 'event.ctaClicked', 'event.bannerClicked'].includes(
+      fieldPath ?? '',
+    )
+  )
+    return 'BOOLEAN';
   if (!fieldPath?.startsWith('contact.customFields.')) return 'TEXT';
   const key = fieldPath.slice('contact.customFields.'.length);
   return customFields.find((field) => field.key === key)?.type ?? 'TEXT';
@@ -274,6 +286,7 @@ const automationNodeLabels: Record<string, string> = {
   CLEAR_CUSTOM_FIELD: 'Clear custom field',
   CONDITION: 'Condition',
   CREATE_OR_UPDATE_LEAD: 'Create or update lead',
+  WEBINAR_CRM_ACTION: 'CRM webinar follow-up',
   DELAY: 'Delay',
   EXTERNAL_HTTP_REQUEST: 'External HTTP request',
   FORWARD_TO_CRM: 'Forward to CRM',
@@ -305,6 +318,7 @@ export function automationNodeDescription(nodeType: string): string {
     CLEAR_CUSTOM_FIELD: 'Clear one custom-field value for the current contact.',
     CONDITION: 'Route the contact through matching and fallback branches.',
     CREATE_OR_UPDATE_LEAD: 'Create or refresh the paired CRM lead.',
+    WEBINAR_CRM_ACTION: 'Set webinar priority or create a task for the responsible CRM manager.',
     DELAY: 'Continue after a durable delay.',
     EXTERNAL_HTTP_REQUEST: 'Call an approved public HTTPS endpoint through the safe outbox.',
     FORWARD_TO_CRM: 'Forward the current inbound event to the paired CRM.',

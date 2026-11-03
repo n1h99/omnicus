@@ -1,5 +1,9 @@
 # OMNICUS — implementation plan
 
+## Webinar Stars complete local lifecycle - 2026-11-03
+
+ADR-068 extends ADR-067 with durable imports, matching, invitation identities, website lead capture, published webinar scenarios and the versioned CRM receiver/UI. Migrations `20261102100000_webinar_stars_connection` and `20261103000000_webinar_lifecycle`, are applied to Omnicus production; runtime rollout and joint real-provider acceptance are separately verified. See [Webinar Stars](WEBINAR_STARS.md).
+
 ## Cross-project handoff — automotive ApiX (2026-10-14)
 
 Automotive CRM backend `main` `d6ba77e` and frontend `main` `9d4ef49` are deployed.

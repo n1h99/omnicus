@@ -16,6 +16,7 @@ const sectionLabels: Record<string, string> = {
   communications: 'By contact',
   contacts: 'Contacts',
   'crm-config': 'CRM integration',
+  'webinar-stars': 'Webinar Stars',
   'custom-fields': 'Custom fields',
   'email-sms-broadcast': 'Email broadcasts',
   'email-inbox': 'Email Inbox',

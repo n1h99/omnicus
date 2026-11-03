@@ -315,14 +315,17 @@ test('read-only project members keep diagnostics and roles without general setti
   await expect(page.getByText('Access denied', { exact: true })).toBeVisible();
 });
 
-test('CRM-only access has its own connection entry without requiring channels access', async ({
+test('integration managers enter CRM and can access webinars without channel permissions', async ({
   page,
 }) => {
   await mockProject(page, ['integrations:manage']);
   await page.goto('/projects/project-a');
   await page.locator('.project-navigation-card').click();
   await expect(page).toHaveURL(/\/crm-config$/);
-  await expect(tabs(page, 'Connections').getByRole('link')).toHaveCount(1);
+  await expect(tabs(page, 'Connections').getByRole('link')).toHaveCount(2);
+  await expect(
+    tabs(page, 'Connections').getByRole('link', { name: 'Webinar Stars' }),
+  ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'CRM integration', exact: true })).toBeVisible();
 });
 

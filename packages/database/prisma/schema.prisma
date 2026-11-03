@@ -770,7 +770,183 @@ model MetaLeadPoll {
   @@map("meta_lead_polls")
 }
 
+model WebinarConnection {
+  id                String    @id @default(uuid())
+  projectId         String    @unique
+  tokenEncrypted    Json?
+  revision          Int       @default(1)
+  connected         Boolean   @default(true)
+  enabled           Boolean   @default(false)
+  enabledAt         DateTime? @db.Timestamptz(3)
+  webhookSecretHash String?
+  nextPollAt        DateTime  @default(now()) @db.Timestamptz(3)
+  pollOffset        Int       @default(0)
+  pollStartedAt     DateTime? @db.Timestamptz(3)
+  pollLockedBy      String?
+  pollLockedUntil   DateTime? @db.Timestamptz(3)
+  lastPollError     String?
+  verifiedAt        DateTime? @db.Timestamptz(3)
+  createdAt         DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(3)
+  project           Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+
+  events   WebinarEvent[]
+  imports  WebinarReportImport[]
+  receipts WebinarWebhookReceipt[]
+
+  @@unique([projectId, id])
+  @@map("webinar_connections")
+}
+
+model WebinarEvent {
+  id                String                @id @default(uuid())
+  projectId         String
+  connectionId      String
+  providerWebinarId String
+  title             String
+  roomUrl           String
+  timezone          String
+  scheduledAt       DateTime              @db.Timestamptz(3)
+  endsAt            DateTime              @db.Timestamptz(3)
+  settings          Json                  @default("{}")
+  cancelledAt       DateTime?             @db.Timestamptz(3)
+  createdAt         DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt         DateTime              @updatedAt @db.Timestamptz(3)
+  project           Project               @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  connection        WebinarConnection     @relation(fields: [projectId, connectionId], references: [projectId, id], onDelete: Restrict)
+  invitations       WebinarInvitation[]
+  imports           WebinarReportImport[]
+
+  @@unique([projectId, id])
+  @@index([projectId, scheduledAt])
+  @@map("webinar_events")
+}
+
+model WebinarInvitation {
+  id          String              @id @default(uuid())
+  projectId   String
+  eventId     String
+  contactId   String
+  token       String              @unique
+  attribution Json                @default("{}")
+  openedAt    DateTime?           @db.Timestamptz(3)
+  cancelledAt DateTime?           @db.Timestamptz(3)
+  createdAt   DateTime            @default(now()) @db.Timestamptz(3)
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  event       WebinarEvent        @relation(fields: [projectId, eventId], references: [projectId, id], onDelete: Restrict)
+  contact     Contact             @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  attendances WebinarAttendance[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, eventId, contactId])
+  @@map("webinar_invitations")
+}
+
+model WebinarWebhookReceipt {
+  id           String            @id @default(uuid())
+  projectId    String
+  connectionId String
+  fingerprint  String
+  metadata     Json
+  createdAt    DateTime          @default(now()) @db.Timestamptz(3)
+  project      Project           @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  connection   WebinarConnection @relation(fields: [projectId, connectionId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, connectionId, fingerprint])
+  @@index([createdAt])
+  @@map("webinar_webhook_receipts")
+}
+
+model WebinarReportImport {
+  id               String              @id @default(uuid())
+  projectId        String
+  connectionId     String
+  externalReportId String
+  origin           String              @default("POLL")
+  eventId          String?
+  historical       Boolean             @default(true)
+  state            String              @default("PENDING")
+  attempts         Int                 @default(0)
+  nextAttemptAt    DateTime            @default(now()) @db.Timestamptz(3)
+  lockedBy         String?
+  lockedUntil      DateTime?           @db.Timestamptz(3)
+  requestedVersion Int                 @default(1)
+  fingerprint      String?
+  summary          Json?
+  lastError        String?
+  processedAt      DateTime?           @db.Timestamptz(3)
+  createdAt        DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt        DateTime            @updatedAt @db.Timestamptz(3)
+  project          Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  connection       WebinarConnection   @relation(fields: [projectId, connectionId], references: [projectId, id], onDelete: Restrict)
+  event            WebinarEvent?       @relation(fields: [projectId, eventId], references: [projectId, id], onDelete: Restrict)
+  attendances      WebinarAttendance[]
+
+  @@unique([projectId, id])
+  @@unique([projectId, connectionId, externalReportId])
+  @@index([state, nextAttemptAt, lockedUntil])
+  @@map("webinar_report_imports")
+}
+
+model WebinarAttendance {
+  id           String              @id @default(uuid())
+  projectId    String
+  importId     String
+  identityKey  String
+  contactId    String?
+  invitationId String?
+  matchState   String              @default("UNMATCHED")
+  matchReason  String?
+  result       Json
+  fingerprint  String
+  version      Int                 @default(1)
+  createdAt    DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt    DateTime            @updatedAt @db.Timestamptz(3)
+  project      Project             @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  report       WebinarReportImport @relation(fields: [projectId, importId], references: [projectId, id], onDelete: Restrict)
+  contact      Contact?            @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+  invitation   WebinarInvitation?  @relation(fields: [projectId, invitationId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, id])
+  @@unique([projectId, importId, identityKey])
+  @@index([projectId, matchState])
+  @@map("webinar_attendances")
+}
+
+model WebinarAction {
+  id          String    @id @default(uuid())
+  projectId   String
+  contactId   String
+  kind        String
+  eventType   String
+  dedupeKey   String
+  payload     Json
+  state       String    @default("PENDING")
+  dueAt       DateTime  @default(now()) @db.Timestamptz(3)
+  attempts    Int       @default(0)
+  lockedBy    String?
+  lockedUntil DateTime? @db.Timestamptz(3)
+  lastError   String?
+  completedAt DateTime? @db.Timestamptz(3)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt   DateTime  @updatedAt @db.Timestamptz(3)
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  contact     Contact   @relation(fields: [projectId, contactId], references: [projectId, id], onDelete: Restrict)
+
+  @@unique([projectId, id])
+  @@unique([projectId, kind, dedupeKey])
+  @@index([state, dueAt, lockedUntil])
+  @@map("webinar_actions")
+}
+
 model Project {
+  webinarEvents            WebinarEvent[]
+  webinarInvitations       WebinarInvitation[]
+  webinarImports           WebinarReportImport[]
+  webinarReceipts          WebinarWebhookReceipt[]
+  webinarAttendances       WebinarAttendance[]
+  webinarActions           WebinarAction[]
+  webinarConnection        WebinarConnection?
   metaLeadConfig           MetaLeadConfig?
   metaLeadSubmissions      MetaLeadSubmission[]
   metaLeadPolls            MetaLeadPoll[]
@@ -828,6 +1004,9 @@ model Project {
 }
 
 model Contact {
+  webinarInvitations    WebinarInvitation[]
+  webinarAttendances    WebinarAttendance[]
+  webinarActions        WebinarAction[]
   communicationEntries  CommunicationEntry[]
   id                    String                    @id @default(uuid())
   projectId             String
@@ -1886,6 +2065,7 @@ model EmailDelivery {
   subject             String
   preheader           String?
   designSnapshot      Json
+  variablesSnapshot   Json @default("{}")
   attachmentAssetIds  Json                @default("[]")
   unsubscribeToken    String              @unique @default(uuid())
   status              EmailDeliveryStatus @default(PENDING)

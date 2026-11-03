@@ -66,6 +66,7 @@ const AutomationActivityPage = lazyPage(
   'AutomationActivityPage',
 );
 const CrmConfigPage = lazyPage(() => import('./pages/crm-config-page'), 'CrmConfigPage');
+const WebinarStarsPage = lazyPage(() => import('./pages/webinar-stars-page'), 'WebinarStarsPage');
 const SegmentsPage = lazyPage(() => import('./pages/segments-page'), 'SegmentsPage');
 const BroadcastsPage = lazyPage(() => import('./pages/broadcasts-page'), 'BroadcastsPage');
 const BroadcastCreatePage = lazyPage(
@@ -149,6 +150,7 @@ export function App() {
             </Route>
             <Route element={<ProjectPermissionRoute permission="integrations:manage" />}>
               <Route element={<CrmConfigPage />} path="/projects/:projectId/crm-config" />
+              <Route element={<WebinarStarsPage />} path="/projects/:projectId/webinar-stars" />
             </Route>
             <Route element={<ProjectPermissionRoute permission="channels:read" />}>
               <Route element={<ChannelsPage />} path="/projects/:projectId/channels" />

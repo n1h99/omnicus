@@ -234,6 +234,7 @@ export class CrmService {
     )
       throw new BadRequestException({ code: 'CRM_CONNECTION_NOT_PAIRED' });
     let ok = false;
+    let webinarContractVersion: string | null = null;
     try {
       const response = await fetch(
         new URL('/integrations/v1/omnicus/connection', `${connection.baseUrl}/`),
@@ -243,12 +244,28 @@ export class CrmService {
         },
       );
       ok = response.ok;
+      if (ok) {
+        const body = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+        if (body?.webinarContractVersion === 'webinars/v1') webinarContractVersion = 'webinars/v1';
+      }
     } catch {
       ok = false;
     }
     const updated = await this.database.client.crmProjectConfig.update({
       data: ok
-        ? { lastErrorAt: null, lastTestedAt: new Date(), status: 'ACTIVE' }
+        ? {
+            lastErrorAt: null,
+            lastTestedAt: new Date(),
+            status: 'ACTIVE',
+            capabilities: this.json({
+              ...(connection.capabilities &&
+              typeof connection.capabilities === 'object' &&
+              !Array.isArray(connection.capabilities)
+                ? connection.capabilities
+                : {}),
+              webinarContractVersion,
+            }),
+          }
         : { lastErrorAt: new Date(), lastTestedAt: new Date(), status: 'ERROR' },
       where: { projectId },
     });

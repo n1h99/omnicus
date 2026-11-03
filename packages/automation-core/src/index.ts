@@ -9,6 +9,7 @@ export const automationNodeTypes = [
   'SEND_TEMPLATE',
   'SEND_EMAIL',
   'CREATE_OR_UPDATE_LEAD',
+  'WEBINAR_CRM_ACTION',
   'FORWARD_TO_CRM',
   'SET_CUSTOM_FIELD',
   'CLEAR_CUSTOM_FIELD',
@@ -594,6 +595,22 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
         }
       }
     }
+    if (node.type === 'WEBINAR_CRM_ACTION') {
+      if (!['SET_PRIORITY', 'CREATE_TASK'].includes(String(node.config.command ?? 'SET_PRIORITY')))
+        errors.push(`Webinar CRM action ${node.id} has an invalid command`);
+      if (
+        (node.config.command ?? 'SET_PRIORITY') === 'SET_PRIORITY' &&
+        !['LOW', 'NORMAL', 'HIGH'].includes(String(node.config.priority ?? 'HIGH'))
+      )
+        errors.push(`Webinar CRM action ${node.id} requires a valid priority`);
+      if (
+        node.config.dueMinutes !== undefined &&
+        (!Number.isInteger(node.config.dueMinutes) ||
+          Number(node.config.dueMinutes) < 0 ||
+          Number(node.config.dueMinutes) > 43200)
+      )
+        errors.push(`Webinar CRM action ${node.id} has an invalid due time`);
+    }
     if (node.type === 'INCOMING_MESSAGE') {
       const triggerType =
         typeof node.config.triggerType === 'string' ? node.config.triggerType : 'INCOMING_MESSAGE';
@@ -603,6 +620,7 @@ export function validateScenarioGraph(input: unknown): GraphValidationResult {
           'WEBSITE_REGISTRATION',
           'TELEGRAM_DEEP_LINK',
           'EMAIL_RECEIVED',
+          'WEBINAR_EVENT',
         ].includes(triggerType)
       ) {
         errors.push(`Incoming Message node ${node.id} has an unsupported trigger type`);
@@ -797,6 +815,7 @@ export function automationValueFor(
   if (field === 'message.text') return content.text ?? null;
   if (field === 'callback.data') return content.data ?? null;
   if (field === 'event.type') return payload.type ?? null;
+  if (field?.startsWith('event.')) return valueAtPath(payload, field.slice('event.'.length));
   if (field?.startsWith('contact.') && !field.startsWith('contact.customFields.'))
     return contact[field.slice('contact.'.length)] ?? null;
   if (field?.startsWith('contact.customFields.'))

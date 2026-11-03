@@ -8,6 +8,8 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
+- Local Webinar Stars lifecycle is implemented under ADR-068, including the Golden Visa staging CRM receiver/UI. Durable imports, registration/invitations, matching, scenario triggers and CRM follow-up tasks are ready for joint acceptance after migration/deployment. See [setup and checklist](WEBINAR_STARS.md). Live provider payloads and autologin/status mappings still require verification.
+
 - Automotive CRM `main` release 2026-10-14 is a separate ApiX → CRM route, not
   the Golden Visa Omnicus Meta route below. Backend `d6ba77e` / frontend
   `9d4ef49` deployed successfully; the guided preview reached the admin journal
@@ -234,6 +236,11 @@ detail immediately. Broad manual/live acceptance remains intentionally grouped
 into the final verification stage.
 
 ## Active references
+
+Webinar Stars has a locally implemented read-only workspace (ADR-067): encrypted
+connection, connection test, webinars, reports and participant visits. Its new
+migration and deployment remain pending; webhook/CRM processing is a later slice.
+See [setup, verified API checks and remaining questions](WEBINAR_STARS.md).
 
 | Area                                    | Authoritative document                                                   |
 | --------------------------------------- | ------------------------------------------------------------------------ |

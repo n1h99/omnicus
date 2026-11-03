@@ -122,6 +122,13 @@ const expectedTables = new Set([
   'meta_lead_configs',
   'meta_lead_submissions',
   'meta_lead_polls',
+  'webinar_connections',
+  'webinar_events',
+  'webinar_invitations',
+  'webinar_webhook_receipts',
+  'webinar_report_imports',
+  'webinar_attendances',
+  'webinar_actions',
 ]);
 const generatedTables = new Set(
   [...sql.matchAll(/CREATE TABLE "([^"]+)"/g)].map((match) => match[1]),
@@ -135,6 +142,8 @@ if (
 }
 
 const requiredSql = [
+  'CREATE UNIQUE INDEX "webinar_connections_projectId_key"',
+  'FOREIGN KEY ("projectId") REFERENCES "projects"("id") ON DELETE RESTRICT',
   'CREATE UNIQUE INDEX "meta_lead_submissions_projectId_pageId_leadId_key"',
   'FOREIGN KEY ("projectId", "configId") REFERENCES "meta_lead_configs"("projectId", "id") ON DELETE RESTRICT',
   'CREATE TABLE "email_message_crm_reads"',

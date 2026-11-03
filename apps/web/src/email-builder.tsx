@@ -831,6 +831,15 @@ function BlockProperties({
 
 const emailVariableOptions = [
   {
+    label: 'Webinar automation',
+    options: [
+      { label: 'Participant link', value: 'event.invitation.participantUrl' },
+      { label: 'Webinar title', value: 'event.webinar.title' },
+      { label: 'Scheduled start (UTC)', value: 'event.webinar.scheduledAt' },
+      { label: 'Timezone', value: 'event.webinar.timezone' },
+    ],
+  },
+  {
     label: 'Contact',
     options: [
       { label: 'First name', value: 'contact.firstName' },

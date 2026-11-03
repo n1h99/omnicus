@@ -80,11 +80,12 @@ export const projectSections: readonly ProjectSection[] = [
   {
     key: 'connections',
     label: 'Connections',
-    description: 'Messaging channels, CRM and email setup',
+    description: 'Messaging channels, CRM, webinars and email setup',
     area: 'administration',
     tabs: [
       { path: 'channels', label: 'Messaging channels', permissions: ['channels:read'] },
       { path: 'crm-config', label: 'CRM integration', permissions: ['integrations:manage'] },
+      { path: 'webinar-stars', label: 'Webinar Stars', permissions: ['integrations:manage'] },
       {
         path: 'email-settings',
         label: 'Email setup',

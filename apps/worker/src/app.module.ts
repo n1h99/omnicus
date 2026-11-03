@@ -15,6 +15,7 @@ import { MediaModule } from './media/media.module';
 import { ExternalHttpModule } from './external-http/external-http.module';
 import { WhatsAppInboundModule } from './whatsapp-inbound/whatsapp-inbound.module';
 import { WhatsAppOutboundModule } from './whatsapp-outbound/whatsapp-outbound.module';
+import { WebinarsModule } from './webinars/webinars.module';
 
 const rootEnvFile =
   process.env.APP_ENV === 'production' || process.env.APP_ENV === 'staging'
@@ -42,6 +43,7 @@ const rootEnvFile =
     ExternalHttpModule,
     WhatsAppInboundModule,
     WhatsAppOutboundModule,
+    WebinarsModule,
   ],
 })
 export class AppModule {}

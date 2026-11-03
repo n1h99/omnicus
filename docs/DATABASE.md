@@ -1634,3 +1634,39 @@ The ordered migrations `20260814000000_lead_capture_tracking`,
 `20260814020000_whatsapp_mailing_eligibility` and
 `20260814030000_email_campaigns` must be applied before the corresponding API
 and worker artifacts start.
+
+## Webinar Stars connection (ADR-067, 2026-11-02)
+
+`WebinarConnection` maps to `webinar_connections`, with UUID `id`, unique
+`projectId` referencing Project with ON DELETE RESTRICT, `tokenEncrypted` JSONB,
+integer `revision` (default 1), nullable `verifiedAt` and created/updated
+timestamptz(3) timestamps. Encryption AAD binds the token to projectId, the
+`webinar-stars` provider and `apiToken` field. Credential replacement increments
+revision and clears verification; tests update verifiedAt only for that revision.
+Deleting a connection removes its encrypted credential. Neither provider reports
+nor participant PII are persisted in this slice. Migration:
+`20261102100000_webinar_stars_connection`; application is a deployment step.
+
+
+## Durable webinar lifecycle (ADR-068)
+
+Migration 20261103000000_webinar_lifecycle extends connections with polling state,
+webhook authentication hash, enabled/connected state and nullable encrypted credentials
+so disconnect can erase credentials without deleting history. New project-owned tables:
+
+- webinar_events: provider webinar binding, UTC schedule, IANA timezone, explicit link
+  parameter/click mappings and reminder offsets.
+- webinar_invitations: unique event/contact registration, opaque random token, attribution.
+- webinar_webhook_receipts: bounded normalized metadata, payload fingerprint deduplication.
+- webinar_report_imports: unique connection/report job, optional explicit event binding,
+  lease owner/expiry, retry scheduling, snapshot hash and historical flag.
+- webinar_attendances: unique report/participant identity, normalized result and optional
+  project-bound contact/invitation mapping; no cross-project relation is permitted.
+- webinar_actions: transactional outbox for automation and CRM; unique semantic key,
+  dueAt, bounded retry, fenced lease and explicit UNKNOWN reconciliation state.
+
+All child relations use composite project keys. Connection replacement preserves
+provider history; disconnect stops processing and removes encrypted credentials.
+Migration application is a separate target-verified deployment operation.
+
+EmailDelivery additionally stores an immutable variablesSnapshot JSON object (default {}). Automation captures contact/event variables when queuing mail so webinar participant links survive durable delays and delivery retries without reading a later event context.

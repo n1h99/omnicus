@@ -330,6 +330,96 @@ export class AutomationRuntimeService {
     });
   }
 
+  /** Webinar jobs are acknowledged in the same transaction as graph/outbox intents. */
+  async triggerWebinar(actionId: string, owner: string): Promise<void> {
+    await this.database.client.$transaction(
+      async (transaction) => {
+        const action = await transaction.webinarAction.findFirst({
+          where: { id: actionId, kind: 'AUTOMATION', state: 'PROCESSING', lockedBy: owner },
+        });
+        if (!action) return;
+        const fenced = await transaction.webinarAction.updateMany({
+          where: { id: action.id, lockedBy: owner, state: 'PROCESSING' },
+          data: { lockedUntil: new Date(Date.now() + 120000) },
+        });
+        if (!fenced.count) throw new Error('webinar_action_lease_lost');
+        const contact = await transaction.contact.findUnique({
+          where: { projectId_id: { projectId: action.projectId, id: action.contactId } },
+        });
+        if (contact?.status === 'ACTIVE' && contact.automationMode === 'ENABLED') {
+          const scenarios = await transaction.scenario.findMany({
+            where: { projectId: action.projectId, status: 'PUBLISHED' },
+            include: { activeVersion: { select: { id: true, compiledDefinition: true } } },
+          });
+          const payload = this.object(action.payload),
+            webinar = this.object(payload.webinar);
+          const context: RuntimeContext = {
+            projectId: action.projectId,
+            contactId: contact.id,
+            connectionId: '',
+            conversationId: '',
+            normalizedEventId: '',
+            contactVariables: this.contactVariables(contact),
+            customFields: contact.customFields,
+            eventPayload: action.payload,
+            variables: {},
+            subflowDepth: 0,
+          };
+          for (const scenario of scenarios) {
+            const version = scenario.activeVersion;
+            if (!version?.compiledDefinition) continue;
+            const graph = scenarioGraphSchema.safeParse(version.compiledDefinition);
+            if (!graph.success) continue;
+            const trigger = graph.data.nodes.find((node) => node.type === 'INCOMING_MESSAGE');
+            if (
+              trigger?.config.triggerType !== 'WEBINAR_EVENT' ||
+              ((trigger.config.webinarEventType ?? 'ANY') !== 'ANY' &&
+                trigger.config.webinarEventType !== action.eventType) ||
+              (trigger.config.webinarEventId && trigger.config.webinarEventId !== webinar.eventId)
+            )
+              continue;
+            const triggerKey = `webinar:${action.id}`;
+            const execution = await transaction.scenarioExecution.upsert({
+              where: {
+                projectId_scenarioId_triggerKey: {
+                  projectId: action.projectId,
+                  scenarioId: scenario.id,
+                  triggerKey,
+                },
+              },
+              create: {
+                projectId: action.projectId,
+                contactId: contact.id,
+                scenarioId: scenario.id,
+                scenarioVersionId: version.id,
+                triggerType: 'WEBINAR_EVENT',
+                triggerKey,
+                triggerPayload: action.payload as Prisma.InputJsonValue,
+                correlationId: triggerKey,
+                status: 'RUNNING',
+                startedAt: new Date(),
+              },
+              update: {},
+            });
+            if (!['COMPLETED', 'CANCELLED', 'FAILED'].includes(execution.status))
+              await this.executeGraph(transaction, graph.data, execution.id, context);
+          }
+        }
+        await transaction.webinarAction.updateMany({
+          where: { id: action.id, lockedBy: owner },
+          data: {
+            state: 'SUCCEEDED',
+            completedAt: new Date(),
+            lockedBy: null,
+            lockedUntil: null,
+            lastError: null,
+          },
+        });
+      },
+      { timeout: 30000 },
+    );
+  }
+
   /** Resolves durable waits before normal scenario triggering for the same inbound event. */
   async resolveWaitsInTransaction(
     transaction: RuntimeTransaction,
@@ -1110,6 +1200,46 @@ export class AutomationRuntimeService {
         next: defaultEdge,
         operationSafe: await this.queueMessage(transaction, node, context, executionId),
       };
+    if (node.type === 'WEBINAR_CRM_ACTION') {
+      const payload = this.object(context.eventPayload);
+      if (typeof payload.attendanceId !== 'string')
+        throw new Error('webinar_report_context_required');
+      const commandType = node.config.command ?? 'SET_PRIORITY';
+      const variables = {
+        event: context.eventPayload,
+        contact: context.contactVariables,
+        variables: context.variables,
+      };
+      const command =
+        commandType === 'SET_PRIORITY'
+          ? { type: 'SET_PRIORITY', priority: String(node.config.priority ?? 'HIGH') }
+          : {
+              type: 'CREATE_TASK',
+              title: renderTemplate(
+                String(node.config.title ?? 'Webinar follow-up'),
+                variables,
+              ).output.slice(0, 200),
+              description: renderTemplate(
+                String(node.config.description ?? ''),
+                variables,
+              ).output.slice(0, 2000),
+              dueMinutes: Number(node.config.dueMinutes ?? 60),
+            };
+      await transaction.webinarAction.createMany({
+        data: [
+          {
+            projectId: context.projectId,
+            contactId: context.contactId,
+            kind: 'CRM',
+            eventType: 'WEBINAR_COMMAND',
+            dedupeKey: `scenario:${executionId}:${node.id}`,
+            payload: JSON.parse(JSON.stringify({ ...payload, command })) as Prisma.InputJsonValue,
+          },
+        ],
+        skipDuplicates: true,
+      });
+      return { next: defaultEdge };
+    }
     if (node.type === 'CREATE_OR_UPDATE_LEAD' || node.type === 'FORWARD_TO_CRM')
       await this.queueCrmOperation(transaction, node, context, executionId);
     return { next: defaultEdge };
@@ -1360,6 +1490,17 @@ export class AutomationRuntimeService {
         ) as Prisma.InputJsonValue,
         contactId: contact.id,
         designSnapshot: JSON.parse(JSON.stringify(design)) as Prisma.InputJsonValue,
+        variablesSnapshot: JSON.parse(
+          JSON.stringify({
+            contact: {
+              ...context.contactVariables,
+              id: context.contactId,
+              fullName: context.contactVariables.displayName,
+            },
+            event: context.eventPayload,
+            variables: context.variables,
+          }),
+        ) as Prisma.InputJsonValue,
         nodeId: node.id,
         normalizedEmail: contact.normalizedEmail,
         preheader: version.preheader,
@@ -1875,7 +2016,7 @@ export class AutomationRuntimeService {
     const config = this.object(trigger?.config);
     const triggerType =
       typeof config.triggerType === 'string' ? config.triggerType : 'INCOMING_MESSAGE';
-    if (triggerType === 'WEBSITE_REGISTRATION') return false;
+    if (triggerType === 'WEBSITE_REGISTRATION' || triggerType === 'WEBINAR_EVENT') return false;
     const event = this.object(payload);
     const content = this.object(event.content);
     const args = Array.isArray(content.arguments) ? content.arguments : [];

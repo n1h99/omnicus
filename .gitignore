@@ -38,3 +38,5 @@ docs/*
 !docs/EMAIL_INBOX.md
 !docs/META_LEADS.md
 !docs/META_LEADS_USER_GUIDE_RU.md
+!docs/WEBINAR_STARS.md
+!docs/WEBINAR_CRM_OPENAPI.yaml

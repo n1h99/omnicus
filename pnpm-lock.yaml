@@ -113,6 +113,9 @@ importers:
       '@omnicus/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      '@omnicus/webinar-core':
+        specifier: workspace:*
+        version: link:../../packages/webinar-core
       argon2:
         specifier: 0.44.0
         version: 0.44.0
@@ -271,6 +274,9 @@ importers:
       '@omnicus/media-core':
         specifier: workspace:*
         version: link:../../packages/media-core
+      '@omnicus/webinar-core':
+        specifier: workspace:*
+        version: link:../../packages/webinar-core
       bullmq:
         specifier: 5.81.1
         version: 5.81.1
@@ -396,6 +402,8 @@ importers:
   packages/shared: {}
 
   packages/test-fixtures: {}
+
+  packages/webinar-core: {}
 
 packages:
 

@@ -351,6 +351,61 @@ export function AutomationNodeConfig({
       });
   }, [config, effectiveWhatsAppCatalogConnectionId, nodeType, onChange, whatsappConnectionId]);
 
+  if (nodeType === 'WEBINAR_CRM_ACTION')
+    return (
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <Form.Item label="CRM action">
+          <Select
+            value={String(config.command ?? 'SET_PRIORITY')}
+            onChange={(value) => set('command', value)}
+            options={[
+              { value: 'SET_PRIORITY', label: 'Set webinar lead priority' },
+              { value: 'CREATE_TASK', label: 'Create manager follow-up task' },
+            ]}
+          />
+        </Form.Item>
+        {(config.command ?? 'SET_PRIORITY') === 'SET_PRIORITY' ? (
+          <Form.Item label="Priority">
+            <Select
+              value={String(config.priority ?? 'HIGH')}
+              onChange={(value) => set('priority', value)}
+              options={['LOW', 'NORMAL', 'HIGH'].map((value) => ({ value, label: value }))}
+            />
+          </Form.Item>
+        ) : (
+          <>
+            <Form.Item label="Task title">
+              <Input
+                maxLength={200}
+                value={String(config.title ?? 'Webinar follow-up')}
+                onChange={(event) => set('title', event.target.value)}
+              />
+            </Form.Item>
+            <Form.Item label="Description">
+              <Input.TextArea
+                maxLength={2000}
+                value={String(config.description ?? '')}
+                onChange={(event) => set('description', event.target.value)}
+              />
+            </Form.Item>
+            <Form.Item label="Due after (minutes)">
+              <InputNumber
+                min={0}
+                max={43200}
+                value={Number(config.dueMinutes ?? 60)}
+                onChange={(value) => set('dueMinutes', value ?? 60)}
+              />
+            </Form.Item>
+          </>
+        )}
+        <Alert
+          type="info"
+          showIcon
+          title="Requires a webinar report event"
+          description="The contact must already be linked to the connected CRM. Tasks go to the lead’s responsible manager and are visible in the Webinars tab."
+        />
+      </Space>
+    );
   if (nodeType === 'INCOMING_MESSAGE') {
     const startPayload =
       typeof config.startPayload === 'string' && config.startPayload
@@ -398,11 +453,59 @@ export function AutomationNodeConfig({
               { label: 'Website registration', value: 'WEBSITE_REGISTRATION' },
               { label: 'Telegram link', value: 'TELEGRAM_DEEP_LINK' },
               { label: 'Email received', value: 'EMAIL_RECEIVED' },
+              { label: 'Webinar event', value: 'WEBINAR_EVENT' },
             ]}
             value={triggerType}
           />
         </Form.Item>
 
+        {triggerType === 'WEBINAR_EVENT' && (
+          <>
+            <Form.Item label="Webinar event">
+              <Select
+                value={
+                  typeof config.webinarEventType === 'string' ? config.webinarEventType : 'ANY'
+                }
+                onChange={(value) => set('webinarEventType', value)}
+                options={[
+                  'ANY',
+                  'WEBINAR_REGISTERED',
+                  'WEBINAR_REMINDER',
+                  'WEBINAR_STARTED',
+                  'WEBINAR_REPORT_RECEIVED',
+                  'WEBINAR_REPORT_UPDATED',
+                  'WEBINAR_ATTENDED',
+                  'WEBINAR_MISSED',
+                  'WEBINAR_COMPLETED',
+                  'WEBINAR_PARTIALLY_WATCHED',
+                  'WEBINAR_CTA_CLICKED',
+                  'WEBINAR_BANNER_CLICKED',
+                  'WEBINAR_COMMENTED',
+                  'WEBINAR_REPLAY_VIEWED',
+                ].map((value) => ({
+                  value,
+                  label:
+                    value === 'ANY'
+                      ? 'Any webinar event'
+                      : value.replace('WEBINAR_', '').toLowerCase().replaceAll('_', ' '),
+                }))}
+              />
+            </Form.Item>
+            <Form.Item label="Session ID (optional)">
+              <Input
+                value={typeof config.webinarEventId === 'string' ? config.webinarEventId : ''}
+                onChange={(event) => set('webinarEventId', event.target.value)}
+                placeholder="Leave empty for all sessions in this project"
+              />
+            </Form.Item>
+            <Alert
+              type="info"
+              showIcon
+              title="Uses the saved webinar results"
+              description="Use event.invitation.participantUrl in invitations and reminders. For messenger messages, select a Telegram or WhatsApp connection in the send step. Existing consent and template rules apply."
+            />
+          </>
+        )}
         {triggerType === 'EMAIL_RECEIVED' && (
           <>
             <Form.Item label="Receiving address">
@@ -2252,6 +2355,23 @@ function JsonValueInput({ value, onChange }: { value: unknown; onChange(value: u
 function conditionFieldOptions(customFields: AutomationCustomField[]) {
   return [
     {
+      label: 'Webinar',
+      options: [
+        { label: 'Session ID', value: 'event.webinar.eventId' },
+        { label: 'Attendance status', value: 'event.status' },
+        { label: 'Attended', value: 'event.attended' },
+        { label: 'Watched minutes', value: 'event.watchedMinutes' },
+        { label: 'Watched percentage', value: 'event.watchedPercentage' },
+        { label: 'Completed', value: 'event.completed' },
+        { label: 'CTA clicked', value: 'event.ctaClicked' },
+        { label: 'Banner clicked', value: 'event.bannerClicked' },
+        { label: 'Comments count', value: 'event.commentsCount' },
+        { label: 'UTM source', value: 'event.utm.utm_source' },
+        { label: 'UTM campaign', value: 'event.utm.utm_campaign' },
+        { label: 'Distributor', value: 'event.distributorId' },
+      ],
+    },
+    {
       label: 'Incoming event',
       options: [
         { label: 'Message text', value: 'message.text' },
@@ -2291,6 +2411,16 @@ function conditionFieldOptions(customFields: AutomationCustomField[]) {
 
 function automationVariableOptions(customFields: AutomationCustomField[]) {
   return [
+    {
+      label: 'Webinar',
+      options: [
+        { label: 'Participant link', value: 'event.invitation.participantUrl' },
+        { label: 'Webinar title', value: 'event.webinar.title' },
+        { label: 'Scheduled start', value: 'event.webinar.scheduledAt' },
+        { label: 'Timezone', value: 'event.webinar.timezone' },
+        { label: 'Watched minutes', value: 'event.watchedMinutes' },
+      ],
+    },
     {
       label: 'Contact',
       options: ['displayName', 'firstName', 'lastName', 'username', 'email', 'phone'].map(

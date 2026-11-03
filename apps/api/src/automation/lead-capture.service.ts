@@ -9,7 +9,8 @@ import {
 import { ConfigService } from '@nestjs/config';
 import type { ApiEnvironment } from '@omnicus/config/server';
 import { Prisma } from '@omnicus/database';
-import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
+import { settings as webinarSettings } from '@omnicus/webinar-core';
 
 import { DatabaseService } from '../database/database.service';
 import type { CaptureLeadDto } from './lead-capture.dto';
@@ -101,7 +102,19 @@ export class LeadCaptureService {
       if (existingEvent) {
         if (existingEvent.requestHash !== requestHash)
           throw new ConflictException('lead_capture_idempotency_conflict');
-        return { contactId: existingEvent.contactId, eventId: existingEvent.id, reused: true };
+        const invitation = await this.webinarRegistration(
+          transaction,
+          projectId,
+          existingEvent.contactId,
+          sourceKey,
+          this.record(input.metadata),
+        );
+        return {
+          contactId: existingEvent.contactId,
+          eventId: existingEvent.id,
+          reused: true,
+          ...(invitation ?? {}),
+        };
       }
       const project = await transaction.project.findUnique({
         select: { id: true },
@@ -118,7 +131,34 @@ export class LeadCaptureService {
       if (concurrentEvent) {
         if (concurrentEvent.requestHash !== requestHash)
           throw new ConflictException('lead_capture_idempotency_conflict');
-        return { contactId: concurrentEvent.contactId, eventId: concurrentEvent.id, reused: true };
+        const invitation = await this.webinarRegistration(
+          transaction,
+          projectId,
+          concurrentEvent.contactId,
+          sourceKey,
+          this.record(input.metadata),
+        );
+        return {
+          contactId: concurrentEvent.contactId,
+          eventId: concurrentEvent.id,
+          reused: true,
+          ...(invitation ?? {}),
+        };
+      }
+      if (typeof this.record(input.metadata).webinarEventId === 'string') {
+        const candidates = await transaction.contact.findMany({
+          where: {
+            projectId,
+            OR: [
+              ...(normalizedPhone ? [{ normalizedPhone }] : []),
+              ...(normalizedEmail ? [{ normalizedEmail }] : []),
+            ],
+          },
+          select: { id: true },
+          take: 2,
+        });
+        if (candidates.length > 1)
+          throw new ConflictException('webinar_registration_contact_ambiguous');
       }
       const matchedContact = await transaction.contact.findFirst({
         orderBy: { createdAt: 'asc' },
@@ -201,8 +241,107 @@ export class LeadCaptureService {
         },
       });
       await this.queueCrmLead(transaction, projectId, savedContact.id, event.id, sourceKey);
-      return { contactId: savedContact.id, eventId: event.id, reused: false };
+      const invitation = await this.webinarRegistration(
+        transaction,
+        projectId,
+        savedContact.id,
+        sourceKey,
+        this.record(input.metadata),
+      );
+      return {
+        contactId: savedContact.id,
+        eventId: event.id,
+        reused: false,
+        ...(invitation ?? {}),
+      };
     });
+  }
+
+  private async webinarRegistration(
+    tx: Prisma.TransactionClient,
+    projectId: string,
+    contactId: string,
+    sourceKey: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (typeof metadata.webinarEventId !== 'string') return null;
+    const event = await tx.webinarEvent.findFirst({
+      where: {
+        projectId,
+        id: metadata.webinarEventId,
+        cancelledAt: null,
+        connection: { connected: true },
+      },
+      include: { connection: true },
+    });
+    if (!event || webinarSettings(event.settings).registrationSourceKey !== sourceKey)
+      throw new BadRequestException('webinar_registration_source_invalid');
+    const base = this.config.get('API_PUBLIC_URL', { infer: true }).replace(/\/$/, '');
+    const existing = await tx.webinarInvitation.findUnique({
+      where: { projectId_eventId_contactId: { projectId, eventId: event.id, contactId } },
+    });
+    if (existing)
+      return {
+        invitationId: existing.id,
+        participantUrl: `${base}/public/webinar-invitations/${existing.token}`,
+      };
+    if (event.endsAt < new Date()) throw new BadRequestException('webinar_registration_closed');
+    const attribution = Object.fromEntries(
+      ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term', 'distributorId']
+        .filter((key) => typeof metadata[key] === 'string')
+        .map((key) => [key, String(metadata[key]).slice(0, 500)]),
+    );
+    const invitation = await tx.webinarInvitation.upsert({
+      where: { projectId_eventId_contactId: { projectId, eventId: event.id, contactId } },
+      create: {
+        projectId,
+        eventId: event.id,
+        contactId,
+        token: randomBytes(24).toString('hex'),
+        attribution: this.json(attribution),
+      },
+      update: {},
+    });
+    const payload = {
+      webinar: {
+        eventId: event.id,
+        title: event.title,
+        externalWebinarId: event.providerWebinarId,
+        scheduledAt: event.scheduledAt.toISOString(),
+        endsAt: event.endsAt.toISOString(),
+        timezone: event.timezone,
+      },
+      invitation: {
+        id: invitation.id,
+        participantUrl: `${base}/public/webinar-invitations/${invitation.token}`,
+      },
+      attribution,
+      status: 'REGISTERED',
+      registered: true,
+    };
+    if (event.connection.enabled) {
+      const schedule = [
+        { eventType: 'WEBINAR_REGISTERED', dueAt: new Date() },
+        ...webinarSettings(event.settings).reminderMinutes.map((minutes) => ({
+          eventType: 'WEBINAR_REMINDER',
+          dueAt: new Date(event.scheduledAt.getTime() - minutes * 60000),
+        })),
+        { eventType: 'WEBINAR_STARTED', dueAt: event.scheduledAt },
+      ].filter((item) => item.eventType === 'WEBINAR_REGISTERED' || item.dueAt > new Date());
+      await tx.webinarAction.createMany({
+        data: schedule.map((item) => ({
+          projectId,
+          contactId,
+          kind: 'AUTOMATION',
+          eventType: item.eventType,
+          dedupeKey: `invitation:${invitation.id}:${item.eventType}:${item.eventType === 'WEBINAR_REGISTERED' ? '' : item.dueAt.toISOString()}`,
+          payload: this.json({ ...payload, type: item.eventType }),
+          dueAt: item.dueAt,
+        })),
+        skipDuplicates: true,
+      });
+    }
+    return { invitationId: invitation.id, participantUrl: payload.invitation.participantUrl };
   }
 
   private async queueCrmLead(

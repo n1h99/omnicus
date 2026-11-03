@@ -1,0 +1,161 @@
+openapi: 3.0.3
+info:
+  title: Omnicus to Cyber Pulse webinar activity
+  version: webinars/v1
+  description: Local producer/Golden Visa staging receiver contract, 2026-11-03. Refresh CRM connection capability after deploying both sides.
+paths:
+  /integrations/v1/omnicus/webinars/activity:
+    post:
+      operationId: receiveWebinarActivity
+      security:
+        - serviceToken: []
+      description: |
+        Requires an existing unique project/contact-to-lead link. Stores a durable
+        receipt before processing. Higher versions replace activity snapshots;
+        lower versions never overwrite newer data. Same version with different
+        result or reused idempotency key with different payload returns conflict.
+        A retry uses exactly the same key and body. An uncertain outcome must be
+        reconciled through GET /integrations/v1/omnicus/operations with
+        crmProjectId and idempotencyKey before another write.
+        Commands are idempotent per request. SET_PRIORITY uses reportedAt to
+        reject stale priority writes; CREATE_TASK assigns the responsible manager
+        or first assigned user. No implicit lead creation or stage change occurs.
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - in: header
+          name: X-Correlation-Id
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                [
+                  contractVersion,
+                  crmProjectId,
+                  omnicusProjectId,
+                  omnicusContactId,
+                  activityId,
+                  version,
+                  reportedAt,
+                  result,
+                ]
+              properties:
+                contractVersion: { type: string, enum: [webinars/v1] }
+                crmProjectId: { type: string, minLength: 1, maxLength: 128 }
+                omnicusProjectId: { type: string, minLength: 1, maxLength: 128 }
+                omnicusContactId: { type: string, minLength: 1, maxLength: 128 }
+                activityId: { type: string, minLength: 1, maxLength: 128 }
+                version: { type: integer, minimum: 1, maximum: 2147483647 }
+                reportedAt: { type: string, format: date-time }
+                result: { $ref: '#/components/schemas/Result' }
+                command:
+                  oneOf:
+                    - type: object
+                      required: [type, priority]
+                      properties:
+                        type: { type: string, enum: [SET_PRIORITY] }
+                        priority: { type: string, enum: [LOW, NORMAL, HIGH] }
+                    - type: object
+                      required: [type, title, description, dueMinutes]
+                      properties:
+                        type: { type: string, enum: [CREATE_TASK] }
+                        title: { type: string, minLength: 1, maxLength: 200 }
+                        description: { type: string, maxLength: 2000 }
+                        dueMinutes: { type: integer, minimum: 0, maximum: 43200 }
+      responses:
+        '200':
+          description: Durable success or replay of the original success result.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [operationId, crmLeadId, crmWebinarActivityId, mode]
+                properties:
+                  operationId: { type: string }
+                  crmLeadId: { type: string }
+                  crmWebinarActivityId: { type: string }
+                  mode: { type: string, enum: [created, updated, duplicate] }
+        '400':
+          {
+            description: Invalid normalized result or command; no arbitrary raw provider payload accepted.,
+          }
+        '401': { description: Invalid service token. }
+        '403': { description: Paired project route mismatch. }
+        '409': { description: Idempotency/version conflict or an unavailable archived lead. }
+        '503':
+          {
+            description: Missing/ambiguous contact link,
+            or a durable receipt is processing/transiently failed. Reconcile before retry.,
+          }
+components:
+  securitySchemes:
+    serviceToken: { type: http, scheme: bearer }
+  schemas:
+    Result:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          status,
+          attended,
+          watchedMinutes,
+          watchedPercentage,
+          completed,
+          ctaClicked,
+          bannerClicked,
+          comments,
+          commentsCount,
+          utm,
+          webinar,
+        ]
+      properties:
+        status:
+          {
+            type: string,
+            enum: [ATTENDED, PARTIALLY_WATCHED, COMPLETED, MISSED, REPLAY_VIEWED, UNKNOWN],
+          }
+        attended: { type: boolean }
+        watchedMinutes: { type: number, nullable: true, minimum: 0 }
+        watchedPercentage: { type: number, nullable: true, minimum: 0 }
+        completed: { type: boolean, nullable: true }
+        ctaClicked: { type: boolean, nullable: true }
+        bannerClicked: { type: boolean, nullable: true }
+        commentsCount: { type: integer, nullable: true, minimum: 0 }
+        comments:
+          type: array
+          maxItems: 1000
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              text: { type: string, nullable: true, maxLength: 10000 }
+              atLocal: { type: string, nullable: true }
+        utm:
+          type: object
+          maxProperties: 50
+          additionalProperties: { type: string, maxLength: 1000 }
+        distributorId: { type: string, nullable: true }
+        webinar:
+          type: object
+          additionalProperties: false
+          description: Provider report summary plus an optional explicitly bound Omnicus session. Local times retain their timezone context.
+          properties:
+            id: { type: string }
+            webinarId: { type: string, nullable: true }
+            name: { type: string, nullable: true }
+            startedAtLocal: { type: string, nullable: true }
+            endedAtLocal: { type: string, nullable: true }
+            visitorsCount: { type: number, nullable: true }
+            visitorsPeak: { type: number, nullable: true }
+            eventId: { type: string }
+            title: { type: string }
+            scheduledAt: { type: string, format: date-time }
+            endsAt: { type: string, format: date-time }
+            timezone: { type: string }

@@ -296,6 +296,16 @@ export interface CrmResult {
   providerReference: string;
 }
 
+/** webinars/v1: normalized business result only; provider credentials/raw payload are excluded. */
+export interface ForwardWebinarActivityInput {
+  contactId: string;
+  activityId: string;
+  version: number;
+  reportedAt: string;
+  result: Record<string, unknown>;
+  command?: Record<string, unknown> | undefined;
+}
+
 export type CrmReconciliationResult =
   | { status: 'NOT_FOUND' }
   | {
@@ -334,6 +344,10 @@ export interface CrmClient {
     input: ForwardMessageStatusInput,
   ): Promise<CrmResult>;
   forwardEmailEvent?(context: CrmCallContext, input: ForwardEmailEventInput): Promise<CrmResult>;
+  forwardWebinarActivity?(
+    context: CrmCallContext,
+    input: ForwardWebinarActivityInput,
+  ): Promise<CrmResult>;
   forwardTrackedLinkClick(
     context: CrmCallContext,
     input: ForwardTrackedLinkClickInput,
@@ -416,6 +430,38 @@ export class HttpCrmClient implements CrmClient {
   constructor(private readonly options: HttpCrmClientOptions) {
     this.baseUrl = options.baseUrl.replace(/\/+$/, '');
     this.fetchImplementation = options.fetchImplementation ?? fetch;
+  }
+
+  async forwardWebinarActivity(
+    context: CrmCallContext,
+    input: ForwardWebinarActivityInput,
+  ): Promise<CrmResult> {
+    const result = await this.postAndReconcile(
+      '/integrations/v1/omnicus/webinars/activity',
+      context,
+      {
+        contractVersion: 'webinars/v1',
+        crmProjectId: context.crmProjectId,
+        omnicusProjectId: context.projectId,
+        omnicusContactId: input.contactId,
+        activityId: input.activityId,
+        version: input.version,
+        reportedAt: input.reportedAt,
+        result: input.result,
+        ...(input.command ? { command: input.command } : {}),
+      },
+      z.object({
+        operationId: z.string().min(1),
+        crmLeadId: z.string().min(1),
+        crmWebinarActivityId: z.string().min(1),
+        mode: z.enum(['created', 'updated', 'duplicate']),
+      }),
+    );
+    return {
+      mode: result.mode,
+      operationId: result.operationId,
+      providerReference: result.crmWebinarActivityId,
+    };
   }
 
   async createOrUpdateLead(

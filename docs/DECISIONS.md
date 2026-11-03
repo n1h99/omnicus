@@ -1792,3 +1792,52 @@ lead fields if optional ad fields are rejected, preserving the original intake.
 Deploy the accepting CRM staging backend before the Omnicus producer. Form
 allowlist activation, historical review and new live delivery verification are
 separate operator steps; no schema migration or automatic historical backfill.
+
+## ADR-067 — Webinar Stars connection and read-only workspace
+
+**Status:** Accepted first implementation slice, 2026-11-02.
+
+The user authorized implementation after supplying the provider's account API
+documentation and webhook screenshots. The first slice stores one encrypted
+Webinar Stars connection per project and exposes bounded, validated reads of
+webinars, reports and participants through an API adapter. Access requires
+`integrations:manage`; report content is not persisted or imported into contacts.
+The frontend never receives credentials. Credential replacement increments a
+revision and clears verification; an in-flight test may verify only that revision.
+Disconnect removes credentials. All mutations are audited without secret values.
+
+The provider origin is fixed, redirects are rejected, response sizes and request
+times are bounded, and errors never include request URLs or provider error text.
+Dates without offsets remain labelled webinar-local, not converted to UTC.
+Visitor rows remain provider sessions (`unique=0`), not canonical attendance.
+
+Add `webinar_connections` through a new reviewed migration before deployment.
+No existing migrations are changed or applied by this implementation task.
+Webhook ingestion, persistent reports, contact matching, automation, invitations
+and the CRM webinar contract remain subsequent slices. No remote webinar
+creation, live webhook activation, Git push or deployment is implied.
+
+
+## ADR-068 - Durable webinar lifecycle and joint acceptance (2026-11-03)
+
+**Status:** User-authorized implementation. Extends ADR-067.
+
+PostgreSQL owns webinar events, invitation identities, provider report import jobs,
+normalized attendance and delivery intents. An account-wide authenticated webhook
+persists a bounded receipt and import intent before acknowledging. Periodic bounded
+report scans recover lost notifications. The API pump only fetches/normalizes
+provider data; worker delivery intents feed the existing automation runtime and
+versioned CRM adapter. Leases are fenced by owner and expiresAt; stable keys
+prevent repeated external side effects across duplicate deliveries and report revisions.
+
+Provider link parameter names and click-status mappings are explicit event settings,
+with no invented defaults. Omnicus supplies its own opaque participant redirect even
+when provider autologin is unavailable. Contacts match tracking invitation, then
+conservative normalized email/phone; conflicts remain manual and names never merge.
+Missing times and engagement fields remain unknown. Historical import is explicitly
+marked and suppresses automation/CRM actions by default. New invitations and durable
+reminders trigger the existing scenarios and channel/email eligibility checks.
+
+The Golden Visa staging counterpart implements webinars/v1 with durable Mongo receipts, ordered activity revisions and manager tasks. The producer requires the advertised capability before delivery; publish both counterparts and re-test the CRM connection before enabling it.
+No remote database migration, webhook activation, sending to live contacts, Git push
+or deployment is authorized by the local implementation request alone.

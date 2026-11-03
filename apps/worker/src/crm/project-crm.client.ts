@@ -20,6 +20,7 @@ import {
   type ForwardMessageStatusInput,
   type ForwardTrackedLinkClickInput,
   type ForwardEmailEventInput,
+  type ForwardWebinarActivityInput,
 } from '@omnicus/crm-core';
 import { DatabaseService } from '../database/database.service';
 
@@ -130,6 +131,16 @@ export class ProjectCrmClient implements CrmClient {
 
   async reconcile(context: CrmCallContext): Promise<CrmReconciliationResult> {
     return (await this.resolve(context)).reconcile(context);
+  }
+
+  async forwardWebinarActivity(
+    context: CrmCallContext,
+    input: ForwardWebinarActivityInput,
+  ): Promise<CrmResult> {
+    const client = await this.resolve(context);
+    if (!client.forwardWebinarActivity)
+      throw new CrmClientError('PERMANENT_FAILURE', 'crm_webinars_unsupported');
+    return client.forwardWebinarActivity(context, input);
   }
 
   private async resolve(context: CrmCallContext): Promise<CrmClient> {
