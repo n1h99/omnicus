@@ -1773,7 +1773,33 @@ export class AutomationRuntimeService {
         },
       }));
     if (!identity) throw new Error('automation_channel_identity_unavailable');
-    const conversationId = whatsAppRoute?.conversationId ?? context.conversationId;
+    let conversationId = whatsAppRoute?.conversationId ?? context.conversationId;
+    if (channelType === 'TELEGRAM' && deliveryTarget === 'TELEGRAM') {
+      const conversation = await transaction.conversation.findUnique({
+        where: {
+          projectId_connectionId_externalChatId: {
+            projectId: context.projectId,
+            connectionId,
+            externalChatId: identity.externalUserId,
+          },
+        },
+      });
+      if (
+        !conversation ||
+        conversation.contactId !== context.contactId ||
+        conversation.status !== 'ACTIVE'
+      )
+        throw new Error('automation_channel_conversation_unavailable');
+      if (conversation.automationModeOverride === 'DISABLED')
+        throw new Error('automation_conversation_disabled');
+      conversationId = conversation.id;
+      context.connectionId = connectionId;
+      context.conversationId = conversationId;
+      await transaction.scenarioExecution.updateMany({
+        where: { id: executionId, projectId: context.projectId },
+        data: { conversationId },
+      });
+    }
     if (channelType === 'WHATSAPP' && !renderedWhatsAppTemplate) {
       if (Array.isArray(nodeConfig.telegramButtons) && nodeConfig.telegramButtons.length)
         throw new Error('automation_whatsapp_buttons_require_template');

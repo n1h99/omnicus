@@ -427,3 +427,13 @@ Deployment requires both `20261102100000_webinar_stars_connection` and
 connection capability after deploying the staging counterpart. Execute the complete
 [real-provider checklist](WEBINAR_STARS.md) after deployment; mocked fixtures do not
 establish provider autologin fields, click statuses or actual webhook encoding.
+
+
+Telegram invitation live-fix validation, 2026-11-03: all 166 worker unit tests pass,
+including six new routing cases (empty webinar context, another incoming chat,
+missing private chat, contact mismatch, automation disabled and closed chat).
+Worker typecheck, lint, formatting and Prisma validation pass. The four opt-in
+Redis integration tests retain their documented skips. A rollback-only real-database
+replay verifies the complete published graph with actual foreign keys: COMPLETED,
+one queued Message, one outbox, action SUCCEEDED; the diagnostic transaction is
+rolled back and does not send externally. No schema migration is required.

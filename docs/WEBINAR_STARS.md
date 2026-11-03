@@ -220,3 +220,25 @@ Disconnect стирает сохранённый ключ и отключает 
 
 Автоматические проверки дополняют этот список; они не подтверждают реальные
 параметры автологина, webhook Content-Type и доставку в аккаунт провайдера.
+
+
+## Telegram invitation routing correction - 2026-11-03
+
+The first live registration exposed a missing messenger conversation route: webinar
+triggers have no inbound conversation, and explicit Telegram delivery was attempting
+an empty conversation ID. The Message foreign key rejected it; the whole automation
+transaction rolled back and the durable webinar action retried. No outbound message
+had been created or sent by those failed attempts.
+
+Explicit Telegram steps now resolve the existing private conversation using the
+project, selected bot and active identity external user ID. The conversation must
+belong to the same contact, remain active and permit automation. The execution and
+runtime context retain the selected conversation for subsequent steps. Group/other
+bot conversations are not used as a fallback. Missing or conflicting routes fail
+before message/outbox creation. Existing published scenarios are unchanged.
+
+Six route regression cases pass (166 worker tests total). A rollback-only check of
+the actual published invitation graph now completes with one Message and one outbox
+intent. Recovery reschedules only the original failed registration action, with an
+audit record and unchanged deduplication identity; it does not register the contact
+again or send directly through the Telegram API.
