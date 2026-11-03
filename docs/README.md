@@ -8,7 +8,11 @@ Older dated entries below retain their original acceptance scope.
 
 ## Current product status
 
-- Local Webinar Stars lifecycle is implemented under ADR-068, including the Golden Visa staging CRM receiver/UI. Durable imports, registration/invitations, matching, scenario triggers and CRM follow-up tasks are ready for joint acceptance after migration/deployment. See [setup and checklist](WEBINAR_STARS.md). Live provider payloads and autologin/status mappings still require verification.
+- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `2d74257`,
+  Golden Visa staging backend `4ad95bc` and frontend `fa8f178` are SUCCESS in Railway.
+  Both PostgreSQL migrations are applied (40 total); HTTP readiness and authenticated
+  CRM `webinars/v1` capability checks pass. Provider acceptance and scenario activation
+  remain the next guided steps. See [setup and checklist](WEBINAR_STARS.md).
 
 - Automotive CRM `main` release 2026-10-14 is a separate ApiX → CRM route, not
   the Golden Visa Omnicus Meta route below. Backend `d6ba77e` / frontend

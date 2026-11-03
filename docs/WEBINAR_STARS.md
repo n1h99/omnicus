@@ -2,6 +2,21 @@
 
 Status 2026-11-03: ADR-067 and ADR-068 are implemented locally. Omnicus has durable report import, webhook recovery, matching, invitations, website registration, automation and CRM delivery. The counterpart is implemented in the existing Golden Visa staging worktrees (`cyber-pulse-back-meta-budget`, `cyber-pulse-front-meta-budget`). Rollout was authorized on 2026-11-03. Both migrations have been applied to Omnicus production (40 total, checksums verified, none pending). Runtime rollout targets Omnicus production and Golden Visa staging; actual provider acceptance and workflow activation remain separate checks.
 
+
+## Verified rollout - 2026-11-03
+
+- Omnicus production API, Web and Worker: code commit `2d74257`, all Railway deployments SUCCESS.
+- Golden Visa staging backend: `4ad95bc`; frontend: `fa8f178`, both SUCCESS.
+- Omnicus PostgreSQL: both webinar migrations applied, 40 total, none pending.
+- Public API/Web readiness returns HTTP 200; PostgreSQL and Redis report up.
+- API and Worker startup confirmed; sampled deployment logs contain no errors.
+- Deployed web bundle contains the webinar workflow. CRM staging health returns 200,
+  and the authenticated connection probe advertises `webinarContractVersion: webinars/v1`.
+- Live webinar processing, invitation/scenario publishing and provider acceptance are
+  separate operator steps. Begin by re-testing the existing CRM connection in Omnicus
+  to refresh its advertised capabilities, then connect/test Webinar Stars.
+
+
 ## Источники и уровень подтверждения
 
 - Пользователь передал HTML вкладки API из своего кабинета Webinar Stars
