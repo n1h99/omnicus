@@ -1,0 +1,53 @@
+.webinar-workspace-stack,
+.webinar-workflow-stack {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+  gap: 24px;
+}
+
+.webinar-workflow-stack {
+  gap: 16px;
+}
+
+.webinar-workspace .ant-card {
+  min-width: 0;
+}
+
+.webinar-workspace-stack > *,
+.webinar-workflow-stack > * {
+  min-width: 0;
+}
+
+.webinar-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.webinar-search-input {
+  width: 100%;
+  max-width: 420px;
+}
+
+.webinar-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 16px;
+  max-width: 720px;
+}
+
+.webinar-form .ant-select,
+.webinar-form .ant-picker,
+.webinar-form .ant-input-number {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .webinar-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -43,6 +43,10 @@ source (campaign, automation or manual), delivery status and downloadable files.
 Search matches subject/address; list pages contain 30 threads, message pages 50.
 Polling is every 15 seconds; the receive worker scans every 5 seconds.
 
+Email setup uses the full project content width, aligned with the heading and
+section tabs. Its domain, address, receiving-health and billing cards do not have
+an additional narrow content limit.
+
 Completion fixes (2026-09-17): draft saves accept an identical retry after a lost
 response; draft deletion requires the displayed revision and cannot remove a newer
 edit from another tab. A queued manual send can be reconciled with its original

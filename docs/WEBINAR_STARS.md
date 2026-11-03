@@ -310,3 +310,12 @@ A separate read verified the saved values and zero CRM operations/new delivery
 actions. The host remains UNMATCHED because its identifiers resolve to multiple
 contacts, so the overall import is PARTIAL; the viewer row is fully normalized.
 Automatic cross-ID binding and real webhook delivery remain unverified.
+
+## Workspace styling - 2026-11-03
+
+The Webinar Stars workspace uses the shared themed Input with a search prefix,
+the standard refresh button and the application context for messages and confirmation
+dialogs. Search no longer inherits the page-heading column layout. Workspace cards,
+workflow tabs and form grids constrain their content on mobile; session date/number
+fields use full-width shared controls. Session forms and manual report binding keep
+their existing behavior. Email setup cards now use the full project content width.

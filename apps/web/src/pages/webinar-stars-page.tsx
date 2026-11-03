@@ -1,5 +1,7 @@
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
 import {
   Alert,
+  App,
   Button,
   Card,
   Descriptions,
@@ -14,7 +16,6 @@ import {
   Tabs,
   Tag,
   Typography,
-  message,
 } from 'antd';
 import { useState } from 'react';
 import { useParams } from 'react-router';
@@ -29,13 +30,19 @@ import {
   type WebinarReportSummary,
   type WebinarSummary,
 } from '../webinar-stars-api';
+import '../webinar-stars.css';
 
 export function WebinarStarsPage() {
   const { projectId } = useParams();
-  return projectId ? <WebinarWorkspace key={projectId} projectId={projectId} /> : null;
+  return projectId ? (
+    <App component={false}>
+      <WebinarWorkspace key={projectId} projectId={projectId} />
+    </App>
+  ) : null;
 }
 
 function WebinarWorkspace({ projectId }: { projectId: string }) {
+  const { message } = App.useApp();
   const { accessToken } = useAuth();
   // Configuration is shared with the workspace queries and keys each credential revision.
   const config = useQuery({
@@ -108,7 +115,7 @@ function WebinarWorkspace({ projectId }: { projectId: string }) {
     );
 
   return (
-    <section>
+    <section className="webinar-workspace">
       <div className="page-heading-row">
         <div>
           <Typography.Title level={2}>Webinar Stars</Typography.Title>
@@ -117,7 +124,7 @@ function WebinarWorkspace({ projectId }: { projectId: string }) {
           </Typography.Text>
         </div>
       </div>
-      <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+      <div className="webinar-workspace-stack">
         <Card
           title="Connection"
           extra={
@@ -186,19 +193,26 @@ function WebinarWorkspace({ projectId }: { projectId: string }) {
         ) : null}
         {revision ? (
           <Card>
-            <div className="page-heading-row">
-              <Input.Search
+            <div className="webinar-toolbar">
+              <Input
                 aria-label="Search webinars or reports"
                 placeholder="Search by webinar name or ID"
                 maxLength={120}
                 allowClear
-                onSearch={(value) => {
-                  setSearch(value.trim());
+                className="webinar-search-input"
+                prefix={<SearchOutlined />}
+                value={search}
+                onChange={(event) => {
+                  setSearch(event.target.value);
                   resetView();
                 }}
-                style={{ maxWidth: 420 }}
               />
-              <Button loading={active.isFetching} onClick={() => void active.refetch()}>
+              <Button
+                aria-label="Refresh"
+                icon={<ReloadOutlined />}
+                loading={active.isFetching}
+                onClick={() => void active.refetch()}
+              >
                 Refresh
               </Button>
             </div>
@@ -344,7 +358,7 @@ function WebinarWorkspace({ projectId }: { projectId: string }) {
             }
           />
         )}
-      </Space>
+      </div>
       <Drawer
         title={data.report.data?.name ?? 'Webinar report'}
         open={Boolean(reportId) && Boolean(revision)}

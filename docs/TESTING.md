@@ -462,3 +462,13 @@ was committed and independently read back. The original viewer row and invitatio
 267-second duration, 100% completion, CTA click and comment are preserved, the
 session's CRM flag is false, and no new delivery actions/messages or CRM operations
 exist. Public API readiness and Web return HTTP 200.
+
+Webinar/Email setup styling, 2026-11-03: all 108 Web unit checks pass, as do
+Web typecheck, changed-file ESLint/Prettier, Prisma validation and the production
+Web build/runtime assembly. All 24 Email Inbox browser cases pass. All four
+Webinar Stars browser cases pass after constraining the mobile workflow grid.
+Six temporary visual checks cover Webinar Stars at 390/1024/1440 px and Email
+setup at 390/1440/1920 px. They verify search/refresh alignment, constrained mobile
+content and email cards aligned to the full heading width. Screenshots of the
+search, session forms and email setup were inspected. These are UI checks with
+synthetic data; no production contact, webinar or email data was changed.

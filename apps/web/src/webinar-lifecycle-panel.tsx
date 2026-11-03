@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
+  App,
   Button,
   Card,
   Checkbox,
@@ -19,7 +20,6 @@ import {
   Tabs,
   Tag,
   Typography,
-  message,
 } from 'antd';
 import type { Dayjs } from 'dayjs';
 import dayjs from 'dayjs';
@@ -239,6 +239,7 @@ export function WebinarLifecyclePanel({
   projectId: string;
   connection: WebinarConnection;
 }) {
+  const { message, modal } = App.useApp();
   const [registrationConfig, setRegistrationConfig] = useState<unknown | null>(null);
   const [createContactRow, setCreateContactRow] = useState<ParticipantRow | null>(null);
   const [contactForm] = Form.useForm<{
@@ -361,7 +362,7 @@ export function WebinarLifecyclePanel({
   );
   return (
     <Card title="Webinar workflow">
-      <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+      <div className="webinar-workflow-stack">
         <Space wrap>
           <Switch
             checked={connection.enabled ?? false}
@@ -513,7 +514,7 @@ export function WebinarLifecyclePanel({
                           <Button
                             danger
                             onClick={() =>
-                              Modal.confirm({
+                              modal.confirm({
                                 title: 'Cancel this session?',
                                 content: 'Pending reminders will be stopped.',
                                 onOk: () => run(`events/${row.id}/cancel`),
@@ -538,6 +539,7 @@ export function WebinarLifecyclePanel({
         {tab === 'imports' ? (
           <>
             <Form
+              className="webinar-form"
               form={importForm}
               layout="vertical"
               onFinish={(values) =>
@@ -550,7 +552,7 @@ export function WebinarLifecyclePanel({
                   .catch(() => {})
               }
             >
-              <Space wrap align="start">
+              <div className="webinar-form-grid">
                 <Form.Item
                   name="reportId"
                   label="Report ID"
@@ -567,14 +569,13 @@ export function WebinarLifecyclePanel({
                 <Form.Item name="eventId" label="Bind to session">
                   <Select
                     allowClear
-                    style={{ minWidth: 240 }}
                     options={(events.data ?? []).map((row) => ({
                       value: row.id,
                       label: row.title,
                     }))}
                   />
                 </Form.Item>
-              </Space>
+              </div>
               <Typography.Paragraph type="secondary">
                 Select a session to calculate viewing time and apply its click statuses. Historical
                 imports can be explicitly bound when Webinar Stars changed the webinar ID after
@@ -745,7 +746,7 @@ export function WebinarLifecyclePanel({
             />
           )
         ) : null}
-      </Space>
+      </div>
       <Modal
         title="Website registration setup"
         open={Boolean(registrationConfig)}
@@ -783,7 +784,12 @@ export function WebinarLifecyclePanel({
         confirmLoading={mutate.isPending}
         destroyOnHidden
       >
-        <Form form={eventForm} layout="vertical" onFinish={(values) => void create(values)}>
+        <Form
+          className="webinar-form"
+          form={eventForm}
+          layout="vertical"
+          onFinish={(values) => void create(values)}
+        >
           <Form.Item name="title" label="Title" rules={[{ required: true }]}>
             <Input maxLength={200} />
           </Form.Item>
@@ -807,14 +813,14 @@ export function WebinarLifecyclePanel({
           <Typography.Paragraph type="secondary">
             Enter both times in the selected webinar timezone.
           </Typography.Paragraph>
-          <Space wrap>
+          <div className="webinar-form-grid">
             <Form.Item name="scheduledAt" label="Start" rules={[{ required: true }]}>
               <DatePicker showTime format="YYYY-MM-DD HH:mm" />
             </Form.Item>
             <Form.Item name="endsAt" label="Expected end" rules={[{ required: true }]}>
               <DatePicker showTime format="YYYY-MM-DD HH:mm" />
             </Form.Item>
-          </Space>
+          </div>
           <SettingsFields />
         </Form>
       </Modal>
@@ -827,6 +833,7 @@ export function WebinarLifecyclePanel({
         confirmLoading={mutate.isPending}
       >
         <Form
+          className="webinar-form"
           form={settingsForm}
           layout="vertical"
           onFinish={(values) =>
@@ -846,6 +853,7 @@ export function WebinarLifecyclePanel({
         confirmLoading={mutate.isPending}
       >
         <Form
+          className="webinar-form"
           form={inviteForm}
           layout="vertical"
           onFinish={(values) =>
@@ -933,7 +941,7 @@ export function WebinarLifecyclePanel({
             .catch(() => {})
         }
       >
-        <Form form={contactForm} layout="vertical">
+        <Form className="webinar-form" form={contactForm} layout="vertical">
           <Form.Item name="displayName" label="Name" rules={[{ required: true, whitespace: true }]}>
             <Input maxLength={200} />
           </Form.Item>
