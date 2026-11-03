@@ -324,3 +324,24 @@ Session calendars use the shared compact date/time picker: hours/minutes only,
 bounded time columns and a stacked mobile popup. Add session is a compact button
 with a plus icon aligned above the table. Provider-list pagination uses accessible
 previous/next arrow buttons and the current page number, retaining its paging guards.
+
+## Webhook request parsing correction - 2026-11-03
+
+The operator re-saved the provider webhook configuration; the address remains in
+the form with POST and sending enabled. No real webhook receipt exists yet, and
+the sampled API HTTP logs since 15:20 UTC contain no Webinar Stars webhook request.
+
+Inspection found that production disabled Nest's default body parsing and installed
+only its JSON parser, whereas the original HTTP boundary fixture used Nest defaults,
+which also parse forms. Production and this fixture now use the same bootstrap
+helper. JSON keeps its existing size limit and raw bytes for signed integrations.
+Nested form-urlencoded parsing is scoped to `/webhooks/webinar-stars`, with 64 KiB,
+100-field and two-level nesting limits. Parser failures expose safe 400/413 responses
+without invoking the webhook receiver. Other API routes do not gain form parsing.
+Express 5.2.1 is now an explicit API dependency; that exact version was already used
+by Nest, so the resolved dependency versions are unchanged.
+
+This fixes receiver compatibility and the test coverage gap; it does not establish
+the provider's actual Content-Type or explain the absence of a network request.
+A short controlled provider session is still needed to verify real delivery and
+inspect the report/webinar IDs in the bounded authenticated receipt. CRM remains deferred.

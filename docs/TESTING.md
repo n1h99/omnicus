@@ -480,3 +480,13 @@ at 390/1024/1440 px confirm the compact Add session button, accessible paging
 arrows, two bounded time columns without seconds and popups within the viewport.
 Each check selects both dates and times and verifies the submitted UTC values for
 Asia/Baku. Calendar, button and pagination screenshots were visually inspected.
+
+Webhook bootstrap parity correction, 2026-11-03: all 316 API unit tests pass.
+All four HTTP integration suites pass (22 cases, one opt-in readiness skip). The
+Webinar Stars fixture now disables default Nest parsing and installs the production
+parser helper. It verifies JSON/raw-byte preservation, nested forms, no form parsing
+on ordinary API routes, 64 KiB rejection, depth and field-count limits. API typecheck,
+changed-file lint/format, Prisma validation, production API build/minimal-runtime
+assembly and the actual production-runtime liveness/readiness smoke pass. No schema
+migration or production contact/report mutation is part of this correction. Real
+provider webhook delivery remains a separate controlled acceptance step.

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
-import type { INestApplication } from '@nestjs/common';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request, Response, NextFunction } from 'express';
 import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
@@ -15,10 +16,12 @@ import {
 import { WebinarLifecycleService } from '../src/webinar-stars/webinar-lifecycle.service';
 import { LeadCaptureService } from '../src/automation/lead-capture.service';
 import { configureApiApplication } from '../src/platform/configure-api-application';
+import { configureRequestBodyParsers } from '../src/platform/request-body-parsers';
 
 describe('Webinar Stars HTTP boundary', () => {
-  let app: INestApplication;
+  let app: NestExpressApplication;
   let token: string;
+  let rawJsonBody: Buffer | undefined;
   const service = {
     config: jest.fn().mockResolvedValue(null),
     save: jest.fn().mockResolvedValue({ id: 'connection', revision: 1 }),
@@ -82,7 +85,12 @@ describe('Webinar Stars HTTP boundary', () => {
         { provide: ConfigService, useValue: new ConfigService({ JWT_ACCESS_SECRET: secret }) },
       ],
     }).compile();
-    app = module.createNestApplication();
+    app = module.createNestApplication<NestExpressApplication>({ bodyParser: false });
+    configureRequestBodyParsers(app);
+    app.use((req: Request & { rawBody?: Buffer }, _res: Response, next: NextFunction) => {
+      rawJsonBody = req.rawBody;
+      next();
+    });
     configureApiApplication(app, { swaggerEnabled: false });
     await app.init();
     token = module
@@ -103,6 +111,9 @@ describe('Webinar Stars HTTP boundary', () => {
       action: 'webinar_end',
       data: { id: '12' },
     });
+    expect(rawJsonBody?.toString()).toBe(
+      JSON.stringify({ action: 'webinar_end', data: { id: '12' } }),
+    );
     await request(app.getHttpServer())
       .post('/webhooks/webinar-stars/a/test-secret')
       .type('form')
@@ -112,6 +123,36 @@ describe('Webinar Stars HTTP boundary', () => {
       action: 'webinar_end',
       data: { id: '12' },
     });
+  });
+  it('does not parse form bodies on ordinary authenticated API routes', async () => {
+    await request(app.getHttpServer())
+      .put('/api/v1/projects/a/webinar-stars')
+      .set('Authorization', `Bearer ${token}`)
+      .type('form')
+      .send('token=synthetic-provider-token')
+      .expect(400);
+    expect(service.save).not.toHaveBeenCalled();
+  });
+  it('rejects oversized webhook forms before invoking the receiver', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/webhooks/webinar-stars/a/test-secret')
+      .type('form')
+      .send(`action=webinar_end&data%5Bid%5D=12&extra=${'x'.repeat(65536)}`);
+    expect(response.status).toBe(413);
+    expect(lifecycle.receive).not.toHaveBeenCalled();
+  });
+  it('bounds form nesting and field count before invoking the receiver', async () => {
+    await request(app.getHttpServer())
+      .post('/webhooks/webinar-stars/a/test-secret')
+      .type('form')
+      .send('data[a][b][c][d]=12')
+      .expect(400);
+    await request(app.getHttpServer())
+      .post('/webhooks/webinar-stars/a/test-secret')
+      .type('form')
+      .send(Array.from({ length: 101 }, (_, index) => `field${index}=x`).join('&'))
+      .expect(413);
+    expect(lifecycle.receive).not.toHaveBeenCalled();
   });
   it('requires contact creation permission in addition to integration management', async () => {
     await request(app.getHttpServer())

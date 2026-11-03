@@ -5,11 +5,11 @@ import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import type { Request } from 'express';
 import { parseCorsOrigins, parseTrustProxy, type ApiEnvironment } from '@omnicus/config/server';
 
 import { AppModule } from './app.module';
 import { configureApiApplication } from './platform/configure-api-application';
+import { configureRequestBodyParsers } from './platform/request-body-parsers';
 
 const logger = new ConsoleLogger({
   json: true,
@@ -35,12 +35,7 @@ async function bootstrap(): Promise<void> {
       bodyParser: false,
       logger,
     });
-    app.useBodyParser('json', {
-      limit: '2mb',
-      verify: (request: Request, _response: unknown, buffer: Buffer) => {
-        (request as Request & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
-      },
-    });
+    configureRequestBodyParsers(app);
     const config = app.get(ConfigService<ApiEnvironment, true>);
     const swaggerEnabled = config.get('SWAGGER_ENABLED', { infer: true });
 
