@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiBody, ApiTags } from '@nestjs/swagger';
 import { RequireProjectPermission } from '../access/access.decorators';
 import { PermissionGuard } from '../access/permission.guard';
 import { firstHeaderValue, type AuthenticatedRequest } from '../auth/auth.types';
@@ -39,6 +39,7 @@ export class TelegramWorkspaceController {
   }
 
   @Post()
+  @ApiBody({ type: TelegramWorkspaceWriteDto })
   @RequireProjectPermission('communications:send')
   async write(
     @Param('projectId') projectId: string,

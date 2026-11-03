@@ -18,6 +18,30 @@ interface HttpErrorResponse {
 }
 
 export const SAFE_API_CODE_MESSAGES: Readonly<Record<string, string>> = {
+  COMMUNICATION_IDENTITY_UNAVAILABLE:
+    'This contact channel is unavailable; refresh the conversation',
+  DRAFT_INVALID: 'Check the draft fields and try again',
+  FAVORITE_INVALID: 'Choose a valid conversation to update its favorite status',
+  HISTORY_DATE_INVALID: 'Choose a valid date range for conversation history',
+  MEDIA_ASSET_NOT_FOUND: 'This attachment is unavailable in the selected project',
+  MENTIONS_INVALID: 'Choose valid project members for mentions',
+  NOTE_NOT_FOUND: 'This conversation note could not be found',
+  PERMISSION_REQUIRED: 'Your role does not allow this action',
+  QUICK_REPLY_NOT_FOUND: 'This quick reply could not be found',
+  QUICK_REPLY_SCOPE_INVALID: 'Choose a quick reply available in this project',
+  WORKSPACE_ACTION_NOT_FOUND: 'This conversation action is unavailable',
+  WORKSPACE_METHOD_INVALID: 'This operation is not supported for the conversation action',
+  WORKSPACE_PAYLOAD_TOO_LARGE: 'The conversation request is too large; reduce its content',
+  WORKSPACE_RESOURCE_INVALID: 'Choose a valid conversation resource',
+  WORKSPACE_RESOURCE_NOT_FOUND: 'This conversation resource could not be found',
+  WORKSPACE_TEXT_INVALID: 'Enter valid conversation text within the allowed length',
+  WEBINAR_STARS_NOT_CONFIGURED: 'Connect Webinar Stars to this project first',
+  WEBINAR_STARS_CREDENTIAL_UNAVAILABLE: 'The saved API token could not be read; save it again',
+  WEBINAR_STARS_CONNECTION_CHANGED: 'The connection changed during testing; test it again',
+  WEBINAR_STARS_DATE_RANGE_INVALID: 'Choose valid dates with the start before the end',
+  WEBINAR_STARS_REPORT_ID_INVALID: 'Choose a valid webinar report',
+  WEBINAR_STARS_ACCESS_DENIED: 'Webinar Stars rejected the token or account access',
+  WEBINAR_STARS_REPORT_NOT_FOUND: 'This report is no longer available in Webinar Stars',
   WHATSAPP_META_CONFIGURATION_REQUIRED:
     'Configure the Meta application before uploading review samples',
   WHATSAPP_TEMPLATE_INVALID: 'Check the template fields and provide examples for every variable',

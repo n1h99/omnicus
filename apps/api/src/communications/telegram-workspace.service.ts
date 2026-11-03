@@ -8,7 +8,7 @@ import {
 } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
-import { Prisma } from '@omnicus/database';
+import type { Prisma } from '@omnicus/database';
 import { AccessService } from '../access/access.service';
 import type { RequestSecurityContext } from '../auth/auth.service';
 import type { AuthenticatedUser } from '../auth/auth.types';

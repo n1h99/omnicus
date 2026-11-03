@@ -121,6 +121,7 @@ export class CrmIntegrationController {
   }
 
   @Get('contacts/whatsapp/connections')
+  @ApiQuery({ type: CrmWhatsAppConnectionsQueryDto })
   whatsAppConnections(
     @Query() query: CrmWhatsAppConnectionsQueryDto,
     @Req() request: AuthenticatedCrmIntegrationRequest,
@@ -129,6 +130,7 @@ export class CrmIntegrationController {
   }
 
   @Post('contacts/whatsapp/connect')
+  @ApiBody({ type: CrmWhatsAppConnectDto })
   @HttpCode(200)
   connectWhatsApp(
     @Body() dto: CrmWhatsAppConnectDto,

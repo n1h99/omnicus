@@ -193,9 +193,8 @@ export class EmailInboundService implements OnApplicationBootstrap, OnApplicatio
           })
         : [];
       let thread =
-        tokenThreads.find((candidate) =>
-          mailboxAddressesEquivalent(candidate.peerEmail, sender),
-        ) ?? null;
+        tokenThreads.find((candidate) => mailboxAddressesEquivalent(candidate.peerEmail, sender)) ??
+        null;
       const referenceIds = [
         ...mailMessageIds(mailHeader(incoming.headers, 'in-reply-to')),
         ...mailMessageIds(mailHeader(incoming.headers, 'references')).reverse(),

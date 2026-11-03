@@ -14,13 +14,11 @@ function fixture() {
   const transaction = {
     $executeRaw: vi.fn().mockResolvedValue(1),
     contact: {
-      findUnique: vi
-        .fn()
-        .mockResolvedValue({
-          status: 'ACTIVE',
-          phone: '+351 930 592 376',
-          whatsAppConsentStatus: 'GRANTED',
-        }),
+      findUnique: vi.fn().mockResolvedValue({
+        status: 'ACTIVE',
+        phone: '+351 930 592 376',
+        whatsAppConsentStatus: 'GRANTED',
+      }),
     },
     channelConnection: {
       findUnique: vi.fn().mockResolvedValue({ type: 'WHATSAPP', status: 'ACTIVE' }),

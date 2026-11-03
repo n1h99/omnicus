@@ -32,7 +32,9 @@ export function MediaAssetsPage() {
       setFile(undefined);
       void message.success('File added to the content library.');
     } catch (error) {
-      void message.error(getUserErrorMessage(error, 'File could not be added to the content library.'));
+      void message.error(
+        getUserErrorMessage(error, 'File could not be added to the content library.'),
+      );
     }
   };
   return (
