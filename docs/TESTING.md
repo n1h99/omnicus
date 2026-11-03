@@ -505,3 +505,20 @@ JSON webhook's completed report. It verifies automatic original-session binding,
 stable provenance without receipt reads, no repeated delivery intents and CRM off.
 Real JSON webhook delivery is independently verified by HTTP 200 and the stored
 authenticated receipt. Fresh viewer matching and a result message remain live gates.
+
+Fresh Omnicus-only live acceptance, 2026-11-03: release b3e589f is SUCCESS for
+API/Web/Worker. A real JSON completion receipt automatically binds the original
+session across the recording ID. The invitation token roundtrips in utm_campaign;
+the attendance matches the invited contact with TRACKING_TOKEN and records 145
+seconds / 100%, CTA clicked, one current comment. The report import is COMPLETED,
+historical false. The result scenario completes once and its one result message
+is SENT with Telegram acknowledgement at 16:51:15 UTC. The old morning visit and
+comment do not contribute. Host and viewer share a token in provider data, so this
+test verifies one invitation-linked attendance, not independent participant counting.
+
+An actual-service rollback-only replay of this completed live import preserves its
+attendance ID/version/result, keeps all seven session actions unchanged and adds no
+message. There are zero webinar CRM actions and the session's webinar CRM flag is
+false; separate generic contact/message CRM integrations remain unchanged. No source
+or schema change is part of this acceptance entry. Missed/replay branches and CRM
+webinar acceptance retain their separate gates. Markdown integrity checks apply.

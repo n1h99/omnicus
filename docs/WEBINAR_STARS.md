@@ -372,3 +372,40 @@ excludes one earlier visit and all old comments, and preserves the binding after
 receipt reads are hidden. Reprocessing creates no additional delivery intents.
 The transaction was rolled back. A fresh invited viewer and report-driven Telegram
 delivery still require live acceptance; CRM acceptance remains deferred.
+
+## Fresh Omnicus-only automatic report acceptance - 2026-11-03
+
+API, Web and Worker release b3e589f reached SUCCESS; public Web and API readiness
+returned HTTP 200. A dedicated session and two newly published scenarios were
+prepared through the application services, leaving prior published versions intact.
+The session's webinar CRM flag is false. Its invitation maps the previously observed
+utm_campaign parameter to the opaque invitation token; utm_source remains attribution.
+The invitation message reached Telegram with a provider acknowledgement.
+
+The operator entered through the new personal link in a fresh incognito window,
+started the original room, watched, clicked CTA, posted a fresh comment and ended
+the webinar. The authenticated receipt arrived at 16:50:01 UTC for the actual
+20:47:36-20:50:01 Asia/Baku interval. The detailed report names its recording copy;
+the receipt names the original room. The automatic import completed at 16:51:06 UTC:
+
+- The original session was selected without manual binding; historical is false.
+- The contact and invitation matched via TRACKING_TOKEN, whose roundtrip is now
+  verified in the provider's returned UTM data. Autologin fields remain unverified.
+- The report includes the old morning visitor, the host and the new visitor. The
+  old visit is outside the interval. The host and new visitor share the invitation
+  token in provider data and normalize to one invitation-linked attendance; this
+  test does not establish independent host/viewer counting.
+- Attendance is 145 seconds, 2.42 minutes, 100%, completed, CTA clicked and one
+  current comment. The earlier room comment is excluded.
+- REPORT_RECEIVED, ATTENDED, COMPLETED, CTA_CLICKED and COMMENTED actions succeeded.
+  The result scenario completed once; its single result message was SENT and
+  acknowledged by Telegram at 16:51:15 UTC.
+- Reprocessing the completed import with the actual service in a rollback-only
+  transaction preserves attendance ID/version/result, keeps seven session actions
+  unchanged and creates zero additional messages. No webinar CRM action exists.
+
+The session's CRM flag does not disable the project's separate generic CRM contact
+sync and outbound-message history integration; those pre-existing routes remain
+unchanged. CRM webinar acceptance is still deferred. Missed/replay branches,
+additional delivery channels and independent host/viewer separation are not accepted
+by this successful primary invitation-to-report Telegram test.
