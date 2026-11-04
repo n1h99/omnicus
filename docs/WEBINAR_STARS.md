@@ -15,6 +15,27 @@ Status 2026-11-03: ADR-067 and ADR-068 are implemented locally. Omnicus has dura
   separate operator steps. Begin by re-testing the existing CRM connection in Omnicus
   to refresh its advertised capabilities, then connect/test Webinar Stars.
 
+## CRM activation and handoff - 2026-11-04
+
+The operator requested enabling delivery and delegating live acceptance, without
+another test webinar or report replay. Both existing sessions now have
+`crmEnabled: true`, applied through the lifecycle service with audit. The
+connection remains enabled and the active CRM advertises `webinars/v1`.
+No new action was enqueued by the configuration change. Existing provider polling
+continues normally; Historical imports still suppress external effects.
+
+Add session preselects CRM delivery only when the paired CRM is enabled, ACTIVE
+and supports `webinars/v1`. Existing session values are preserved; an explicit
+opt-out remains off. API clients must still supply `settings.crmEnabled: true`.
+Task/priority commands require published business rules; diagnostic scenarios are
+not published or resumed as part of activation.
+
+The existing acceptance contact is linked to an archived CRM lead, so that old
+record cannot establish successful live delivery. No live CRM acceptance is
+claimed. Use the [Russian handoff note](guides/WEBINAR_CRM_HANDOFF_RU.md) when
+passing the module to the next team; the 2026-11-03 PDF retains its original
+CRM-off test instructions.
+
 ## Источники и уровень подтверждения
 
 - Пользователь передал HTML вкладки API из своего кабинета Webinar Stars

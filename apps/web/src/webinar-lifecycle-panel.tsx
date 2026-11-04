@@ -28,6 +28,7 @@ import timezone from 'dayjs/plugin/timezone';
 import { Link } from 'react-router';
 import { apiRequest, getUserErrorMessage } from './api';
 import { useAuth } from './auth';
+import { useCrmProjectConfig } from './crm-api';
 import { AppDateTimePicker } from './app-date-time-picker';
 import type { WebinarConnection } from './webinar-stars-api';
 import { WebinarReportingPanel } from './webinar-reporting-panel';
@@ -281,6 +282,7 @@ export function WebinarLifecyclePanel({
   connection: WebinarConnection;
 }) {
   const { message, modal } = App.useApp();
+  const crmConfig = useCrmProjectConfig(projectId);
   const [registrationConfig, setRegistrationConfig] = useState<unknown | null>(null);
   const [reportImportId, setReportImportId] = useState<string>();
   const [createContactRow, setCreateContactRow] = useState<ParticipantRow | null>(null);
@@ -483,10 +485,17 @@ export function WebinarLifecyclePanel({
               size="small"
               icon={<PlusOutlined aria-hidden />}
               type="primary"
+              disabled={crmConfig.isPending}
               onClick={() => {
                 eventForm.setFieldsValue({
                   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-                  ...settingValues({}),
+                  ...settingValues({
+                    crmEnabled:
+                      crmConfig.data?.paired === true &&
+                      crmConfig.data.enabled &&
+                      crmConfig.data.status === 'ACTIVE' &&
+                      crmConfig.data.capabilities.webinarContractVersion === 'webinars/v1',
+                  }),
                 });
                 setCreateOpen(true);
               }}

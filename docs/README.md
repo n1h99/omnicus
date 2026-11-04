@@ -30,8 +30,12 @@ commands, use the [root README](../README.md).
   checks. Results includes server-side filters/pagination, full comments and
   original marketing attribution. Customer scenario presets create drafts for
   explicit publication. The four diagnostic scenarios are paused with published
-  versions retained. **Webinar CRM acceptance is deferred**; the tested webinar's
-  CRM flag is off. Missed/replay branches and other channels remain separate
+  versions retained. **Webinar CRM acceptance is delegated**; on 2026-11-04 the
+  operator requested activation without a new live test. Both existing sessions
+  now have CRM delivery enabled. Add session selects CRM delivery by default
+  when the paired CRM is active and advertises `webinars/v1`; existing opt-outs
+  remain explicit. See the [handoff note](guides/WEBINAR_CRM_HANDOFF_RU.md).
+  Missed/replay branches and other channels remain separate
   acceptance work. [Current workflow and checklist](WEBINAR_STARS.md).
 - **Core platform:** projects/RBAC, contacts, Communications, Telegram, WhatsApp
   Cloud API, email, broadcasts, Automation Studio 2.2, CRM pairing/contact sync,
