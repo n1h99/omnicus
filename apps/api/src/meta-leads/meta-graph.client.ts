@@ -13,9 +13,9 @@ export type MetaLeadPayload = {
   adName?: string;
 };
 
-// This form's question label and all options were verified by the operator.
+// These forms' USD question labels and options were verified against Meta.
 // A question merely called "Budget" on another form does not establish USD.
-const usdBudgetFormId = '2301723413920519';
+const usdBudgetFormIds = new Set(['2301723413920519', '1442119407494186']);
 const usdBudgetLabels: Record<string, string> = {
   '150_000_-_300_000': '150 000–300 000',
   '300_000_-_500_000': '300 000–500 000',
@@ -83,7 +83,7 @@ export function normalizeMetaLead(value: unknown, pageId: string, formId: string
     const text = fields.get(field);
     if (text) result[key as keyof typeof mapping] = text.slice(0, limit);
   }
-  if (formId === usdBudgetFormId) {
+  if (usdBudgetFormIds.has(formId)) {
     const answer = fields.get('Budget');
     const range =
       answer &&

@@ -40,11 +40,21 @@ records are included in this handoff. The remaining sections describe Golden Vis
 ## Budget/ad extension (2026-10-14)
 
 The user verified active form `2301723413920519` (`Lead-form - with budget`) on
-the existing Golden Visa Page `717670618093733`. Its case-sensitive `Budget`
-question explicitly asks for USD and has four known ranges. Only that verified
-form maps this answer to `budgetUsdRange`; unknown ranges and other forms do not
-infer a currency. Both `2 - lead-form` and `5 - lead-form` are `ad_name` values
-using this same form, with their own `ad_id`.
+the existing Golden Visa Page `717670618093733`. The additional active form
+`1442119407494186` (`Lead-form - with budget + business hours`) was verified
+directly against Meta on 2026-11-04. Both use the case-sensitive `Budget` question
+labelled `Approximate investment amount (USD)` with the same four known ranges.
+Only these verified forms map this answer to `budgetUsdRange`; unknown ranges
+and other forms do not infer a currency. `2 - lead-form` and `5 - lead-form` use
+the first form; the observed `6 - lead-form` and `7 - lead-form` ads use the
+business-hours form, with their own `ad_id`.
+
+New forms are not automatically added to project intake. The 2026-11-04 incident
+was caused by the business-hours form being absent from the project's allowlist;
+the Page credentials, existing intake and CRM pairing remained active. Adding
+this verified form requires the normal stop/save/test/resume workflow, preserving
+the original live cutover. Contact-field conflicts remain `REVIEW`; sharing a
+phone number does not authorize overwriting or merging a different name/email.
 
 Optional additive payload fields `budgetUsdRange`, `adId`, `adName` are accepted
 by `meta-leads/v1`. The journal and incoming-lead UI retain these values. New CRM

@@ -433,8 +433,7 @@ Query: optional importId (latest import if omitted), search (max 120), status
 (MATCHED/MANUAL/UNMATCHED/IGNORED), cta/replay (yes/no/unknown), sort (name/watched),
 page (1..100000), pageSize (1..100, default 20). The response is report metadata,
 full-import summary, items, filtered total, page and pageSize. No import returns an
-empty workspace; an inaccessible explicit import returns 404. Invalid filters return
-400. All queries are project-scoped and all search/filter values are bound parameters.
+empty workspace; an inaccessible explicit import returns 404. Invalid filters return 400. All queries are project-scoped and all search/filter values are bound parameters.
 
 Registration now accepts all five standard marketing UTM plus separate distributor ID.
 The original values remain on the invitation. If a confirmed provider UTM field carries

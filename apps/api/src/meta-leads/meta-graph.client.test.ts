@@ -54,6 +54,24 @@ describe('Meta Graph v26 adapter', () => {
       ),
     ).toMatchObject({ budgetUsdRange: range, adId: '120254153730390154', adName: '2 - lead-form' });
   });
+  it.each([
+    ['300_000_-_500_000', '300 000–500 000'],
+    ['500_000_-_700_000', '500 000–700 000'],
+  ])('preserves verified business-hours form budget %s', (answer, range) => {
+    const formId = '1442119407494186';
+    const result = normalizeMetaLead(
+      {
+        ...lead,
+        form_id: formId,
+        ad_name: '6 - lead-form',
+        field_data: [...lead.field_data, { name: 'Budget', values: [answer] }],
+      },
+      '333',
+      formId,
+    );
+    expect(result).toMatchObject({ budgetUsdRange: range, adName: '6 - lead-form' });
+    expect(result.email).toBe('test@example.org');
+  });
   it('does not infer USD for other forms or an unknown budget answer', () => {
     const withBudget = {
       ...lead,
