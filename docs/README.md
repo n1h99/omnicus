@@ -1,6 +1,6 @@
 # Omnicus documentation
 
-Catalog and release record reviewed: **2026-11-03**. For repository setup and
+Catalog and release record reviewed: **2026-11-04**. For repository setup and
 commands, use the [root README](../README.md).
 
 ## User instructions
@@ -17,6 +17,12 @@ commands, use the [root README](../README.md).
 
 ## Recorded release and acceptance boundaries
 
+- **Golden Visa Meta forms, 2026-11-04:** the verified business-hours form was
+  added to live intake after API `f73af81` deployed successfully. The normal
+  processing path recovered the two missed source receipts: one CRM card and
+  one confirmed Telegram send; one contact conflict retained in `REVIEW`.
+  USD budgets are supported for both verified budget forms. Credentials and the
+  original live cutover were preserved. [Recovery record](META_LEADS.md#budgetad-extension-2026-10-14).
 - **Webinar Stars, 2026-11-03:** the recorded Omnicus API/Web/Worker rollout is
   `48cc118`; both webinar migrations were applied. Invitations/reminders,
   provider interactions, JSON completion, original-session binding, personal-link

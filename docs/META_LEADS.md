@@ -56,6 +56,18 @@ this verified form requires the normal stop/save/test/resume workflow, preservin
 the original live cutover. Contact-field conflicts remain `REVIEW`; sharing a
 phone number does not authorize overwriting or merging a different name/email.
 
+Recovery verified on 2026-11-04: API release `f73af81` is SUCCESS in Railway.
+The verified business-hours form was added through the application services and
+all three forms are enabled for live delivery. The original credentials and
+2026-10-01 live cutover were preserved; the maintenance action is audited.
+The two missed submissions were recovered by the normal poll/processing path:
+one created a single CRM card with its USD budget and actual ad name, and its
+Telegram notification reached `SENT` in one attempt. The other remains `REVIEW`
+with `CONTACT_FIELDS_DISAGREE`; a matching phone with a different name/email is
+not an instruction to merge contacts or emit a duplicate NEW LEAD. No migration
+or automotive CRM change was required. Local format, lint, boundaries, typecheck,
+unit/integration tests, Prisma validation and the production build passed.
+
 Optional additive payload fields `budgetUsdRange`, `adId`, `adName` are accepted
 by `meta-leads/v1`. The journal and incoming-lead UI retain these values. New CRM
 cards store the USD range separately at `qualificationData.metaBudgetUsdRange`
