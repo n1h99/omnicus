@@ -1,91 +1,58 @@
 # Omnicus
 
-Local feature, 2026-11-03: [Webinar Stars](docs/WEBINAR_STARS.md) includes durable webhook/polling report import, conservative participant matching, invitations and website registration, webinar automation, CRM activities and manager tasks. Both migrations and API/Web/Worker plus Golden Visa CRM staging counterparts must be deployed before joint live acceptance. Rollout authorized 2026-11-03; Omnicus production migrations are applied. Provider acceptance follows deployment verification.
+Omnicus is a customer communication and automation platform built as a
+pnpm/Turborepo monorepo. It combines project workspaces, contacts and audiences,
+Telegram, the official WhatsApp Business Cloud API, Resend email, broadcasts,
+Automation Studio, Cyber Pulse CRM integration and Webinar Stars workflows.
+PostgreSQL owns business state; Redis/BullMQ runs recoverable background jobs.
 
-Cross-project handoff, 2026-10-14: automotive Cyber Pulse CRM `main` now has a
-separate, production-deployed ApiX/Facebook receiver with screenshot-verified
-preview and operator-reported credential retest/lead workflow. This is not the
-Golden Visa Meta route into CRM `staging`, nor a new Omnicus messaging transport.
-Live cutover requires the CRM receiver switch, the destination URL without
-`/preview` and ApiX Auto-update; final settings/first fresh live submission remain
-operator confirmations. See the [automotive route boundary](docs/META_LEADS.md#automotive-apix-route)
-and [authoritative CRM checklist](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
-This documentation update changes no Omnicus application code or CRM `staging`.
+Documentation and file layout reviewed: **2026-11-03**.
 
-Feature update, 2026-09-15: [Email Inbox](docs/EMAIL_INBOX.md) adds a
-Resend-backed conversation workspace, multiple sender addresses, private drafts,
-attachments and email reply waits in Automation. Deployment and live acceptance
-remain unverified; it requires its new migration and Receiving DNS/webhook
-setup. The deployed baseline described below remains separate.
+## Start here
 
-Feature update, 2026-09-17: `origin/main` includes the contact-first
-[Communications workspace](docs/COMMUNICATIONS.md), reusable manual/dynamic
-contact audiences and durable
-[CRM lead -> Omnicus contact synchronization](docs/CRM_CONTACT_SYNC.md).
-Cyber Pulse keeps its existing lead-card chats and now distinguishes CRM quick
-replies from official Meta templates. The two new Omnicus migrations and live
-channel acceptance remain deployment steps; a Git push alone is not evidence
-that Railway applied them.
+- [Documentation index and recorded release status](docs/README.md)
+- [User guides and PDF instructions](docs/guides/README.md)
+- [Create a project and connect CRM: short Russian guide](docs/guides/PROJECT_CRM_QUICKSTART_RU.md)
+- [Requirements, source specifications and draft proposals](docs/specifications/README.md)
+- [Operator workflows and current menu paths](docs/OPERATOR_GUIDE.md)
+- [Railway deployment](docs/RAILWAY.md) and [operations runbook](docs/RUNBOOK.md)
 
-Omnicus is a production-deployed omnichannel automation platform built as a
-`pnpm`/Turborepo monorepo. The current release includes Auth/RBAC, projects,
-contacts and segmentation, Telegram messaging, official WhatsApp Business
-Cloud API support, durable inbox/outbox delivery, Cyber Pulse CRM integration,
-broadcasts, a unified Communications workspace, media/templates, public website lead capture, tracked links,
-Resend-backed email campaigns, cross-system contact merge and Automation Studio
-2.2. WhatsApp CRM chat includes voice media and one-time text scheduling inside
-the current service window; Telegram retains recurring scheduling and
-upload-only circular video notes. The current platform
-completion also includes Operations & Audit, complete
-operator-delivered invitations/password recovery, custom roles, safe project
-cloning and permission-guarded System Health. PostgreSQL is the source of truth;
-Redis/BullMQ accelerates recoverable jobs and never owns business state.
+## Recorded product status
 
-Project workspaces also include Automation Activity: a project-scoped view of
-contact journeys, current steps, completion/drop-off reasons, timelines and
-bounded operational charts. User-facing access, audit, status and alert copy is
-translated from internal codes into plain language.
+The latest recorded Webinar Stars rollout is 2026-11-03, application release
+`48cc118`. It includes invitations, reminders, saved Results, participant
+filtering, full comments, original marketing UTM and customer scenario drafts.
+The core Telegram/provider flow passed the recorded live test. Webinar CRM
+acceptance remains deferred; missed/replay branches and additional delivery
+channels retain their own acceptance scope. See [Webinar Stars](docs/WEBINAR_STARS.md).
 
-WhatsApp is implemented against Meta's official Cloud API contract. The
-connected test path has passed open-window automation, interactive reply and
-CRM-history checks. The remaining external acceptance is an approved-template
-send outside the window and production-volume verification on the customer's
-Meta business account. Instagram remains deliberately deferred until its own
-account and provider scope are approved.
+WhatsApp uses Meta's official Cloud API. Approved-template delivery outside the
+service window and production-volume acceptance remain separate checks.
+Instagram messaging and SMS are not implemented product channels. The personal
+WhatsApp documents under specifications are **draft proposals**, not shipped
+features. Existing platform features and historical release evidence are
+indexed in [the documentation catalog](docs/README.md).
 
-The September 10 WhatsApp update adds native marketing/utility template
-authoring and Meta review synchronization, a channel health center, direct Meta
-payment guidance and phone-scoped cost reports, plus broadcast cost estimates.
-Meta remains responsible for template approval and billing; Omnicus does not
-hold a customer wallet or collect card details. Missing report data is not zero
-spend. These features do not establish App Review approval or replace the
-remaining live acceptance gates. See [WhatsApp management](docs/WHATSAPP_MANAGEMENT.md).
+## Repository layout
 
-`Email & SMS Broadcast` contains the working email campaign product. Email is
-sent by the worker through Resend using the verified Omnicus mail and tracking
-domains; signed provider events update project analytics and linked CRM lead
-history. SMS has no provider and remains under construction.
+| Location              | Contents                                                                   |
+| --------------------- | -------------------------------------------------------------------------- |
+| `apps/web`            | React/Vite console and Automation Studio                                   |
+| `apps/api`            | NestJS API, webhooks, public routes and CRM contracts                      |
+| `apps/worker`         | Inbox/outbox, channel, CRM, email, broadcast and automation workers        |
+| `packages`            | Database, deterministic automation runtime and integration adapters        |
+| `e2e`                 | Browser acceptance and navigation checks                                   |
+| `scripts`             | Toolchain, build, checks and explicitly operated maintenance tools         |
+| `docs/guides`         | User PDFs and the project/CRM quick start                                  |
+| `docs/specifications` | Source requirements, historical baseline and draft WhatsApp specifications |
+| `docs/reviews`        | Meta App Review preparation notes                                          |
+| `docs/archive`        | Historical status and Stage 1 review material                              |
+| `tmp`                 | Ignored local authoring, screenshots, diagnostics and disposable work      |
+| `.runtime`            | Generated deployment artifacts; rebuild rather than edit                   |
 
-Sentry is not part of the observability stack. Health and operational alerts are
-derived from service probes, queues and durable PostgreSQL journals. Railway
-backup configuration remains operator-owned and is not managed by Omnicus.
-
-## Applications and packages
-
-- `apps/web`: React/Vite administration console and Automation Studio.
-- `apps/api`: NestJS API, public lead/redirect/unsubscribe routes, provider
-  webhooks, CRM service contracts and health endpoints.
-- `apps/worker`: BullMQ consumers for inbox/outbox, lead capture, CRM,
-  broadcasts, email delivery, continuations and external HTTP operations.
-- `packages/database`: Prisma schema and reviewed migrations.
-- `packages/automation-core`, `packages/automation-http`: deterministic runtime
-  and SSRF-safe External HTTP transport.
-- `packages/channel-telegram`, `packages/channel-whatsapp`, `packages/crm-core`,
-  `packages/media-core`, `packages/email-core`: provider adapters, rendering
-  and durable integration boundaries.
-
-The current implementation and remaining follow-ups are indexed in
-[docs/README.md](docs/README.md).
+Keep release PDFs in the appropriate documentation folder. Local intermediate
+renders and build dependencies belong in `tmp`; do not put them in the root.
+Customer-provided source PDFs remain local and are intentionally ignored by Git.
 
 ## Required toolchain
 
@@ -161,23 +128,13 @@ uses the one-time audited bootstrap described in the operations runbook. Never
 commit credentials, Telegram or Meta access tokens, Meta app secrets, CRM
 bearer tokens, project secrets or Railway-generated values.
 
-## Documentation
+## Documentation maintenance
 
-- [Documentation index and current status](docs/README.md)
-- [Operator guide](docs/OPERATOR_GUIDE.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
-- [Architecture decisions](docs/DECISIONS.md)
-- [Database design and invariants](docs/DATABASE.md)
-- [Automation runtime](docs/AUTOMATION_ENGINE.md)
-- [Formal state machines](docs/STATE_MACHINES.md)
-- [Testing](docs/TESTING.md)
-- [Railway deployment](docs/RAILWAY.md)
-- [Operations runbook](docs/RUNBOOK.md)
-- [Cyber Pulse CRM integration](docs/CRM_INTEGRATION.md)
-- [Communications workspace](docs/COMMUNICATIONS.md)
-- [CRM lead to Omnicus contact synchronization](docs/CRM_CONTACT_SYNC.md)
-- [WhatsApp Business Cloud API](docs/WHATSAPP_CLOUD_API.md)
-- [WhatsApp templates, channel health and Meta billing](docs/WHATSAPP_MANAGEMENT.md)
-- [Email campaigns and Resend](docs/EMAIL_BROADCASTS.md)
-- [Customer patch notes — 2026-09-17](docs/CUSTOMER_PATCH_NOTES_2026-09-17.md)
+[docs/README.md](docs/README.md) is the document catalog and recorded-status
+entry point. The root README owns repository setup; do not maintain a second
+`README.root.md` copy. Use [archive](docs/archive/README.md) for historical
+evidence and [reviews](docs/reviews/README.md) for review preparation.
+
+Creating a project and pairing CRM does not migrate historical contacts or copy
+channels and scenarios from another project. Each connection has its own scope;
+follow [the short setup guide](docs/guides/PROJECT_CRM_QUICKSTART_RU.md).

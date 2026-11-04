@@ -10,6 +10,12 @@ below for car-import CRM `main`, not Omnicus's Golden Visa Meta lead panel.
 This guide describes the current deployed workflows. Provider restrictions are
 part of the product contract; a queued operation is not delivery evidence.
 
+## Project and CRM onboarding
+
+Use the [short Russian project/CRM setup guide](guides/PROJECT_CRM_QUICKSTART_RU.md)
+for Projects -> Create project and project-scoped CRM pairing. All PDF user
+instructions are listed in the [guide catalog](guides/README.md).
+
 ## Current project menu
 
 Start from `Projects` and select a project. The sidebar lists groups; the top

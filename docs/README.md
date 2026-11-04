@@ -1,311 +1,103 @@
-# Omnicus documentation index
+# Omnicus documentation
 
-Integration handoff reviewed: 2026-10-14; navigation review: 2026-10-01. `main` includes Automation Studio 2.2, Telegram
-Chat v3.3, WhatsApp Chat v4, public lead capture, per-contact link tracking,
-Resend email campaigns, cross-system contact merge, platform operations and
-Automation Activity, grouped project navigation and Meta lead-form intake.
-Older dated entries below retain their original acceptance scope.
+Catalog and release record reviewed: **2026-11-03**. For repository setup and
+commands, use the [root README](../README.md).
 
-## Current product status
+## User instructions
 
-- Webinar Stars operator workflow (ADR-069): Results provides saved-report summaries,
-  server-side participant filtering/pagination and full comments/attribution. Original
-  marketing UTM is preserved independently of provider tracking; conflicting link
-  mappings are rejected. Customer scenario presets create explicit session/bot drafts
-  in Automation Studio. The four acceptance-only scenarios are paused with published
-  versions retained. Manual provider/channel acceptance is delegated to the operator's
-  team; CRM acceptance remains deferred. See [the operator workflow](WEBINAR_STARS.md#operator-results-and-customer-scenario-setup-adr-069).
+| Need                                    | Document                                                                      |
+| --------------------------------------- | ----------------------------------------------------------------------------- |
+| All user PDFs                           | [Guide catalog](guides/README.md)                                             |
+| Add a project and connect CRM           | [Short Russian setup guide](guides/PROJECT_CRM_QUICKSTART_RU.md)              |
+| Daily work in Omnicus                   | [Omnicus user guide, 20 pages](guides/Omnicus_User_Guide_RU.pdf)              |
+| Webinar setup and operation             | [Webinar Stars guide, 12 pages](guides/Omnicus_Webinar_Stars_Guide_RU.pdf)    |
+| Work across Omnicus and Cyber Pulse     | [Combined workflow guide, 24 pages](guides/Omnicus_CRM_Workflow_Guide_RU.pdf) |
+| Current project menu and operator tasks | [Operator guide](OPERATOR_GUIDE.md)                                           |
+| Meta lead-form setup in Russian         | [Meta lead guide](META_LEADS_USER_GUIDE_RU.md)                                |
 
-- Webinar Stars rollout verified 2026-11-03: Omnicus API/Web/Worker `48cc118`,
-  Golden Visa staging backend `4ad95bc` and frontend `fa8f178` are SUCCESS in Railway.
-  Both PostgreSQL migrations are applied (40 total); HTTP readiness and authenticated
-  CRM `webinars/v1` capability checks pass. Invitation/reminder delivery, real viewer
-  interactions, report polling recovery and explicit Historical report/session/contact
-  binding are verified. Fresh JSON completion delivery, automatic original-session
-  binding across the recording ID, invitation-token contact matching and report-driven
-  Telegram delivery now pass live. The new result is 145 seconds / 100%, CTA clicked,
-  one comment; rollback-only reprocessing preserves the attendance and creates no
-  repeated actions/messages. CRM acceptance remains deferred and this session's
-  webinar CRM flag is off. Missed/replay branches and additional delivery channels
-  retain their separate acceptance scope. See [setup and checklist](WEBINAR_STARS.md).
+## Recorded release and acceptance boundaries
 
-- Automotive CRM `main` release 2026-10-14 is a separate ApiX → CRM route, not
-  the Golden Visa Omnicus Meta route below. Backend `d6ba77e` / frontend
-  `9d4ef49` deployed successfully; the guided preview reached the admin journal
-  with original source metadata. The user confirmed credential rotation/retest
-  and the lead workflow, then requested live activation. Final live settings and
-  first-fresh-lead acceptance remain operator confirmations. See the
-  [route boundary](META_LEADS.md#automotive-apix-route)
-  and [CRM contract/checklist](https://github.com/n1h99/cyber-pulse-back/blob/main/docs/APIX_AUTO_LEADS.md).
-  No Omnicus runtime, schemas, pairing credentials or CRM `staging` are changed.
-- Budget/ad extension implemented 2026-10-14 under ADR-066: the verified
-  `Lead-form - with budget` preserves a separate USD answer and actual ad name/ID
-  in the submission journal, new Golden Visa CRM cards and optional NEW LEAD
-  lines. Omnicus `d255893`, CRM backend `staging` `73dd7ba` and frontend `staging`
-  `2818c3b` were deployed successfully. The user completed new-form setup, enabled
-  delivery and showed its test notification in GV Leads. Real-ad/USD-value
-  acceptance is not inferred from dummy Meta test answers. See
-  [contract and verification](META_LEADS.md). No migration or automatic historical
-  backfill is part of this extension.
-- Published 2026-10-01: [Meta lead-form intake and safe Golden Visa reconciliation](META_LEADS.md)
-  is in Omnicus `7e08450` and CRM `staging` `3a24ffb`. The user confirmed deployment,
-  preview, a historical import and live activation. First-new-lead CRM/Telegram
-  acceptance remains a separate check. CRM `staging` is the live Golden Visa
-  business, not a sandbox; car-import production is not a rollout target.
-- UI/documentation polish was pushed in `39689bd`; that push does not independently
-  confirm the latest Railway deployment or visual acceptance. The
-  [Russian Meta integration guide](META_LEADS_USER_GUIDE_RU.md) covers initial setup,
-  daily operation, historical deduplication, token renewal and new-project limits.
-  Current entry: `Projects -> project -> Connections -> CRM integration -> Meta lead forms`.
-- The project sidebar now groups tools into `Conversations`, `Contacts`,
-  `Broadcasts`, `Automation`, `Content`, `Connections` and `Settings`.
-  Child tools are top-level tabs inside the selected group, filtered by permissions.
-  See the [operator menu map](OPERATOR_GUIDE.md) for exact labels; old route URLs
-  still work and do not mean the old standalone sidebar items are present.
+- **Webinar Stars, 2026-11-03:** the recorded Omnicus API/Web/Worker rollout is
+  `48cc118`; both webinar migrations were applied. Invitations/reminders,
+  provider interactions, JSON completion, original-session binding, personal-link
+  contact matching and report-driven Telegram delivery passed the recorded live
+  checks. Results includes server-side filters/pagination, full comments and
+  original marketing attribution. Customer scenario presets create drafts for
+  explicit publication. The four diagnostic scenarios are paused with published
+  versions retained. **Webinar CRM acceptance is deferred**; the tested webinar's
+  CRM flag is off. Missed/replay branches and other channels remain separate
+  acceptance work. [Current workflow and checklist](WEBINAR_STARS.md).
+- **Core platform:** projects/RBAC, contacts, Communications, Telegram, WhatsApp
+  Cloud API, email, broadcasts, Automation Studio 2.2, CRM pairing/contact sync,
+  public registration, tracked links, Operations & Audit and Automation Activity
+  are implemented. Deployment and provider evidence is scoped to each recorded
+  release; the presence of code does not verify a newly connected account.
+- **WhatsApp:** open-window messaging and the connected CRM flow have recorded
+  live evidence. Outside-window approved-template delivery and production volume
+  retain separate acceptance. [Feature and billing boundaries](WHATSAPP_MANAGEMENT.md).
+- **Meta and CRM:** the Golden Visa Omnicus route and the automotive ApiX route
+  are separate integrations. CRM `staging` identifies the live Golden Visa
+  business, not a disposable sandbox. [Route boundaries](META_LEADS.md).
+- **Proposals:** personal WhatsApp specifications are drafts for agreement.
+  Instagram messaging and SMS remain deferred. Requirements PDFs are source
+  material, not evidence that a feature is deployed or accepted.
 
-- `origin/main` commit `83f75cb` adds the project-scoped
-  [Communications workspace](COMMUNICATIONS.md): searchable contacts on the
-  left and Email/WhatsApp/Telegram conversations on the right. It reuses the
-  existing message/email services and leaves Cyber Pulse lead-card chat intact.
-- The same release adds durable
-  [CRM lead -> Omnicus contact synchronization](CRM_CONTACT_SYNC.md). Cyber
-  Pulse create/update/archive/restore writes a latest-state MongoDB queue;
-  Omnicus applies idempotent, version-ordered snapshots by exact `crmLeadId`.
-  Migration `20260917100000_crm_contact_inbound_sync` is required. Existing CRM
-  leads are not bulk-backfilled and synchronize on their next general edit.
-- Customer-facing scope and rollout caveats are consolidated in
-  [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md).
+Older dated rollout details are preserved in the
+[historical status snapshot](archive/DOCUMENTATION_STATUS_2026-11-03.md).
+This documentation cleanup did not run a new deployment or provider acceptance.
 
-- Update 2026-09-17: contact groups now support hand-picked members or
-  dynamic rules. Telegram, WhatsApp and email broadcasts share all-active,
-  saved-group and individual-contact audience modes with optional tag guards;
-  provider eligibility is still applied at launch. Automation Safe Test can use
-  one existing contact as sample data without creating a mass scenario run.
-- Completion pass 2026-09-17: Email Inbox draft concurrency/retry, send replay,
-  incoming chronology and inactive mailbox processing fixes are complete locally;
-  media attachment permissions and settings/draft UI contracts are corrected.
-  The full 16-case browser regression passes. Joint live module acceptance is
-  deferred by the user. The shared dependency audit still reports 14 advisories
-  (10 high) and is a separate release follow-up; see [TESTING.md](TESTING.md).
-- Local update 2026-09-15: [Email Inbox](EMAIL_INBOX.md), ADR-060, adds project
-  domains/addresses, Gmail-style conversation navigation, private drafts, manual
-  replies/files, campaign/automation history and exact-thread email waits. New
-  permissions and migration are included. Deployment, provider DNS/Receiving and
-  live acceptance remain unverified; a Git push does not confirm Railway deployment.
+## Engineering and operations
 
-- WhatsApp now has native marketing/utility template authoring, media review
-  samples, preview, duplicate/edit/delete and explicit Meta status sync. The
-  channel center shows provider health and a direct Meta billing/cost report;
-  broadcasts have list-rate estimates with unknown/free/paid separation.
-  [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md) is the current feature,
-  limitation, UI and acceptance reference. Customer-facing release notes are in
-  [CUSTOMER_PATCH_NOTES_2026-09-10.md](CUSTOMER_PATCH_NOTES_2026-09-10.md).
-- Channel detail order is `Connection overview` -> `How WhatsApp works here`
-  -> `WhatsApp channel center`, followed by the existing settings and actions.
-  Missing configuration/access has a designed action state; duplicate checks
-  are grouped with expandable diagnostics. Template actions sit side by side,
-  newly uploaded image samples have a visual preview, loading is centered, and
-  card/report-error spacing is explicit. UI commits through `3698b7b` are on
-  `origin/main`; a push is not a separate confirmation of Railway deployment.
-- The customer-requested August patch adds manual contact creation with durable
-  CRM synchronization, safe absolute-URL validation, Telegram action-button
-  branches, content-rich editable automation nodes and multiple-attachment
-  group/separate delivery. Its customer-facing notes are in
-  [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md).
-- Automated follow-up remains in the single authoritative `Automation ->
-Scenarios` graph. `Broadcasts -> Email` (the `Email & SMS Broadcast` page) remains the one-off/scheduled
-  campaign surface and does not duplicate the graph editor, draft/version
-  state, validation or runtime controls.
-- Automation continuation recovery now isolates failed executions and resolves
-  normalized inbound reply event types before ordinary trigger matching. One
-  failed Telegram media delivery cannot stop the continuation scan for other
-  executions.
-- Email campaigns explain that click tracking is controlled centrally by the
-  verified Resend domain. Incomplete destination URLs fail inline validation
-  instead of crashing the editor; click evidence remains visible in Analytics.
-- Railway runs the web, API and worker services from `main`; deployments are
-  automatic after a push.
-- All operator mutations expose action-specific success/failure feedback. Safe
-  API codes and validation field names are translated into actionable UI copy;
-  internal 5xx details remain hidden behind a correlation reference.
-- Project workspaces now include an Operations & Audit Center with safe bounded
-  inbox/outbox/automation/broadcast projections, reasoned terminal retry and
-  evidence-based `UNKNOWN` reconciliation. Raw payloads, message content and
-  credentials are not selected into these responses.
-- Account lifecycle is complete for the current operator-delivered model:
-  global/project invitations, hashed expiring single-use links, invitation
-  acceptance, password-reset requests, one-time admin-generated reset links and
-  active-session revocation after reset. Authentication links remain
-  operator-delivered; the separate marketing-email provider is not reused
-  implicitly for account lifecycle messages.
-- Built-in global/project roles remain immutable; authorized operators can
-  create custom roles from scope-safe permission catalogs. Project Settings can
-  update general metadata and make a safe draft clone containing only general
-  settings and custom role definitions.
-- Permission-guarded System Health combines PostgreSQL, Redis and worker probes with
-  queue pressure, global audit history and current terminal operations from the
-  last 24 hours. Older unresolved journal records remain visible separately by
-  project and do not make the live platform status look degraded. Each operation
-  count links to the matching filtered project journal. The operator reset
-  action acknowledges the displayed statistics baseline; it does not delete or
-  rewrite the authoritative PostgreSQL journals. Sentry is not used and Railway
-  backup configuration remains operator-owned.
-- Automation Activity is available only inside each authorized project workspace,
-  not as a duplicate global sidebar destination. The board provides paginated
-  contact journeys, current steps, safe reasons, per-step timelines, exact status
-  totals and bounded trend/scenario/drop-off charts from existing execution
-  journals. It never selects contact variables, event payloads or raw provider
-  errors.
-- Project overview shows project identity, status, locale, timezone and lifecycle
-  information. Grouped tool navigation is available through the project sidebar
-  and overview section cards, with child tabs inside each selected group.
-- Project lifecycle controls are kept in Project Settings: editing stays in the
-  General settings form, while pause/activate and protected deletion retain their
-  explicit status and confirmation flows. The project landing page stays focused
-  on information and navigation.
-- Permission, audit, health, operation and status codes are translated into
-  plain-language UI labels. Action buttons keep accessible names without
-  rendering intrusive hover tooltips.
-- Public website lead capture accepts project/source-scoped requests with a
-  derived ingest key and caller idempotency key. It creates or updates one
-  contact, queues the CRM lead projection and starts published
-  `WEBSITE_REGISTRATION` scenarios. Telegram deep-link scenarios expose a
-  copyable bot start URL.
-- Send Message nodes are channel-aware: Automatic is universal text, Telegram
-  supports validated media and URL buttons, and WhatsApp supports one
-  attachment or up to three quick-reply buttons inside the service window.
-  Optional per-contact tracking rewrites message and Telegram-button links;
-  clicks appear in Omnicus contact history and the linked CRM lead history.
-- Telegram, the connected WhatsApp test path and Cyber Pulse CRM are
-  live-verified integration slices. The remaining WhatsApp external gate is an
-  approved-template send outside the service window plus production-scale
-  acceptance on the customer's Meta account.
-- Contact name/email/phone edits queue a durable CRM upsert for the already
-  linked lead. Explicit contact merge preserves both channel histories in one
-  CRM lead, and migration `20260808000000_crm_contact_merge` plus an idempotent
-  worker backfill repairs merges made before that contract was deployed.
-- Every normalized Telegram inbound message is queued to an active paired CRM
-  independently of Automation Studio. Inbound replies keep a same-conversation
-  Omnicus message reference through contract 3.2.3.
-- Telegram Chat v3.2 live E2E passed for inbound edits, shared contacts,
-  automation/broadcast `sourceContext`, reaction add/change/remove, duplicate
-  delivery, reaction-before-source and routing isolation.
-- Connection-scoped discovery advertises
-  `userReactionEvents.supported=true`.
-- Telegram Chat v3.3 adds bounded reply keyboards/Force Reply, application-owned
-  DAILY/WEEKLY recurring schedules with revision-safe updates, native Telegram
-  rich Markdown messages and rich draft previews that reuse provider media IDs.
-- Rich content never accepts arbitrary media URLs; durable media is resolved
-  only from a project/connection-scoped Omnicus asset.
-- CRM history now requires both a numeric Telegram provider message ID and a
-  matching `SUCCEEDED` Telegram outbox; synthetic rows cannot become chat
-  bubbles. Channel pipeline failures/unknown outcomes raise safe UI
-  notifications when the operator is viewing that channel.
-- Automation Studio 2.2 supports incomplete/disconnected drafts, explicit
-  operator-controlled saving, edge deletion and durable SSRF-safe External
-  HTTP nodes. Editor changes remain local until **Save draft** is pressed. The
-  editor now hydrates one stable saved baseline, refreshes version history
-  immediately, previews each immutable canvas, keeps connection handles stable,
-  and exposes only graph-relevant Safe Test controls.
-- Automation authoring validates active tags, custom fields, templates,
-  subflows and HTTP secrets before Test/Publish. Incomplete drafts remain
-  saveable, while disconnected nodes are blocking issues. **Clear custom
-  field** removes one current-contact value without deleting its project field
-  definition.
-- Automation execution diagnostics distinguish node completion from actual
-  Telegram delivery. Send steps persist only safe message/outbox references;
-  missing content or channel identity fails the step instead of reporting a
-  false success.
-- External HTTP DNS pinning keeps IPv4 and IPv6 deny lists separate and selects
-  a public resolved address when a platform resolver also returns restricted
-  addresses. Private, loopback, mapped, reserved and redirect targets remain
-  blocked.
-- WhatsApp Business Cloud API is implemented through the same durable
-  inbox/outbox, CRM and automation boundaries. It includes manual and Meta
-  Embedded Signup setup, signed app-level webhooks, normalized message/status
-  processing, customer-service-window enforcement, approved templates,
-  WhatsApp broadcasts and channel-aware CRM chat. Live testing has verified
-  the connected test number, website-triggered automation, open-window text and
-  interactive replies, inbound reply routing and CRM history synchronization.
-  The closed-window guard is verified; the new review templates were pending
-  during the walkthrough, and the final outside-window send remains unverified.
-- CRM can create, update and cancel one-time WhatsApp text schedules while the
-  current 24-hour window is open. The worker rechecks that window at delivery;
-  WhatsApp recurrence and scheduled media remain intentionally unsupported.
-- Telegram and WhatsApp voice recording preserve playable duration metadata.
-  Telegram video notes are upload-only; media and sticker inputs are validated
-  against channel-specific type, MIME, signature, size and dimension rules.
-- `Email & SMS Broadcast` now provides Resend-backed email campaign drafts,
-  audience estimates and filters, scheduling, a block editor, test sends,
-  reusable versioned templates, suppressions, recipient reports and a project
-  analytics table. Automation Studio can pin a published template in `Send
-email`. SMS remains explicitly under construction.
-- Email delivery uses the verified `mail.omnicus.app` sending domain,
-  `links.mail.omnicus.app` tracking domain and signed Resend webhook. Active
-  contacts with a valid non-suppressed address are eligible; consent metadata
-  remains auditable but is not an additional campaign filter. Email lifecycle
-  events and clicked target URLs are forwarded idempotently to CRM.
-- Instagram messaging remains deliberately deferred until its test account and
-  separate provider scope exist. Facebook/Instagram instant lead forms are the
-  separate implemented Meta lead-intake feature, not an Instagram chat channel.
+| Area                                          | Reference                                                     |
+| --------------------------------------------- | ------------------------------------------------------------- |
+| Agent instructions and requirement precedence | [AGENTS.md](AGENTS.md)                                        |
+| Architecture and trust boundaries             | [ARCHITECTURE.md](ARCHITECTURE.md)                            |
+| Implementation stages and follow-ups          | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)              |
+| Accepted decisions                            | [DECISIONS.md](DECISIONS.md)                                  |
+| Database and migration invariants             | [DATABASE.md](DATABASE.md)                                    |
+| Automation semantics                          | [AUTOMATION_ENGINE.md](AUTOMATION_ENGINE.md)                  |
+| Durable lifecycle rules                       | [STATE_MACHINES.md](STATE_MACHINES.md)                        |
+| Edge cases                                    | [EDGE_CASES.md](EDGE_CASES.md)                                |
+| Railway topology and rollout                  | [RAILWAY.md](RAILWAY.md)                                      |
+| Incidents and recovery                        | [RUNBOOK.md](RUNBOOK.md)                                      |
+| Test and release gates                        | [TESTING.md](TESTING.md)                                      |
+| Dependency exceptions                         | [DEPENDENCY_EXCEPTIONS.md](DEPENDENCY_EXCEPTIONS.md)          |
+| Manual test-data tools                        | [Cleanup tool README](../scripts/test-data-cleanup/README.md) |
 
-The Telegram channel-detail cache refresh issue found during the current
-verification cycle is resolved: disable/connect mutations update the active
-detail immediately. Broad manual/live acceptance remains intentionally grouped
-into the final verification stage.
+## Integration and product contracts
 
-## Active references
+| Area                                         | Reference                                                              |
+| -------------------------------------------- | ---------------------------------------------------------------------- |
+| Cyber Pulse integration                      | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                               |
+| CRM lead profile synchronization             | [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md)                             |
+| Contact conversations                        | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                 |
+| Webinar Stars setup, behavior and acceptance | [WEBINAR_STARS.md](WEBINAR_STARS.md)                                   |
+| Meta lead intake                             | [META_LEADS.md](META_LEADS.md)                                         |
+| WhatsApp Cloud API                           | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                         |
+| WhatsApp templates, health and billing       | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                       |
+| Email campaigns and Resend                   | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                             |
+| Email Inbox                                  | [EMAIL_INBOX.md](EMAIL_INBOX.md)                                       |
+| CRM to Omnicus                               | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml) |
+| Omnicus to CRM                               | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)             |
+| CRM pairing                                  | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                   |
+| Webinar CRM extension                        | [WEBINAR_CRM_OPENAPI.yaml](WEBINAR_CRM_OPENAPI.yaml)                   |
 
-Webinar Stars has a locally implemented read-only workspace (ADR-067): encrypted
-connection, connection test, webinars, reports and participant visits. Its new
-migration and deployment remain pending; webhook/CRM processing is a later slice.
-See [setup, verified API checks and remaining questions](WEBINAR_STARS.md).
+## Specifications, reviews and history
 
-| Area                                    | Authoritative document                                                   |
-| --------------------------------------- | ------------------------------------------------------------------------ |
-| Customer patch notes                    | [CUSTOMER_PATCH_NOTES_2026-08-29.md](CUSTOMER_PATCH_NOTES_2026-08-29.md) |
-| Architecture and trust boundaries       | [ARCHITECTURE.md](ARCHITECTURE.md)                                       |
-| Product stages and follow-ups           | [IMPLEMENTATION_PLAN.md](IMPLEMENTATION_PLAN.md)                         |
-| Accepted decisions                      | [DECISIONS.md](DECISIONS.md)                                             |
-| Prisma schema and migration invariants  | [DATABASE.md](DATABASE.md)                                               |
-| Automation semantics                    | [AUTOMATION_ENGINE.md](AUTOMATION_ENGINE.md)                             |
-| Durable lifecycle rules                 | [STATE_MACHINES.md](STATE_MACHINES.md)                                   |
-| Operations and incident recovery        | [RUNBOOK.md](RUNBOOK.md)                                                 |
-| Railway topology                        | [RAILWAY.md](RAILWAY.md)                                                 |
-| Test gates                              | [TESTING.md](TESTING.md)                                                 |
-| Operator workflows                      | [OPERATOR_GUIDE.md](OPERATOR_GUIDE.md)                                   |
-| Meta lead-form user setup and operation | [META_LEADS_USER_GUIDE_RU.md](META_LEADS_USER_GUIDE_RU.md)               |
-| Meta intake contract and rollout limits | [META_LEADS.md](META_LEADS.md)                                           |
-| Email campaigns and Resend              | [EMAIL_BROADCASTS.md](EMAIL_BROADCASTS.md)                               |
-| Cyber Pulse integration                 | [CRM_INTEGRATION.md](CRM_INTEGRATION.md)                                 |
-| Direct contact communications           | [COMMUNICATIONS.md](COMMUNICATIONS.md)                                   |
-| CRM lead profile synchronization        | [CRM_CONTACT_SYNC.md](CRM_CONTACT_SYNC.md)                               |
-| WhatsApp Business Cloud API             | [WHATSAPP_CLOUD_API.md](WHATSAPP_CLOUD_API.md)                           |
-| WhatsApp templates, health and billing  | [WHATSAPP_MANAGEMENT.md](WHATSAPP_MANAGEMENT.md)                         |
-| CRM-to-Omnicus OpenAPI                  | [OMNICUS_CRM_OUTBOUND_OPENAPI.yaml](OMNICUS_CRM_OUTBOUND_OPENAPI.yaml)   |
-| Omnicus-to-CRM OpenAPI                  | [OMNICUS_TO_CRM_OPENAPI.yaml](OMNICUS_TO_CRM_OPENAPI.yaml)               |
-| Pairing OpenAPI                         | [CRM_PAIRING_OPENAPI.yaml](CRM_PAIRING_OPENAPI.yaml)                     |
-| Customer patch notes (2026-09-17)       | [CUSTOMER_PATCH_NOTES_2026-09-17.md](CUSTOMER_PATCH_NOTES_2026-09-17.md) |
+- [Requirements and specification catalog](specifications/README.md): source PDFs,
+  draft personal WhatsApp alternatives and the historical pilot baseline.
+- [Meta App Review preparation](reviews/README.md): submission material and
+  operator checklist; current Meta approval must be checked in Meta itself.
+- [Archive catalog](archive/README.md): old status entries and Stage 1 SQL proposal.
+- Customer patch notes: [2026-08-29](CUSTOMER_PATCH_NOTES_2026-08-29.md),
+  [2026-09-10](CUSTOMER_PATCH_NOTES_2026-09-10.md),
+  [2026-09-17](CUSTOMER_PATCH_NOTES_2026-09-17.md).
+- Retained handoffs: [original CRM contract gate](CRM_CONTRACT_REQUIRED.md),
+  [outbound history](CRM_OUTBOUND_HISTORY_HANDOFF.md),
+  [Telegram sticker/media](CRM_TELEGRAM_STICKER_MEDIA_HANDOFF.md),
+  [Telegram v3 implementation](OMNICUS_TELEGRAM_CHAT_V3_IMPLEMENTATION.md),
+  [external gate ledger](PILOT_EXTERNAL_GATES.md).
 
-## Historical and handoff references
-
-The following files are retained for audit/history and are not current blockers:
-
-- [CRM_CONTRACT_REQUIRED.md](CRM_CONTRACT_REQUIRED.md): original CRM contract
-  gate, satisfied by the published Cyber Pulse contracts.
-- [CRM_OUTBOUND_HISTORY_HANDOFF.md](CRM_OUTBOUND_HISTORY_HANDOFF.md): completed
-  outbound-history handoff.
-- [CRM_TELEGRAM_STICKER_MEDIA_HANDOFF.md](CRM_TELEGRAM_STICKER_MEDIA_HANDOFF.md):
-  completed 3.1 media handoff; current capability values come from v3.3
-  discovery and OpenAPI.
-- [PILOT_EXTERNAL_GATES.md](PILOT_EXTERNAL_GATES.md): gate ledger showing what
-  is complete and what remains deliberately deferred.
-- [OMNICUS_TELEGRAM_CHAT_V3_IMPLEMENTATION.md](OMNICUS_TELEGRAM_CHAT_V3_IMPLEMENTATION.md):
-  retained implementation history; current behavior comes from capability
-  discovery, accepted ADRs and the OpenAPI contracts.
-- [STAGE1_BASELINE_SQL_PROPOSAL.sql](STAGE1_BASELINE_SQL_PROPOSAL.sql): retained
-  Stage 1 SQL review artifact, not the current full schema.
-
-When prose and executable behavior differ, the OpenAPI contracts, Prisma
-schema, accepted ADRs and capability response take precedence over historical
-handoff text.
+When historical prose differs from current behavior, use accepted ADRs, the
+versioned contracts, executable schema and capability responses. The root
+README and this catalog replace the removed duplicate `README.root.md`.

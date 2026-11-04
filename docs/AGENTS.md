@@ -14,7 +14,7 @@
 4. текущий статус и операторские контракты в `docs/README.md` и
    `docs/OPERATOR_GUIDE.md`;
 5. поэтапный план в `docs/IMPLEMENTATION_PLAN.md`;
-6. `OMNICUS_GLOBAL_TECH_SPEC_CODEX.md` как исторический baseline первого pilot;
+6. `docs/specifications/historical/OMNICUS_GLOBAL_TECH_SPEC_CODEX.md` как исторический baseline первого pilot;
 7. остальные документы в `docs/`.
 
 При конфликте нельзя молча выбирать вариант. Зафиксируйте конфликт в

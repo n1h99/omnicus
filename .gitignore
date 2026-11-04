@@ -40,3 +40,17 @@ docs/*
 !docs/META_LEADS_USER_GUIDE_RU.md
 !docs/WEBINAR_STARS.md
 !docs/WEBINAR_CRM_OPENAPI.yaml
+
+# Organized documentation and deliverables
+!docs/guides/
+!docs/guides/**
+!docs/specifications/
+!docs/specifications/**
+!docs/reviews/
+!docs/reviews/**
+!docs/archive/
+!docs/archive/**
+
+# Customer originals and local historical SQL are not publication artifacts.
+/docs/specifications/sources/*.pdf
+/docs/archive/STAGE1_BASELINE_SQL_PROPOSAL.sql
